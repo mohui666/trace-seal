@@ -10,6 +10,8 @@ IGNORE_NAMES = {
     ".pytest_cache",
     ".mypy_cache",
     ".ruff_cache",
+    ".vite",
+    "node_modules",
     "dist",
     "build",
     ".venv",

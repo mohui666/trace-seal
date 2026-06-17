@@ -1,0 +1,23 @@
+import { BrowserRouter, Routes, Route } from 'react-router-dom';
+import { AppShell } from './layouts/AppShell';
+import { HomePage } from './pages/HomePage';
+import { RunsPage } from './pages/RunsPage';
+import { RunDetailPage } from './pages/RunDetailPage';
+import { ExplainPage } from './pages/ExplainPage';
+import { PolicyPage } from './pages/PolicyPage';
+
+export function App() {
+  return (
+    <BrowserRouter>
+      <Routes>
+        <Route element={<AppShell />}>
+          <Route index element={<HomePage />} />
+          <Route path="runs" element={<RunsPage />} />
+          <Route path="runs/:id" element={<RunDetailPage />} />
+          <Route path="runs/:id/explain" element={<ExplainPage />} />
+          <Route path="policy" element={<PolicyPage />} />
+        </Route>
+      </Routes>
+    </BrowserRouter>
+  );
+}

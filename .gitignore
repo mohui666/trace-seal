@@ -11,3 +11,7 @@ build/
 venv/
 desktop/electron/node_modules/
 desktop/electron/dist/
+desktop/renderer/node_modules/
+desktop/renderer/dist/
+desktop/renderer/.vite/
+*.tsbuildinfo

@@ -1,4 +1,4 @@
-import { BrowserRouter, Routes, Route } from 'react-router-dom';
+import { HashRouter, Routes, Route } from 'react-router-dom';
 import { AppShell } from './layouts/AppShell';
 import { HomePage } from './pages/HomePage';
 import { RunsPage } from './pages/RunsPage';
@@ -8,7 +8,7 @@ import { PolicyPage } from './pages/PolicyPage';
 
 export function App() {
   return (
-    <BrowserRouter>
+    <HashRouter>
       <Routes>
         <Route element={<AppShell />}>
           <Route index element={<HomePage />} />
@@ -18,6 +18,6 @@ export function App() {
           <Route path="policy" element={<PolicyPage />} />
         </Route>
       </Routes>
-    </BrowserRouter>
+    </HashRouter>
   );
 }

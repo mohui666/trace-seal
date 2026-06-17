@@ -6,10 +6,12 @@
   "scripts": {
     "build": "tsc -p tsconfig.json",
     "typecheck": "tsc -p tsconfig.json --noEmit",
-    "test": "npm run build && node --test dist/tests/*.test.js"
+    "test": "npm run build && node --test dist/tests/*.test.js",
+    "start": "npm run build && electron dist/src/main.js"
   },
   "devDependencies": {
     "@types/node": "^22.10.0",
+    "electron": "^42.4.1",
     "typescript": "^5.7.0"
   }
 }

@@ -1,6 +1,29 @@
+import fs from "node:fs";
 import path from "node:path";
 import { app, BrowserWindow, ipcMain } from "electron";
 import { registerTraceSealIpc } from "./ipc";
+
+function rendererUrl(): string | null {
+  return process.env.TRACESEAL_RENDERER_URL || null;
+}
+
+function rendererIndexPath(): string | null {
+  if (process.env.TRACESEAL_RENDERER_DIST) {
+    const explicit = path.resolve(process.env.TRACESEAL_RENDERER_DIST, "index.html");
+    if (fs.existsSync(explicit)) return explicit;
+  }
+
+  const candidates = [
+    // Compiled Electron runtime: desktop/electron/dist/src/main.js -> desktop/renderer/dist/index.html
+    path.resolve(__dirname, "../../../renderer/dist/index.html"),
+    // Fallback when running from source tooling.
+    path.resolve(__dirname, "../../renderer/dist/index.html"),
+    path.resolve(process.cwd(), "../renderer/dist/index.html"),
+    path.resolve(process.cwd(), "desktop/renderer/dist/index.html"),
+  ];
+
+  return candidates.find((candidate) => fs.existsSync(candidate)) || null;
+}
 
 function createWindow(): void {
   const win = new BrowserWindow({
@@ -13,10 +36,24 @@ function createWindow(): void {
     },
   });
 
-  const rendererIndex = path.resolve(__dirname, "../../renderer/index.html");
-  void win.loadFile(rendererIndex).catch(() => {
-    void win.loadURL("data:text/html;charset=utf-8,<h1>TraceSeal Dashboard runtime ready</h1>");
-  });
+  const devUrl = rendererUrl();
+  if (devUrl) {
+    void win.loadURL(devUrl);
+    return;
+  }
+
+  const rendererIndex = rendererIndexPath();
+  if (rendererIndex) {
+    void win.loadFile(rendererIndex);
+    return;
+  }
+
+  void win.loadURL(
+    "data:text/html;charset=utf-8," +
+      encodeURIComponent(
+        "<h1>TraceSeal Dashboard runtime ready</h1><p>Renderer dist not found. Run npm run build in desktop/renderer.</p>",
+      ),
+  );
 }
 
 registerTraceSealIpc(ipcMain);

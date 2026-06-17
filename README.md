@@ -55,6 +55,7 @@ trace-seal/
 ├── examples/           # bad agent demo
 ├── tests/              # MVP 自动测试
 ├── docs/               # 规格、规则、事故案例、Dashboard 设计
+├── desktop/electron/   # Electron main/preload/IPC/Python runner 数据运行层
 ├── attestation/        # 预留
 └── dashboard/          # Dashboard JSON export；Electron UI 后续接入
 ```
@@ -167,13 +168,29 @@ deny shell "rm -rf data/**"
 
 ## 导出 Dashboard 数据
 
-Electron Dashboard 暂时不直接执行 Python Core，而是先读取 Core 导出的 JSON：
+Electron Dashboard 不直接实现拦截逻辑，而是读取 Python Core 导出的机器可读 JSON。兼容旧命令：
 
 ```powershell
 python -m traceseal dashboard-data runs/latest
 ```
 
-输出包含：
+阶段 2 新增命令：
+
+```powershell
+python -m traceseal dashboard-data latest
+python -m traceseal dashboard-data list
+python -m traceseal dashboard-data run <run_id>
+python -m traceseal dashboard-data policy
+```
+
+约束：
+
+- stdout 只输出 JSON。
+- 诊断信息输出到 stderr。
+- runId 拒绝绝对路径、`../` 和路径穿越。
+- list 会按时间倒序返回 runs，单个损坏 run 不影响其他 run。
+
+单个 run 输出包含：
 
 - `run_id`
 - `command`
@@ -185,7 +202,25 @@ python -m traceseal dashboard-data runs/latest
 - `affected_files`
 - `suggested_policy`
 
-后续 Electron + React + TypeScript + TailwindCSS 只需要读取这个 JSON 做展示。
+## Electron 数据运行层
+
+Electron runtime 位于 `desktop/electron/`，只包含 main process、preload、IPC 和 Python CLI runner，不包含 React UI。
+
+Renderer 通过 preload 暴露的固定 API 访问数据：
+
+```typescript
+window.traceSeal.getLatestRun()
+window.traceSeal.listRuns()
+window.traceSeal.getRun(runId)
+window.traceSeal.getPolicy()
+window.traceSeal.getRuntimeInfo()
+```
+
+安全配置：
+
+- `contextIsolation: true`
+- `nodeIntegration: false`
+- Renderer 不直接访问 Node.js、`fs`、`child_process` 或任意 IPC channel。
 
 ## MVP Policy
 
@@ -231,11 +266,20 @@ python -m unittest discover -s tests -v
 - `test_replay_latest`
 - `test_explain_latest`
 
-完整验证：
+完整 Python 验证：
 
 ```powershell
 python -m compileall -q traceseal sdk recorder replay minimizer policy sandbox dashboard examples tests
 python -m unittest discover -s tests -v
+```
+
+Electron runtime 验证：
+
+```powershell
+cd desktop/electron
+npm install
+npm run typecheck
+npm test
 ```
 
 ## 当前架构说明

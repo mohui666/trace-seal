@@ -27,7 +27,14 @@ runs/<run_id>/events.jsonl + manifest.json + snapshots
 命令：
 
 ```powershell
+# 兼容旧命令
 python -m traceseal dashboard-data runs/latest
+
+# 阶段 2 Electron runtime 使用
+python -m traceseal dashboard-data latest
+python -m traceseal dashboard-data list
+python -m traceseal dashboard-data run <run_id>
+python -m traceseal dashboard-data policy
 ```
 
 输出 JSON：
@@ -49,6 +56,26 @@ python -m traceseal dashboard-data runs/latest
   "suggested_policy": "deny http \"POST https://...\""
 }
 ```
+
+
+## 2.1 Electron runtime IPC API
+
+`desktop/electron/` 已实现 main/preload/IPC/Python runner 数据运行层。Renderer 只能通过 `window.traceSeal` 使用以下固定 API：
+
+```typescript
+window.traceSeal.getLatestRun()
+window.traceSeal.listRuns()
+window.traceSeal.getRun(runId)
+window.traceSeal.getPolicy()
+window.traceSeal.getRuntimeInfo()
+```
+
+安全边界：
+
+- Electron main 通过 `spawn(command, args, { shell: false })` 调用 Python CLI。
+- IPC 只暴露固定操作，不支持任意命令或任意文件路径。
+- preload 只暴露 `traceSeal` 对象。
+- BrowserWindow 必须设置 `contextIsolation: true` 和 `nodeIntegration: false`。
 
 ## 3. 页面信息架构
 

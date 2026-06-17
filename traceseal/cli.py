@@ -9,7 +9,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Iterable
 
-from dashboard.export import export_dashboard_json
+from dashboard.export import DashboardDataError, handle_dashboard_cli, json_dumps
 from minimizer.explain import explain_run
 from recorder.workspace import snapshot_workspace
 from replay.renderer import replay_run
@@ -164,8 +164,18 @@ def explain_command(args: argparse.Namespace) -> int:
 
 
 def dashboard_data_command(args: argparse.Namespace) -> int:
-    run_dir = resolve_run_dir(args.run_dir)
-    print(export_dashboard_json(run_dir), end="")
+    try:
+        payload = handle_dashboard_cli(args.dashboard_args)
+    except DashboardDataError as exc:
+        print(exc.message, file=sys.stderr)
+        print(json_dumps(exc.to_response()), end="")
+        return exc.status
+    except Exception as exc:  # keep stdout machine-readable for Electron callers
+        wrapped = DashboardDataError("INTERNAL_ERROR", str(exc), 1)
+        print(str(exc), file=sys.stderr)
+        print(json_dumps(wrapped.to_response()), end="")
+        return wrapped.status
+    print(json_dumps(payload), end="")
     return 0
 
 
@@ -186,7 +196,11 @@ def build_parser() -> argparse.ArgumentParser:
     p_explain.set_defaults(func=explain_command)
 
     p_dashboard = sub.add_parser("dashboard-data", help="导出桌面 Dashboard 可读取的 JSON")
-    p_dashboard.add_argument("run_dir", help="运行目录或 runs/latest 指针")
+    p_dashboard.add_argument(
+        "dashboard_args",
+        nargs="*",
+        help="latest | runs/latest | list | policy | run <run_id> | <run_id>",
+    )
     p_dashboard.set_defaults(func=dashboard_data_command)
     return parser
 

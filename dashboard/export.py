@@ -1,19 +1,80 @@
 from __future__ import annotations
 
 import json
+import re
+from dataclasses import dataclass
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
 from minimizer.explain import find_first_harmful_event
-from policy.rules import RISK_ORDER, suggest_policy_for_event
+from policy.rules import RISK_ORDER, load_policy, suggest_policy_for_event
 from replay.renderer import load_events
+
+RUN_ID_RE = re.compile(r"^run_[A-Za-z0-9_.-]+$")
+
+ERROR_EXIT_CODES = {
+    "RUN_NOT_FOUND": 2,
+    "INVALID_RUN_ID": 3,
+    "INVALID_JSON": 4,
+    "INTERNAL_ERROR": 1,
+}
+
+
+@dataclass
+class DashboardDataError(Exception):
+    code: str
+    message: str
+    status: int = 1
+    details: dict[str, Any] | None = None
+
+    def to_response(self) -> dict[str, Any]:
+        payload: dict[str, Any] = {
+            "ok": False,
+            "error": {
+                "code": self.code,
+                "message": self.message,
+            },
+        }
+        if self.details:
+            payload["error"]["details"] = self.details
+        return payload
+
+
+def error_response(code: str, message: str, details: dict[str, Any] | None = None) -> dict[str, Any]:
+    return DashboardDataError(code, message, ERROR_EXIT_CODES.get(code, 1), details).to_response()
+
+
+def _load_json_file(path: Path, *, default: dict[str, Any] | None = None, required: bool = False) -> dict[str, Any]:
+    if not path.exists():
+        if required:
+            raise DashboardDataError("RUN_NOT_FOUND", f"required file not found: {path.name}", ERROR_EXIT_CODES["RUN_NOT_FOUND"])
+        return default or {}
+    try:
+        return json.loads(path.read_text(encoding="utf-8"))
+    except json.JSONDecodeError as exc:
+        raise DashboardDataError(
+            "INVALID_JSON",
+            f"invalid JSON in {path.name}: {exc.msg}",
+            ERROR_EXIT_CODES["INVALID_JSON"],
+            {"path": path.name, "line": exc.lineno, "column": exc.colno},
+        ) from exc
 
 
 def _load_manifest(run_dir: Path) -> dict[str, Any]:
-    manifest_path = run_dir / "manifest.json"
-    if not manifest_path.exists():
-        return {}
-    return json.loads(manifest_path.read_text(encoding="utf-8"))
+    return _load_json_file(run_dir / "manifest.json")
+
+
+def _load_events_safe(run_dir: Path) -> list[dict[str, Any]]:
+    try:
+        return load_events(run_dir)
+    except json.JSONDecodeError as exc:
+        raise DashboardDataError(
+            "INVALID_JSON",
+            f"invalid JSON in events.jsonl: {exc.msg}",
+            ERROR_EXIT_CODES["INVALID_JSON"],
+            {"path": "events.jsonl", "line": exc.lineno, "column": exc.colno},
+        ) from exc
 
 
 def _risk_score(event: dict[str, Any]) -> int:
@@ -33,12 +94,31 @@ def _affected_files(events: list[dict[str, Any]]) -> list[str]:
     return paths
 
 
+def _event_operation(event: dict[str, Any]) -> str:
+    typ = event.get("type")
+    inp = event.get("input") or {}
+    if typ == "shell":
+        return str(inp.get("command", ""))
+    if typ in {"file.write", "file.delete"}:
+        return str(inp.get("path", ""))
+    if typ == "http":
+        return f"{inp.get('method', 'GET')} {inp.get('url', '')}"
+    return str(event.get("operation", ""))
+
+
+def _normalize_event(event: dict[str, Any]) -> dict[str, Any]:
+    if "operation" not in event:
+        event = dict(event)
+        event["operation"] = _event_operation(event)
+    return event
+
+
 def export_dashboard_data(run_dir: str | Path) -> dict[str, Any]:
     """Return a compact JSON-ready summary for Electron/React dashboard reads."""
 
     run_dir = Path(run_dir)
     manifest = _load_manifest(run_dir)
-    events = load_events(run_dir)
+    events = [_normalize_event(event) for event in _load_events_safe(run_dir)]
     first_harmful = find_first_harmful_event(events)
 
     return {
@@ -60,3 +140,163 @@ def export_dashboard_data(run_dir: str | Path) -> dict[str, Any]:
 
 def export_dashboard_json(run_dir: str | Path) -> str:
     return json.dumps(export_dashboard_data(run_dir), indent=2, ensure_ascii=False, default=str) + "\n"
+
+
+def _runs_dir(repo_root: str | Path | None = None) -> Path:
+    root = Path(repo_root) if repo_root is not None else Path.cwd()
+    return root.resolve() / "runs"
+
+
+def _is_latest_selector(selector: str) -> bool:
+    normalized = selector.replace("\\", "/").strip()
+    return normalized in {"latest", "runs/latest"}
+
+
+def validate_run_id(run_id: str) -> str:
+    value = str(run_id).strip()
+    if not value:
+        raise DashboardDataError("INVALID_RUN_ID", "runId is empty", ERROR_EXIT_CODES["INVALID_RUN_ID"])
+    if value.replace("\\", "/") != value or "/" in value:
+        raise DashboardDataError("INVALID_RUN_ID", "runId must not contain path separators", ERROR_EXIT_CODES["INVALID_RUN_ID"])
+    if Path(value).is_absolute() or ".." in value:
+        raise DashboardDataError("INVALID_RUN_ID", "runId must not be absolute or contain '..'", ERROR_EXIT_CODES["INVALID_RUN_ID"])
+    if not RUN_ID_RE.fullmatch(value):
+        raise DashboardDataError("INVALID_RUN_ID", "runId must match run_<safe characters>", ERROR_EXIT_CODES["INVALID_RUN_ID"], {"run_id": value})
+    return value
+
+
+def _read_latest_run_id(runs_dir: Path) -> str:
+    latest = runs_dir / "latest"
+    if not latest.exists() or latest.is_dir():
+        latest_txt = runs_dir / "latest.txt"
+        if latest_txt.exists() and latest_txt.is_file():
+            latest = latest_txt
+    if not latest.exists() or not latest.is_file():
+        raise DashboardDataError("RUN_NOT_FOUND", "latest run pointer does not exist", ERROR_EXIT_CODES["RUN_NOT_FOUND"])
+    run_id = latest.read_text(encoding="utf-8").strip()
+    return validate_run_id(run_id)
+
+
+def resolve_dashboard_run_dir(selector: str = "latest", repo_root: str | Path | None = None) -> Path:
+    runs_dir = _runs_dir(repo_root)
+    if _is_latest_selector(selector):
+        run_id = _read_latest_run_id(runs_dir)
+    else:
+        run_id = validate_run_id(selector)
+    run_dir = (runs_dir / run_id).resolve()
+    runs_dir_resolved = runs_dir.resolve()
+    try:
+        run_dir.relative_to(runs_dir_resolved)
+    except ValueError as exc:
+        raise DashboardDataError("INVALID_RUN_ID", "runId resolved outside runs directory", ERROR_EXIT_CODES["INVALID_RUN_ID"]) from exc
+    if not run_dir.exists() or not run_dir.is_dir():
+        raise DashboardDataError("RUN_NOT_FOUND", f"run not found: {run_id}", ERROR_EXIT_CODES["RUN_NOT_FOUND"], {"run_id": run_id})
+    return run_dir
+
+
+def export_run(selector: str = "latest", repo_root: str | Path | None = None) -> dict[str, Any]:
+    return export_dashboard_data(resolve_dashboard_run_dir(selector, repo_root))
+
+
+def _parse_ts(value: Any) -> tuple[int, str]:
+    if isinstance(value, str) and value:
+        normalized = value.replace("Z", "+00:00")
+        try:
+            parsed = datetime.fromisoformat(normalized).astimezone(timezone.utc)
+            return (1, parsed.isoformat())
+        except ValueError:
+            return (1, value)
+    return (0, "")
+
+
+def _safe_run_summary(run_dir: Path) -> dict[str, Any]:
+    try:
+        manifest = _load_manifest(run_dir)
+        events = _load_events_safe(run_dir)
+        first_harmful = find_first_harmful_event(events)
+        return {
+            "run_id": manifest.get("run_id", run_dir.name),
+            "command": manifest.get("command_display", manifest.get("command", "")),
+            "started_at": manifest.get("started_at"),
+            "finished_at": manifest.get("completed_at"),
+            "status": manifest.get("status", "failed"),
+            "exit_code": manifest.get("exit_code"),
+            "event_count": len(events),
+            "high_risk_count": sum(1 for event in events if _risk_score(event) >= RISK_ORDER["high"]),
+            "first_harmful_event_id": first_harmful.get("id") if first_harmful else None,
+            "_sort_key": _parse_ts(manifest.get("started_at") or manifest.get("completed_at")),
+        }
+    except DashboardDataError as exc:
+        return {
+            "run_id": run_dir.name,
+            "command": "",
+            "started_at": None,
+            "finished_at": None,
+            "status": "failed",
+            "exit_code": None,
+            "event_count": 0,
+            "high_risk_count": 0,
+            "first_harmful_event_id": None,
+            "error": {"code": exc.code, "message": exc.message},
+            "_sort_key": (0, datetime.fromtimestamp(run_dir.stat().st_mtime, tz=timezone.utc).isoformat() if run_dir.exists() else ""),
+        }
+
+
+def list_runs(repo_root: str | Path | None = None) -> list[dict[str, Any]]:
+    runs_dir = _runs_dir(repo_root)
+    if not runs_dir.exists():
+        return []
+    summaries: list[dict[str, Any]] = []
+    for child in runs_dir.iterdir():
+        if not child.is_dir() or not RUN_ID_RE.fullmatch(child.name):
+            continue
+        summaries.append(_safe_run_summary(child))
+    summaries.sort(key=lambda item: item.pop("_sort_key", (0, 0.0)), reverse=True)
+    return summaries
+
+
+def export_policy_rules() -> list[dict[str, Any]]:
+    rules = load_policy().get("rules", [])
+    normalized: list[dict[str, Any]] = []
+    for rule in rules:
+        normalized.append(
+            {
+                "rule_id": rule.get("rule_id") or rule.get("id"),
+                "event_type": rule.get("event_type") or rule.get("type"),
+                "pattern": rule.get("pattern") or rule.get("match"),
+                "risk_level": rule.get("risk_level") or rule.get("risk"),
+                "action": rule.get("action"),
+                "description": rule.get("description") or rule.get("reason"),
+                "suggested_policy": rule.get("suggested_policy"),
+            }
+        )
+    return normalized
+
+
+def handle_dashboard_cli(argv: list[str], repo_root: str | Path | None = None) -> dict[str, Any]:
+    if not argv:
+        return export_run("latest", repo_root)
+    command = argv[0]
+    if command in {"latest", "runs/latest"}:
+        if len(argv) != 1:
+            raise DashboardDataError("INVALID_RUN_ID", "latest does not accept extra arguments", ERROR_EXIT_CODES["INVALID_RUN_ID"])
+        return export_run(command, repo_root)
+    if command in {"list", "runs", "list-runs"}:
+        if len(argv) != 1:
+            raise DashboardDataError("INVALID_RUN_ID", "list does not accept extra arguments", ERROR_EXIT_CODES["INVALID_RUN_ID"])
+        return {"schema_version": 1, "runs": list_runs(repo_root)}
+    if command == "policy":
+        if len(argv) != 1:
+            raise DashboardDataError("INVALID_RUN_ID", "policy does not accept extra arguments", ERROR_EXIT_CODES["INVALID_RUN_ID"])
+        return {"schema_version": 1, "rules": export_policy_rules()}
+    if command == "run":
+        if len(argv) != 2:
+            raise DashboardDataError("INVALID_RUN_ID", "usage: dashboard-data run <run_id>", ERROR_EXIT_CODES["INVALID_RUN_ID"])
+        return export_run(argv[1], repo_root)
+    if len(argv) == 1:
+        return export_run(command, repo_root)
+    raise DashboardDataError("INVALID_RUN_ID", "unsupported dashboard-data arguments", ERROR_EXIT_CODES["INVALID_RUN_ID"], {"args": argv})
+
+
+def json_dumps(data: Any) -> str:
+    return json.dumps(data, indent=2, ensure_ascii=False, default=str) + "\n"

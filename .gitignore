@@ -9,3 +9,5 @@ build/
 *.egg-info/
 .venv/
 venv/
+desktop/electron/node_modules/
+desktop/electron/dist/

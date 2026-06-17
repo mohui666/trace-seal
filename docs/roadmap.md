@@ -65,7 +65,7 @@
 | 模块 | 内容 |
 |---|---|
 | Electron 壳 | 本地桌面窗口 |
-| 数据桥接 | 调用 `python -m traceseal dashboard-data runs/latest` |
+| 数据桥接 | 已实现 `latest/list/run/policy` Python JSON 接口和 Electron IPC runner |
 | 首页 | run 概览、事件数、高风险数、最近事故 |
 | Runs 列表 | run_id、命令、时间、退出码、事件数、高风险数 |
 | Run Detail | 事件时间线、事件详情展开、文件变更、Shell/HTTP 摘要 |
@@ -137,6 +137,6 @@
 |---|---|---|
 | v0.1.0 | 2026-06 | Python CLI MVP：run/replay/explain |
 | v0.1.1 | 2026-06 | 补 env/git/http 案例与 dashboard-data JSON |
-| v0.2.0 | 计划 | 最小 Electron Dashboard |
+| v0.2.0 | 进行中 | Electron 数据运行层已完成，Renderer UI 待接入 |
 | v0.3.0 | 计划 | Core 增强：读取、os.system、httpx、Git diff |
 | v1.0.0 | 远期 | 产品化 Guard + Dashboard |

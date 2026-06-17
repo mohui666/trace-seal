@@ -1,0 +1,30 @@
+{
+  "schema_version": 1,
+  "mode": "warn",
+  "rules": [
+    {
+      "id": "dangerous_delete",
+      "type": "shell",
+      "match": "rm -rf or rmdir /s /q",
+      "risk": "critical",
+      "action": "warn",
+      "reason": "recursive force delete can remove protected workspace data"
+    },
+    {
+      "id": "env_write",
+      "type": "file.write",
+      "match": ".env or .env.*",
+      "risk": "high",
+      "action": "warn",
+      "reason": "writing environment files can corrupt secrets/configuration"
+    },
+    {
+      "id": "git_push",
+      "type": "shell",
+      "match": "git push",
+      "risk": "high",
+      "action": "warn",
+      "reason": "git push publishes code or history outside the local workspace"
+    }
+  ]
+}

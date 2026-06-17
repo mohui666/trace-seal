@@ -15,17 +15,32 @@
 | recorder | `events.jsonl` + `manifest.json` + workspace 快照 |
 | replay | Transcript 回放 |
 | policy | `dangerous_delete`、`env_write`、`git_push`、`suspicious_http_post` |
-| minimizer | 首次有害工具调用 定位 |
+| minimizer | 首次有害工具调用定位 |
 | cli | `run/replay/explain/dashboard-data` |
 | examples | delete/env/git/http 四个 bad agent demo |
-| tests | 6 个 unittest 覆盖核心链路 |
+| tests | 5 个 unittest 覆盖核心链路 |
+| docs | spec、policy、incident、dashboard、demo、roadmap、test-report |
 
 ### 当前指标
 
 - 规则数：4 条
 - Demo 数：4 个
-- 测试数：6 个
+- 测试数：5 个
 - Dashboard 数据接口：1 个 JSON export
+- 默认安全模式：warn；可通过 `TRACESEAL_POLICY_MODE=block` 切换阻断
+
+### 当前限制
+
+| 限制 | 说明 | 计划解决阶段 |
+|---|---|---|
+| 仅支持 Python Agent | 拦截通过 monkey-patch 实现，不适用于其他语言 | Rust Guard 阶段 |
+| Sandbox 为目录复制 | 不是 Docker/overlayfs，无真正资源隔离 | Core 增强 / Rust Guard |
+| 无独立 Git hook | Git 操作通过 subprocess 间接捕获 | Core 增强 |
+| 无 `os.system()` 拦截 | 仅拦截 `subprocess.run()` | Core 增强 |
+| 无 `httpx` 拦截 | HTTP 仅支持 `urllib` 和可选 `requests` | Core 增强 |
+| Policy 为 JSON + Python matcher | 暂无用户可编辑 YAML DSL | Core 增强 |
+| Dashboard UI 未实现 | 已有 `dashboard-data` JSON，暂无 Electron 页面 | 阶段 2 |
+| 无防篡改日志 | 审计日志当前可被修改 | Rust Guard 阶段 |
 
 ---
 
@@ -34,6 +49,8 @@
 **时间**：2026 Q3
 
 目标：把 CLI MVP 升级为可展示的桌面原型。
+
+核心原则：Electron 只负责展示和调用 Python CLI，Python Core 继续负责真实的 run / replay / explain / policy / recorder。
 
 ### 技术栈
 
@@ -49,10 +66,12 @@
 |---|---|
 | Electron 壳 | 本地桌面窗口 |
 | 数据桥接 | 调用 `python -m traceseal dashboard-data runs/latest` |
-| 首页 | run 概览、事件数、高风险数 |
-| 事件时间线 | 展示 `events` 列表 |
-| Explain 卡片 | 展示 `first_harmful_event` 和 `suggested_policy` |
+| 首页 | run 概览、事件数、高风险数、最近事故 |
+| Runs 列表 | run_id、命令、时间、退出码、事件数、高风险数 |
+| Run Detail | 事件时间线、事件详情展开、文件变更、Shell/HTTP 摘要 |
+| Explain 卡片 | 展示 `first_harmful_event`、reason、affected files、suggested policy |
 | 案例切换 | 选择 delete/env/git/http demo 结果 |
+| Policy 只读页 | 展示当前 `policy/default_policy.json` |
 
 ### 不做
 
@@ -75,7 +94,9 @@
 | `httpx` 拦截 | 待做 |
 | Git diff / HEAD / staged 记录 | 待做 |
 | HTTP cassette 脱敏记录 | 待做 |
-| policy.yaml DSL | 待做 |
+| `policy.yaml` DSL | 待做 |
+| force push 与普通 push 细分 | 待做 |
+| 域名白名单 / 黑名单 | 待做 |
 | 级联错误案例 | 待做 |
 | GitHub Actions CI | 待做 |
 
@@ -83,12 +104,23 @@
 
 ## 阶段 4：Rust Guard 产品化 — 远期规划
 
-当前阶段明确不做 Rust 重构。Rust Guard 作为远期产品化方向：
+当前阶段明确不做 Rust 重构。Rust Guard 作为远期产品化方向，**不替代**当前 Python MVP，而是做更底层的安全增强。
+
+| 方面 | Python MVP（阶段 1-3） | Rust Guard（阶段 4） |
+|---|---|---|
+| 拦截层级 | 进程内 monkey-patch | OS 级进程守卫 |
+| 支持语言 | Python | Python、Node.js、Go、Rust 等 |
+| 安全级别 | 应用层 | 更难被 Agent 绕过 |
+| 日志防篡改 | 暂无 | 签名 + 哈希链 |
+| 典型实现 | `sitecustomize` / hooks | Sidecar / 守护进程 |
+
+计划方向：
 
 - OS 级进程监控
 - 跨语言 Agent 支持
 - 防篡改审计日志
 - 更强 sandbox / policy enforcement
+- 企业级 Dashboard
 
 ```text
 阶段 1：Python Agent → Python hooks

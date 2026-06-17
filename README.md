@@ -64,7 +64,7 @@ trace-seal/
 - [项目规格说明书](docs/spec.md)（目标规格 + 当前 MVP 状态）
 - [策略规则设计](docs/policy-rules.md)（下一阶段 policy.yaml DSL 草案；当前实现见 `policy/default_policy.json`）
 - [事故测试案例](docs/incident-examples.md)（delete/env/git/http 案例已落地）
-- [Dashboard 设计](docs/dashboard-design.md)（设计草案，尚未实现）
+- [Dashboard 设计](docs/dashboard-design.md)（数据接口已完成，Electron UI 待实现）
 - [演示脚本](docs/demo.md)（5 分钟展示讲稿）
 - [路线图](docs/roadmap.md)（阶段计划）
 - [飞书项目文档](docs/feishu_project_doc.md)
@@ -223,14 +223,13 @@ python -m traceseal run python examples/bad_agent_delete.py
 python -m unittest discover -s tests -v
 ```
 
-当前自动测试至少覆盖：
+当前自动测试覆盖：
 
 - `test_bad_agent_delete_detected`
 - `test_env_write_detected`
 - `test_git_push_detected`
-- `test_http_post_recorded`
-- `test_replay_and_explain_latest`
-- `test_block_mode_blocks_env_write`
+- `test_replay_latest`
+- `test_explain_latest`
 
 完整验证：
 

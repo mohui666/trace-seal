@@ -10,9 +10,42 @@ from typing import Any
 
 DEFAULT_RULES = {
     "rules": [
-        {"id": "dangerous_delete", "type": "shell", "match": "rm -rf or rmdir /s /q", "risk": "critical", "action": "warn"},
-        {"id": "env_write", "type": "file.write", "match": ".env or .env.*", "risk": "high", "action": "warn"},
-        {"id": "git_push", "type": "shell", "match": "git push", "risk": "high", "action": "warn"},
+        {
+            "rule_id": "dangerous_delete",
+            "event_type": "shell",
+            "pattern": "rm -rf or rmdir /s /q",
+            "risk_level": "critical",
+            "action": "warn",
+            "reason": "recursive force delete can remove protected workspace data",
+            "suggested_policy": 'deny shell "rm -rf <path>/**"',
+        },
+        {
+            "rule_id": "env_write",
+            "event_type": "file.write",
+            "pattern": ".env or .env.*",
+            "risk_level": "high",
+            "action": "warn",
+            "reason": "writing environment files can corrupt secrets/configuration",
+            "suggested_policy": 'deny file_write ".env*"',
+        },
+        {
+            "rule_id": "git_push",
+            "event_type": "shell",
+            "pattern": "git push",
+            "risk_level": "high",
+            "action": "warn",
+            "reason": "git push publishes code or history outside the local workspace",
+            "suggested_policy": 'require_approval git "push"',
+        },
+        {
+            "rule_id": "suspicious_http_post",
+            "event_type": "http",
+            "pattern": "POST request to non-local URL or request carrying secret-like fields",
+            "risk_level": "high",
+            "action": "warn",
+            "reason": "HTTP POST can exfiltrate sensitive data outside the workspace",
+            "suggested_policy": 'deny http "POST https://*/**"',
+        },
     ]
 }
 
@@ -27,10 +60,31 @@ def load_policy() -> dict[str, Any]:
         return DEFAULT_RULES
 
 
+def _rules_by_id() -> dict[str, dict[str, Any]]:
+    rules = load_policy().get("rules", [])
+    result: dict[str, dict[str, Any]] = {}
+    for item in rules:
+        rule_id = item.get("rule_id") or item.get("id")
+        if rule_id:
+            result[str(rule_id)] = item
+    return result
+
+
+def _rule(rule_id: str | None) -> dict[str, Any]:
+    return _rules_by_id().get(str(rule_id), {}) if rule_id else {}
+
+
 def risk(level: str = "low", reasons: list[str] | None = None, policy_rule: str | None = None, action: str = "allow") -> dict[str, Any]:
     if os.environ.get("TRACESEAL_POLICY_MODE", "warn").lower() in {"block", "deny", "enforce"} and level in {"high", "critical"}:
         action = "deny"
-    return {"level": level, "reasons": reasons or [], "policy_rule": policy_rule, "action": action}
+    rule = _rule(policy_rule)
+    return {
+        "level": level,
+        "reasons": reasons or ([rule["reason"]] if rule.get("reason") else []),
+        "policy_rule": policy_rule,
+        "action": action,
+        "suggested_policy": rule.get("suggested_policy"),
+    }
 
 
 def tokenize_command(command: str) -> list[str]:
@@ -90,7 +144,7 @@ def evaluate_shell_command(command: str, tokens: list[str] | None = None) -> dic
         target_text = ", ".join(targets) if targets else "unknown target"
         return risk("critical", [f"recursive force delete requested: {target_text}"], "dangerous_delete", "warn")
     if is_git_push(command, tokens):
-        return risk("high", ["git push publishes repository state"], "git_push", "warn")
+        return risk("high", ["remote git push requested"], "git_push", "warn")
     return risk("low", [], None, "allow")
 
 
@@ -98,12 +152,19 @@ def evaluate_file_write(path: str) -> dict[str, Any]:
     name = Path(path).name
     normalized = path.replace("\\", "/")
     if name == ".env" or name.startswith(".env.") or normalized.endswith("/.env"):
-        return risk("high", [f"write to environment/config file: {path}"], "env_write", "warn")
+        return risk("high", [f"sensitive environment file modified: {path}"], "env_write", "warn")
     return risk("low", [], None, "allow")
 
 
 def evaluate_http_request(method: str, url: str) -> dict[str, Any]:
-    return risk("medium", [f"outbound HTTP request: {method.upper()} {url}"], "http_request", "warn")
+    method_upper = method.upper()
+    normalized = url.lower()
+    is_local = any(host in normalized for host in ["localhost", "127.0.0.1", "::1"])
+    if method_upper == "POST":
+        return risk("high", [f"suspicious outbound HTTP POST: {method_upper} {url}"], "suspicious_http_post", "warn")
+    if not is_local:
+        return risk("medium", [f"outbound HTTP request: {method_upper} {url}"], "http_request", "warn")
+    return risk("low", [], None, "allow")
 
 
 def suggest_policy_for_event(event: dict[str, Any]) -> str:
@@ -115,10 +176,12 @@ def suggest_policy_for_event(event: dict[str, Any]) -> str:
         clean = str(target).rstrip("/\\")
         return f'deny shell "rm -rf {clean}/**"'
     if rule == "env_write":
-        path = (event.get("input") or {}).get("path", ".env")
-        return f'deny file.write "{path}"'
+        return 'deny file_write ".env*"'
     if rule == "git_push":
-        return 'deny shell "git push"'
+        return 'require_approval git "push"'
+    if rule == "suspicious_http_post":
+        url = (event.get("input") or {}).get("url", "<url>")
+        return f'deny http "POST {url}"'
     if event.get("type") == "http":
         return 'review http "<method> <url>"'
     return "review event and add a targeted deny rule"

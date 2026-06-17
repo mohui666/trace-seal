@@ -9,7 +9,7 @@ import urllib.request
 from pathlib import Path
 from typing import Any
 
-from policy.rules import command_to_string, evaluate_file_write, evaluate_http_request, evaluate_shell_command, is_rm_rf, rm_targets
+from policy.rules import command_to_string, evaluate_file_write, evaluate_http_request, evaluate_shell_command, is_git_push, is_rm_rf, rm_targets
 from recorder.core import record_event, summarize_env
 from recorder.workspace import diff_trees, snapshot_tree
 
@@ -41,6 +41,19 @@ def _workspace_root() -> Path:
 def _run_dir() -> Path | None:
     value = os.environ.get("TRACESEAL_RUN_DIR")
     return Path(value).resolve() if value else None
+
+
+def _rel_path(path: Any) -> str:
+    root = _workspace_root()
+    try:
+        p = Path(path)
+        return p.resolve().relative_to(root).as_posix() if p.is_absolute() else p.as_posix()
+    except Exception:
+        return str(path)
+
+
+def _offline_http_enabled() -> bool:
+    return os.environ.get("TRACESEAL_OFFLINE_HTTP", "").lower() in {"1", "true", "yes", "on"}
 
 
 def _is_trace_internal(path: Any) -> bool:
@@ -88,11 +101,7 @@ def _record_file_event(operation: str, path: Any, before: dict[str, Any], after:
     changes = diff_trees(before, after)
     if not changes and operation in {"file.write", "file.delete"}:
         return
-    try:
-        p = Path(path)
-        rel = p.resolve().relative_to(root).as_posix() if p.is_absolute() else p.as_posix()
-    except Exception:
-        rel = str(path)
+    rel = _rel_path(path)
     risk = (
         evaluate_file_write(rel)
         if operation == "file.write"
@@ -180,12 +189,40 @@ def _is_write_mode(mode: Any) -> bool:
 def traced_open(file: Any, mode: str = "r", *args: Any, **kwargs: Any) -> Any:
     if not _is_write_mode(mode) or _is_trace_internal(file):
         return _ORIG_OPEN(file, mode, *args, **kwargs)
+    rel = _rel_path(file)
+    risk = evaluate_file_write(rel)
+    if risk.get("action") == "deny":
+        record_event(
+            {
+                "type": "file.write",
+                "operation": "open",
+                "input": {"path": rel, "mode": mode},
+                "output": {"status": "blocked", "exception": "TraceSeal policy denied file write"},
+                "risk": risk,
+                "file_changes": [],
+            }
+        )
+        raise PermissionError(f"TraceSeal policy denied file write: {rel}")
     before = snapshot_tree(file, _workspace_root())
     wrapped = _ORIG_OPEN(file, mode, *args, **kwargs)
     return _TracingFile(wrapped, file, mode, before)
 
 
 def traced_path_write_text(self: Path, data: str, *args: Any, **kwargs: Any) -> int:
+    rel = _rel_path(self)
+    risk = evaluate_file_write(rel)
+    if risk.get("action") == "deny":
+        record_event(
+            {
+                "type": "file.write",
+                "operation": "Path.write_text",
+                "input": {"path": rel},
+                "output": {"status": "blocked", "exception": "TraceSeal policy denied file write", "api": "Path.write_text"},
+                "risk": risk,
+                "file_changes": [],
+            }
+        )
+        raise PermissionError(f"TraceSeal policy denied file write: {rel}")
     before = snapshot_tree(self, _workspace_root())
     result = _ORIG_PATH_WRITE_TEXT(self, data, *args, **kwargs)
     after = snapshot_tree(self, _workspace_root())
@@ -195,6 +232,20 @@ def traced_path_write_text(self: Path, data: str, *args: Any, **kwargs: Any) -> 
 
 
 def traced_path_write_bytes(self: Path, data: bytes, *args: Any, **kwargs: Any) -> int:
+    rel = _rel_path(self)
+    risk = evaluate_file_write(rel)
+    if risk.get("action") == "deny":
+        record_event(
+            {
+                "type": "file.write",
+                "operation": "Path.write_bytes",
+                "input": {"path": rel},
+                "output": {"status": "blocked", "exception": "TraceSeal policy denied file write", "api": "Path.write_bytes"},
+                "risk": risk,
+                "file_changes": [],
+            }
+        )
+        raise PermissionError(f"TraceSeal policy denied file write: {rel}")
     before = snapshot_tree(self, _workspace_root())
     result = _ORIG_PATH_WRITE_BYTES(self, data, *args, **kwargs)
     after = snapshot_tree(self, _workspace_root())
@@ -263,6 +314,37 @@ def _simulate_rm_rf(args: Any, command: str, tokens: list[str] | None, check: bo
     return completed
 
 
+def _simulate_git_push(args: Any, command: str, tokens: list[str] | None, shell: bool, check: bool, start: float) -> subprocess.CompletedProcess:
+    """Record git push without contacting any remote."""
+
+    risk = evaluate_shell_command(command, tokens)
+    blocked = risk.get("action") == "deny"
+    returncode = 126 if blocked else 0
+    stderr = "TraceSeal policy denied git push" if blocked else None
+    stdout = None if blocked else "TraceSeal simulated git push; no remote contacted"
+    record_event(
+        {
+            "type": "shell",
+            "operation": "subprocess.run",
+            "duration_ms": int((time.time() - start) * 1000),
+            "input": {"command": command, "args": tokens, "shell": shell, "simulated": True},
+            "output": {
+                "status": "blocked" if blocked else "simulated",
+                "returncode": returncode,
+                "stdout": stdout,
+                "stderr": stderr,
+                "simulation": "git push is not executed in TraceSeal MVP demos",
+            },
+            "risk": risk,
+            "file_changes": [],
+        }
+    )
+    completed = subprocess.CompletedProcess(args=args, returncode=returncode, stdout=stdout, stderr=stderr)
+    if check and returncode != 0:
+        raise subprocess.CalledProcessError(returncode, args, output=stdout, stderr=stderr)
+    return completed
+
+
 def traced_subprocess_run(*popenargs: Any, **kwargs: Any) -> subprocess.CompletedProcess:
     args = popenargs[0] if popenargs else kwargs.get("args")
     shell = bool(kwargs.get("shell", False))
@@ -274,6 +356,27 @@ def traced_subprocess_run(*popenargs: Any, **kwargs: Any) -> subprocess.Complete
 
     if is_rm_rf(command, tokens):
         return _simulate_rm_rf(args, command, tokens, check, start)
+
+    if is_git_push(command, tokens):
+        return _simulate_git_push(args, command, tokens, shell, check, start)
+
+    if risk.get("action") == "deny":
+        returncode = 126
+        stderr = "TraceSeal policy denied shell command"
+        record_event(
+            {
+                "type": "shell",
+                "operation": "subprocess.run",
+                "duration_ms": int((time.time() - start) * 1000),
+                "input": {"command": command, "args": tokens, "shell": shell},
+                "output": {"status": "blocked", "returncode": returncode, "stderr": stderr},
+                "risk": risk,
+                "file_changes": [],
+            }
+        )
+        if check:
+            raise subprocess.CalledProcessError(returncode, args, output=None, stderr=stderr)
+        return subprocess.CompletedProcess(args=args, returncode=returncode, stdout=None, stderr=stderr)
 
     try:
         completed = _ORIG_SUBPROCESS_RUN(*popenargs, check=False, **kwargs)
@@ -340,6 +443,28 @@ def traced_unlink(path: Any, *args: Any, **kwargs: Any) -> Any:
         _record_file_event("file.delete", path, before, after)
 
 
+class _OfflineHTTPResponse:
+    """Tiny urllib-like response used by examples/tests to avoid real network."""
+
+    status = 0
+    code = 0
+
+    def __init__(self, url: str):
+        self.url = url
+
+    def read(self, *_args: Any, **_kwargs: Any) -> bytes:
+        return b""
+
+    def getcode(self) -> int:
+        return self.status
+
+    def __enter__(self) -> "_OfflineHTTPResponse":
+        return self
+
+    def __exit__(self, exc_type: Any, exc: Any, tb: Any) -> None:
+        return None
+
+
 def traced_urlopen(url: Any, *args: Any, **kwargs: Any) -> Any:
     method = "GET"
     display_url = getattr(url, "full_url", url)
@@ -350,6 +475,33 @@ def traced_urlopen(url: Any, *args: Any, **kwargs: Any) -> Any:
             method = "GET"
     start = time.time()
     risk = evaluate_http_request(method, str(display_url))
+    if risk.get("action") == "deny":
+        record_event(
+            {
+                "type": "http",
+                "operation": "urllib.request.urlopen",
+                "duration_ms": int((time.time() - start) * 1000),
+                "input": {"method": method, "url": str(display_url)},
+                "output": {"status": "blocked", "exception": "TraceSeal policy denied HTTP request"},
+                "risk": risk,
+                "file_changes": [],
+            }
+        )
+        raise PermissionError(f"TraceSeal policy denied HTTP request: {method} {display_url}")
+    if _offline_http_enabled():
+        response = _OfflineHTTPResponse(str(display_url))
+        record_event(
+            {
+                "type": "http",
+                "operation": "urllib.request.urlopen",
+                "duration_ms": int((time.time() - start) * 1000),
+                "input": {"method": method, "url": str(display_url), "offline_simulated": True},
+                "output": {"status": "simulated", "code": response.status},
+                "risk": risk,
+                "file_changes": [],
+            }
+        )
+        return response
     try:
         response = _ORIG_URLLIB_URLOPEN(url, *args, **kwargs)
         record_event(
@@ -382,6 +534,36 @@ def traced_urlopen(url: Any, *args: Any, **kwargs: Any) -> Any:
 def traced_requests_request(self: Any, method: str, url: str, **kwargs: Any) -> Any:
     start = time.time()
     risk = evaluate_http_request(method, url)
+    if risk.get("action") == "deny":
+        record_event(
+            {
+                "type": "http",
+                "operation": "requests.Session.request",
+                "duration_ms": int((time.time() - start) * 1000),
+                "input": {"method": method, "url": url},
+                "output": {"status": "blocked", "exception": "TraceSeal policy denied HTTP request"},
+                "risk": risk,
+                "file_changes": [],
+            }
+        )
+        raise PermissionError(f"TraceSeal policy denied HTTP request: {method} {url}")
+    if _offline_http_enabled():
+        response = requests.Response()  # type: ignore[union-attr]
+        response.status_code = 0
+        response.url = url
+        response._content = b""
+        record_event(
+            {
+                "type": "http",
+                "operation": "requests.Session.request",
+                "duration_ms": int((time.time() - start) * 1000),
+                "input": {"method": method, "url": url, "offline_simulated": True},
+                "output": {"status": "simulated", "status_code": 0},
+                "risk": risk,
+                "file_changes": [],
+            }
+        )
+        return response
     try:
         response = _ORIG_REQUESTS_SESSION_REQUEST(self, method, url, **kwargs)  # type: ignore[misc]
         record_event(

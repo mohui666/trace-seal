@@ -3,28 +3,44 @@
   "mode": "warn",
   "rules": [
     {
-      "id": "dangerous_delete",
-      "type": "shell",
-      "match": "rm -rf or rmdir /s /q",
-      "risk": "critical",
+      "rule_id": "dangerous_delete",
+      "event_type": "shell",
+      "pattern": "rm -rf or rmdir /s /q",
+      "matcher": "policy.rules.is_rm_rf",
+      "risk_level": "critical",
       "action": "warn",
-      "reason": "recursive force delete can remove protected workspace data"
+      "reason": "recursive force delete can remove protected workspace data",
+      "suggested_policy": "deny shell \"rm -rf <path>/**\""
     },
     {
-      "id": "env_write",
-      "type": "file.write",
-      "match": ".env or .env.*",
-      "risk": "high",
+      "rule_id": "env_write",
+      "event_type": "file.write",
+      "pattern": ".env or .env.*",
+      "matcher": "policy.rules.evaluate_file_write",
+      "risk_level": "high",
       "action": "warn",
-      "reason": "writing environment files can corrupt secrets/configuration"
+      "reason": "writing environment files can corrupt secrets/configuration",
+      "suggested_policy": "deny file_write \".env*\""
     },
     {
-      "id": "git_push",
-      "type": "shell",
-      "match": "git push",
-      "risk": "high",
+      "rule_id": "git_push",
+      "event_type": "shell",
+      "pattern": "git push",
+      "matcher": "policy.rules.is_git_push",
+      "risk_level": "high",
       "action": "warn",
-      "reason": "git push publishes code or history outside the local workspace"
+      "reason": "git push publishes code or history outside the local workspace",
+      "suggested_policy": "require_approval git \"push\""
+    },
+    {
+      "rule_id": "suspicious_http_post",
+      "event_type": "http",
+      "pattern": "POST request to non-local URL or request carrying secret-like fields",
+      "matcher": "policy.rules.evaluate_http_request",
+      "risk_level": "high",
+      "action": "warn",
+      "reason": "HTTP POST can exfiltrate sensitive data outside the workspace",
+      "suggested_policy": "deny http \"POST https://*/**\""
     }
   ]
 }

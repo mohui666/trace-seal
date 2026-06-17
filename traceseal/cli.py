@@ -9,6 +9,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Iterable
 
+from dashboard.export import export_dashboard_json
 from minimizer.explain import explain_run
 from recorder.workspace import snapshot_workspace
 from replay.renderer import replay_run
@@ -35,14 +36,14 @@ def resolve_run_dir(path_arg: str | os.PathLike[str]) -> Path:
     if p.is_file():
         run_id_or_path = p.read_text(encoding="utf-8").strip()
         if not run_id_or_path:
-            raise SystemExit(f"empty run pointer: {p}")
+            raise SystemExit(f"运行指针为空: {p}")
         candidate = Path(run_id_or_path)
         if candidate.is_absolute() and candidate.is_dir():
             return candidate.resolve()
         sibling = p.parent / run_id_or_path
         if sibling.is_dir():
             return sibling.resolve()
-    raise SystemExit(f"run directory not found: {path_arg}")
+    raise SystemExit(f"找不到运行目录: {path_arg}")
 
 
 def build_child_env(project_root: Path, sandbox_root: Path, run_dir: Path, run_id: str) -> dict[str, str]:
@@ -60,6 +61,9 @@ def build_child_env(project_root: Path, sandbox_root: Path, run_dir: Path, run_i
     env["TRACESEAL_RUN_DIR"] = str(run_dir)
     env["TRACESEAL_RUN_ID"] = run_id
     env["TRACESEAL_WORKSPACE_ROOT"] = str(sandbox_root)
+    # Prevent tools such as git from walking out of runs/<id>/workspace and
+    # discovering the real repository .git directory above runs/.
+    env["GIT_CEILING_DIRECTORIES"] = str(run_dir)
     env.setdefault("PYTHONIOENCODING", "utf-8")
     env.setdefault("PYTHONDONTWRITEBYTECODE", "1")
     return env
@@ -96,7 +100,7 @@ def run_command(args: argparse.Namespace) -> int:
     run_dir.mkdir(parents=True, exist_ok=False)
     events_path.write_text("", encoding="utf-8")
 
-    print(f"[traceseal] creating sandbox: {sandbox_root}", flush=True)
+    print(f"[traceseal] 正在创建沙箱: {sandbox_root}", flush=True)
     copy_workspace(project_root, sandbox_root)
 
     write_json(run_dir / "workspace_before.json", snapshot_workspace(sandbox_root))
@@ -119,11 +123,11 @@ def run_command(args: argparse.Namespace) -> int:
     exit_code = 1
     error: str | None = None
     try:
-        print(f"[traceseal] running: {manifest['command_display']}", flush=True)
+        print(f"[traceseal] 正在执行: {manifest['command_display']}", flush=True)
         completed = subprocess.run(args.command, cwd=sandbox_root, env=env)
         exit_code = completed.returncode
     except FileNotFoundError as exc:
-        error = f"command not found: {exc}"
+        error = f"命令不存在: {exc}"
         exit_code = 127
         print(f"[traceseal] {error}", file=sys.stderr, flush=True)
     finally:
@@ -140,10 +144,10 @@ def run_command(args: argparse.Namespace) -> int:
         write_json(run_dir / "manifest.json", manifest)
         update_latest_pointer(runs_dir, run_dir)
 
-    print(f"[traceseal] run id: {run_id}", flush=True)
-    print(f"[traceseal] run dir: {run_dir}", flush=True)
-    print(f"[traceseal] events: {events_path}", flush=True)
-    print(f"[traceseal] latest pointer: {runs_dir / 'latest'}", flush=True)
+    print(f"[traceseal] 运行编号: {run_id}", flush=True)
+    print(f"[traceseal] 运行目录: {run_dir}", flush=True)
+    print(f"[traceseal] 事件日志: {events_path}", flush=True)
+    print(f"[traceseal] latest 指针: {runs_dir / 'latest'}", flush=True)
     return exit_code
 
 
@@ -159,21 +163,31 @@ def explain_command(args: argparse.Namespace) -> int:
     return 0
 
 
+def dashboard_data_command(args: argparse.Namespace) -> int:
+    run_dir = resolve_run_dir(args.run_dir)
+    print(export_dashboard_json(run_dir), end="")
+    return 0
+
+
 def build_parser() -> argparse.ArgumentParser:
-    parser = argparse.ArgumentParser(prog="traceseal", description="TraceSeal MVP CLI")
+    parser = argparse.ArgumentParser(prog="traceseal", description="TraceSeal MVP 命令行工具")
     sub = parser.add_subparsers(dest="cmd", required=True)
 
-    p_run = sub.add_parser("run", help="run a Python agent inside a TraceSeal sandbox")
-    p_run.add_argument("command", nargs=argparse.REMAINDER, help="command to run, e.g. python examples/bad_agent_delete.py")
+    p_run = sub.add_parser("run", help="在 TraceSeal 沙箱中运行 Python Agent")
+    p_run.add_argument("command", nargs=argparse.REMAINDER, help="要运行的命令，例如 python examples/bad_agent_delete.py")
     p_run.set_defaults(func=run_command)
 
-    p_replay = sub.add_parser("replay", help="print transcript replay from a run directory")
-    p_replay.add_argument("run_dir", help="run directory or runs/latest pointer")
+    p_replay = sub.add_parser("replay", help="从运行目录输出中文 transcript 回放")
+    p_replay.add_argument("run_dir", help="运行目录或 runs/latest 指针")
     p_replay.set_defaults(func=replay_command)
 
-    p_explain = sub.add_parser("explain", help="identify first harmful tool call")
-    p_explain.add_argument("run_dir", help="run directory or runs/latest pointer")
+    p_explain = sub.add_parser("explain", help="定位首次有害工具调用")
+    p_explain.add_argument("run_dir", help="运行目录或 runs/latest 指针")
     p_explain.set_defaults(func=explain_command)
+
+    p_dashboard = sub.add_parser("dashboard-data", help="导出桌面 Dashboard 可读取的 JSON")
+    p_dashboard.add_argument("run_dir", help="运行目录或 runs/latest 指针")
+    p_dashboard.set_defaults(func=dashboard_data_command)
     return parser
 
 

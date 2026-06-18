@@ -1,8 +1,7 @@
-# TraceSeal v0.2.0 Release Notes (Draft)
+# TraceSeal v0.2.0 Release Notes
 
-> **Status**: Release Candidate. This version has NOT been formally released.
-> Clean Windows VM validation is still pending.
-> The installer has NOT been code-signed.
+> **Status**: Final release notes.
+> Clean Windows VM validation completed with `PASS WITH KNOWN ISSUES`.
 
 ## Overview
 
@@ -37,13 +36,15 @@ TraceSeal v0.2.0 introduces the Electron Desktop Dashboard, a React + TypeScript
 |-------|-------|--------|
 | Python | 13 | All passing |
 | Renderer | 96 | All passing |
-| Electron | 33 | All passing |
+| Electron | 45 | All passing |
 
 ## Known Limitations
 
-- Clean Windows VM validation has not been completed
-- Installer is not code-signed (SmartScreen may show unknown publisher warning)
-- No macOS or Linux installers
+- Installer is not code-signed.
+- Windows SmartScreen behavior was not observed in the clean VM validation because VMbus copying did not preserve Internet Zone metadata.
+- Native directory-picker click was not directly automated; workspace loading, persistence, deletion recovery, and clear behavior were validated through persisted settings and the Electron bridge.
+- Only Windows x64 was validated.
+- macOS and Linux builds are not provided in v0.2.0.
 - Dashboard is read-only (no policy editing, no run triggering)
 - Policy editor and attestation remain in future phases
 
@@ -61,7 +62,6 @@ v0.2.0 is fully backward compatible with v0.1.0 `runs/` data. The CLI commands (
 
 ## What's Next
 
-- Clean Windows VM validation
 - Code signing
 - Phase 3: Core enhancements (file read interception, `os.system()`, `httpx`, Git diff, `policy.yaml` DSL)
 - Phase 4: Rust Guard (OS-level process monitoring, cross-language agent support)

@@ -7,9 +7,11 @@ interface CopyButtonProps {
 
 export function CopyButton({ text, label = '复制' }: CopyButtonProps) {
   const [copied, setCopied] = useState(false);
+  const [failed, setFailed] = useState(false);
 
   const handleCopy = useCallback(async () => {
     if (!text) return;
+    setFailed(false);
     try {
       if (navigator.clipboard && navigator.clipboard.writeText) {
         await navigator.clipboard.writeText(text);
@@ -26,7 +28,8 @@ export function CopyButton({ text, label = '复制' }: CopyButtonProps) {
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
     } catch {
-      // silent fail
+      setFailed(true);
+      setTimeout(() => setFailed(false), 2000);
     }
   }, [text]);
 
@@ -37,9 +40,11 @@ export function CopyButton({ text, label = '复制' }: CopyButtonProps) {
       className={`inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg transition-all focus:outline-none focus:ring-2 focus:ring-emerald-500 ${
         copied
           ? 'bg-emerald-900/30 text-emerald-400 border border-emerald-800'
+          : failed
+          ? 'bg-red-900/30 text-red-400 border border-red-800'
           : 'bg-gray-800 text-gray-300 border border-gray-700 hover:bg-gray-700 hover:text-gray-100'
       }`}
-      aria-label={copied ? '已复制' : label}
+      aria-label={copied ? '已复制' : failed ? '复制失败' : label}
     >
       {copied ? (
         <>
@@ -47,6 +52,13 @@ export function CopyButton({ text, label = '复制' }: CopyButtonProps) {
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
           </svg>
           已复制
+        </>
+      ) : failed ? (
+        <>
+          <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+          </svg>
+          复制失败
         </>
       ) : (
         <>

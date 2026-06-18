@@ -2,14 +2,20 @@ import { spawn, SpawnOptionsWithoutStdio } from "node:child_process";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
+import { bundledCoreExecutablePath } from "./runtimePaths";
 import { DashboardRunExport, PolicyRule, RunSummary, RuntimeInfo, TraceSealRuntimeError } from "./types";
 import { validateRunId } from "./validation";
 
 export type DashboardOperation = "latest" | "list" | "run" | "policy";
+export type DashboardArgMode = "python-module" | "bundled-core";
 
 export interface PythonCommandSpec {
   command: string;
   baseArgs: string[];
+}
+
+export interface TraceSealCommandSpec extends PythonCommandSpec {
+  mode: DashboardArgMode;
 }
 
 export interface RunJsonCommandOptions {
@@ -25,10 +31,17 @@ export interface PythonRunnerOptions {
   timeoutMs?: number;
   spawnImpl?: typeof spawn;
   env?: NodeJS.ProcessEnv;
+  isPackaged?: boolean;
+  resourcesPath?: string;
+  coreExecutablePath?: string;
 }
 
 export function buildDashboardArgs(operation: DashboardOperation, runId?: string): string[] {
-  const base = ["-m", "traceseal", "dashboard-data"];
+  return buildDashboardArgsForMode("python-module", operation, runId);
+}
+
+export function buildDashboardArgsForMode(mode: DashboardArgMode, operation: DashboardOperation, runId?: string): string[] {
+  const base = mode === "python-module" ? ["-m", "traceseal", "dashboard-data"] : ["dashboard-data"];
   switch (operation) {
     case "latest":
       return [...base, "latest"];
@@ -81,6 +94,14 @@ export function findRepositoryRoot(startDir?: string): string {
     }
     current = parent;
   }
+}
+
+export function packagedRepositoryRoot(env: NodeJS.ProcessEnv = process.env, cwd: string = process.cwd()): string {
+  const configured = env.TRACESEAL_REPOSITORY_ROOT;
+  if (configured) {
+    return path.resolve(configured);
+  }
+  return path.resolve(cwd);
 }
 
 function normalizeEnv(env?: NodeJS.ProcessEnv): NodeJS.ProcessEnv {
@@ -220,31 +241,64 @@ export async function detectPythonCommand(options: PythonRunnerOptions = {}): Pr
   throw new TraceSealRuntimeError("PYTHON_NOT_FOUND", "No usable Python command found");
 }
 
+export function packagedCoreCommand(options: PythonRunnerOptions = {}): TraceSealCommandSpec {
+  const corePath = options.coreExecutablePath || bundledCoreExecutablePath({ resourcesPath: options.resourcesPath });
+  if (!fs.existsSync(corePath)) {
+    throw new TraceSealRuntimeError("PYTHON_NOT_FOUND", `Bundled TraceSeal core executable not found: ${corePath}`, {
+      corePath,
+    });
+  }
+  return { command: corePath, baseArgs: [], mode: "bundled-core" };
+}
+
+export async function resolveTraceSealCommand(options: PythonRunnerOptions = {}): Promise<TraceSealCommandSpec> {
+  if (options.isPackaged) {
+    return packagedCoreCommand(options);
+  }
+  const python = await detectPythonCommand(options);
+  return { ...python, mode: "python-module" };
+}
+
 export class PythonDashboardRunner {
   private readonly repositoryRoot: string;
   private readonly timeoutMs: number;
   private readonly python?: PythonCommandSpec;
   private readonly spawnImpl?: typeof spawn;
   private readonly env?: NodeJS.ProcessEnv;
+  private readonly isPackaged?: boolean;
+  private readonly resourcesPath?: string;
+  private readonly coreExecutablePath?: string;
 
   constructor(options: PythonRunnerOptions = {}) {
-    this.repositoryRoot = options.repositoryRoot || findRepositoryRoot(__dirname);
+    this.repositoryRoot =
+      options.repositoryRoot ||
+      (options.isPackaged ? packagedRepositoryRoot(options.env) : findRepositoryRoot(__dirname));
     this.timeoutMs = options.timeoutMs ?? 15_000;
     this.python = options.python;
     this.spawnImpl = options.spawnImpl;
     this.env = options.env;
+    this.isPackaged = options.isPackaged;
+    this.resourcesPath = options.resourcesPath;
+    this.coreExecutablePath = options.coreExecutablePath;
   }
 
-  private async run(operation: DashboardOperation, runId?: string): Promise<unknown> {
-    const python = await detectPythonCommand({
+  private async commandSpec(): Promise<TraceSealCommandSpec> {
+    return resolveTraceSealCommand({
       repositoryRoot: this.repositoryRoot,
       python: this.python,
       timeoutMs: this.timeoutMs,
       spawnImpl: this.spawnImpl,
       env: this.env,
+      isPackaged: this.isPackaged,
+      resourcesPath: this.resourcesPath,
+      coreExecutablePath: this.coreExecutablePath,
     });
-    const args = [...python.baseArgs, ...buildDashboardArgs(operation, runId)];
-    return runJsonCommand(python.command, args, {
+  }
+
+  private async run(operation: DashboardOperation, runId?: string): Promise<unknown> {
+    const spec = await this.commandSpec();
+    const args = [...spec.baseArgs, ...buildDashboardArgsForMode(spec.mode, operation, runId)];
+    return runJsonCommand(spec.command, args, {
       cwd: this.repositoryRoot,
       timeoutMs: this.timeoutMs,
       spawnImpl: this.spawnImpl,
@@ -271,27 +325,25 @@ export class PythonDashboardRunner {
   }
 
   async getRuntimeInfo(): Promise<RuntimeInfo> {
-    const python = await detectPythonCommand({
-      repositoryRoot: this.repositoryRoot,
-      python: this.python,
-      timeoutMs: this.timeoutMs,
-      spawnImpl: this.spawnImpl,
-      env: this.env,
-    });
+    const spec = await this.commandSpec();
     let version: string | undefined;
-    try {
-      const result = await runRawCommand(python.command, [...python.baseArgs, "--version"], {
-        cwd: this.repositoryRoot,
-        timeoutMs: 3000,
-        spawnImpl: this.spawnImpl,
-        env: this.env,
-      });
-      version = (result.stdout || result.stderr).trim();
-    } catch {
-      version = undefined;
+    if (spec.mode === "bundled-core") {
+      version = "bundled traceseal-core";
+    } else {
+      try {
+        const result = await runRawCommand(spec.command, [...spec.baseArgs, "--version"], {
+          cwd: this.repositoryRoot,
+          timeoutMs: 3000,
+          spawnImpl: this.spawnImpl,
+          env: this.env,
+        });
+        version = (result.stdout || result.stderr).trim();
+      } catch {
+        version = undefined;
+      }
     }
     return {
-      pythonCommand: [python.command, ...python.baseArgs].join(" "),
+      pythonCommand: [spec.command, ...spec.baseArgs].join(" "),
       repositoryRoot: this.repositoryRoot,
       platform: os.platform(),
       version,

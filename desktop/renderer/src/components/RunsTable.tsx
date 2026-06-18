@@ -1,6 +1,7 @@
 import { Link } from 'react-router-dom';
 import type { RunSummary } from '../api';
 import { RunStatusBadge } from './RunStatusBadge';
+import { formatDate, formatCommand } from '../utils/safety';
 
 interface RunsTableProps {
   runs: RunSummary[];
@@ -47,10 +48,10 @@ export function RunsTable({ runs, onRowClick }: RunsTableProps) {
                 {run.run_id}
               </td>
               <td className="py-2 px-3 text-gray-400 max-w-[300px] truncate" title={run.command}>
-                {run.command}
+                {formatCommand(run.command)}
               </td>
               <td className="py-2 px-3 text-gray-500 whitespace-nowrap">
-                {run.started_at ? new Date(run.started_at).toLocaleString('zh-CN') : '-'}
+                {formatDate(run.started_at)}
               </td>
               <td className="py-2 px-3">
                 <RunStatusBadge status={run.status} />

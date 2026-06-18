@@ -1,28 +1,10 @@
-import fs from "node:fs";
-import path from "node:path";
 import { app, BrowserWindow, ipcMain } from "electron";
 import { registerTraceSealIpc } from "./ipc";
+import { PythonDashboardRunner } from "./pythonRunner";
+import { preloadPath, rendererIndexPath } from "./runtimePaths";
 
 function rendererUrl(): string | null {
   return process.env.TRACESEAL_RENDERER_URL || null;
-}
-
-function rendererIndexPath(): string | null {
-  if (process.env.TRACESEAL_RENDERER_DIST) {
-    const explicit = path.resolve(process.env.TRACESEAL_RENDERER_DIST, "index.html");
-    if (fs.existsSync(explicit)) return explicit;
-  }
-
-  const candidates = [
-    // Compiled Electron runtime: desktop/electron/dist/src/main.js -> desktop/renderer/dist/index.html
-    path.resolve(__dirname, "../../../renderer/dist/index.html"),
-    // Fallback when running from source tooling.
-    path.resolve(__dirname, "../../renderer/dist/index.html"),
-    path.resolve(process.cwd(), "../renderer/dist/index.html"),
-    path.resolve(process.cwd(), "desktop/renderer/dist/index.html"),
-  ];
-
-  return candidates.find((candidate) => fs.existsSync(candidate)) || null;
 }
 
 function createWindow(): void {
@@ -30,7 +12,7 @@ function createWindow(): void {
     width: 1200,
     height: 800,
     webPreferences: {
-      preload: path.join(__dirname, "preload.js"),
+      preload: preloadPath(__dirname),
       contextIsolation: true,
       nodeIntegration: false,
     },
@@ -42,7 +24,13 @@ function createWindow(): void {
     return;
   }
 
-  const rendererIndex = rendererIndexPath();
+  const rendererIndex = rendererIndexPath({
+    isPackaged: app.isPackaged,
+    resourcesPath: process.resourcesPath,
+    dirname: __dirname,
+    cwd: process.cwd(),
+    env: process.env,
+  });
   if (rendererIndex) {
     void win.loadFile(rendererIndex);
     return;
@@ -56,7 +44,13 @@ function createWindow(): void {
   );
 }
 
-registerTraceSealIpc(ipcMain);
+registerTraceSealIpc(
+  ipcMain,
+  new PythonDashboardRunner({
+    isPackaged: app.isPackaged,
+    resourcesPath: process.resourcesPath,
+  }),
+);
 
 app.whenReady().then(() => {
   createWindow();

@@ -3,6 +3,7 @@ import { useParams, Link } from 'react-router-dom';
 import { useAsync } from '../hooks/useAsync';
 import { getTraceSealApi } from '../api';
 import { EventTimeline, LoadingState, ErrorState, PageHeader, RunStatusBadge, RiskBadge } from '../components';
+import { formatDate, formatCommand } from '../utils/safety';
 
 export function RunDetailPage() {
   const { id } = useParams<{ id: string }>();
@@ -54,15 +55,17 @@ export function RunDetailPage() {
             </div>
             <div className="col-span-2">
               <p className="text-xs text-gray-500">Command</p>
-              <code className="block text-xs font-mono text-gray-300 mt-1 break-all">{run.command}</code>
+              <code className="block text-xs font-mono text-gray-300 mt-1 break-all" title={run.command}>
+                {formatCommand(run.command, 200)}
+              </code>
             </div>
             <div>
               <p className="text-xs text-gray-500">Started</p>
-              <p className="text-xs text-gray-400 mt-1">{run.started_at ? new Date(run.started_at).toLocaleString('zh-CN') : '-'}</p>
+              <p className="text-xs text-gray-400 mt-1">{formatDate(run.started_at)}</p>
             </div>
             <div>
               <p className="text-xs text-gray-500">Finished</p>
-              <p className="text-xs text-gray-400 mt-1">{run.finished_at ? new Date(run.finished_at).toLocaleString('zh-CN') : '-'}</p>
+              <p className="text-xs text-gray-400 mt-1">{formatDate(run.finished_at)}</p>
             </div>
           </div>
 

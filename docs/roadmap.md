@@ -39,12 +39,12 @@
 | 无 `os.system()` 拦截 | 仅拦截 `subprocess.run()` | Core 增强 |
 | 无 `httpx` 拦截 | HTTP 仅支持 `urllib` 和可选 `requests` | Core 增强 |
 | Policy 为 JSON + Python matcher | 暂无用户可编辑 YAML DSL | Core 增强 |
-| Dashboard UI 未实现 | 已有 `dashboard-data` JSON，暂无 Electron 页面 | 阶段 2 |
+| Dashboard 仍是最小原型 | 已接入 Electron + Renderer + 真实 runs，交互和视觉还需打磨 | 阶段 2/3 |
 | 无防篡改日志 | 审计日志当前可被修改 | Rust Guard 阶段 |
 
 ---
 
-## 阶段 2：最小 Electron Desktop Dashboard — 下一步
+## 阶段 2：最小 Electron Desktop Dashboard — 运行层已完成
 
 **时间**：2026 Q3
 
@@ -60,18 +60,20 @@
 - TailwindCSS
 - Python Core CLI 作为数据来源
 
-### 计划交付
+### 已交付 / 继续打磨
 
 | 模块 | 内容 |
 |---|---|
-| Electron 壳 | 本地桌面窗口 |
-| 数据桥接 | 已实现 `latest/list/run/policy` Python JSON 接口和 Electron IPC runner |
-| 首页 | run 概览、事件数、高风险数、最近事故 |
-| Runs 列表 | run_id、命令、时间、退出码、事件数、高风险数 |
-| Run Detail | 事件时间线、事件详情展开、文件变更、Shell/HTTP 摘要 |
-| Explain 卡片 | 展示 `first_harmful_event`、reason、affected files、suggested policy |
-| 案例切换 | 选择 delete/env/git/http demo 结果 |
-| Policy 只读页 | 展示当前 `policy/default_policy.json` |
+| Electron 壳 | 已完成：本地桌面窗口，开发模式加载 Vite URL 或 renderer dist |
+| 数据桥接 | 已完成：`latest/list/run/policy/runtimeInfo` Python JSON 接口和 Electron IPC runner |
+| 安全边界 | 已完成：`contextIsolation: true`、`nodeIntegration: false`、固定 preload API |
+| 打包分发 | 已完成：Electron Forge + PyInstaller，生成 `TraceSeal-Setup.exe` |
+| 无 Python 分发 | 已完成：生产环境调用 `resources/traceseal-core/traceseal-core.exe` |
+| 首页 | 已最小接入：run 概览、事件数、高风险数、最近事故；后续继续视觉打磨 |
+| Runs 列表 | 已最小接入：run_id、命令、时间、退出码、事件数、高风险数 |
+| Run Detail | 已最小接入：事件时间线、事件详情、文件变更、Shell/HTTP 摘要 |
+| Explain 卡片 | 已最小接入：展示 `first_harmful_event`、affected files、suggested policy |
+| Policy 只读页 | 已最小接入：展示当前 `policy/default_policy.json` |
 
 ### 不做
 
@@ -137,6 +139,6 @@
 |---|---|---|
 | v0.1.0 | 2026-06 | Python CLI MVP：run/replay/explain |
 | v0.1.1 | 2026-06 | 补 env/git/http 案例与 dashboard-data JSON |
-| v0.2.0 | 进行中 | Electron 数据运行层已完成，Renderer UI 待接入 |
+| v0.2.0 | 2026-06 | Electron 数据运行层、Renderer 真实数据联调、Windows 安装包 |
 | v0.3.0 | 计划 | Core 增强：读取、os.system、httpx、Git diff |
 | v1.0.0 | 远期 | 产品化 Guard + Dashboard |

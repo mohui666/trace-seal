@@ -1,3 +1,5 @@
+import { formatCommand } from '../utils/safety';
+
 interface ShellOutputProps {
   input?: Record<string, unknown>;
   output?: Record<string, unknown>;
@@ -13,8 +15,8 @@ export function ShellOutput({ input, output }: ShellOutputProps) {
     <div className="space-y-3">
       <div>
         <p className="text-xs text-gray-500 mb-1">命令</p>
-        <code className="block text-xs font-mono bg-gray-950 text-gray-200 px-3 py-2 rounded border border-gray-800 break-all">
-          {command}
+        <code className="block text-xs font-mono bg-gray-950 text-gray-200 px-3 py-2 rounded border border-gray-800 break-all" title={command}>
+          {formatCommand(command, 200)}
         </code>
       </div>
       {returncode !== undefined && (

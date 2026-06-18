@@ -5,6 +5,7 @@ import { FileDiff } from './FileDiff';
 import { ShellOutput } from './ShellOutput';
 import { HttpDetail } from './HttpDetail';
 import { JsonViewer } from './JsonViewer';
+import { getEventPrimaryInput, getEventOutputStatus } from '../utils/safety';
 
 interface EventDetailProps {
   event: TraceEvent;
@@ -16,11 +17,15 @@ export function EventDetail({ event }: EventDetailProps) {
   const isFile = event.type === 'file.write' || event.type === 'file.delete';
   const isShell = event.type === 'shell';
   const isHttp = event.type === 'http';
+  const isSdk = event.type === 'sdk';
+  const isKnown = isFile || isShell || isHttp || isSdk;
 
   const riskLevel = event.risk?.level;
   const policyRule = event.risk?.policy_rule;
   const reasons = event.risk?.reasons;
   const action = event.risk?.action;
+  const primaryInput = getEventPrimaryInput(event);
+  const outputStatus = getEventOutputStatus(event);
 
   return (
     <div className="space-y-4">
@@ -57,7 +62,7 @@ export function EventDetail({ event }: EventDetailProps) {
       {isFile && (
         <div>
           <p className="text-xs text-gray-500 mb-2 font-medium">文件</p>
-          <p className="text-xs font-mono text-gray-200 mb-2">{event.input?.path as string ?? 'unknown'}</p>
+          <p className="text-xs font-mono text-gray-200 mb-2">{primaryInput}</p>
           {event.file_changes && <FileDiff changes={event.file_changes} />}
         </div>
       )}
@@ -73,6 +78,67 @@ export function EventDetail({ event }: EventDetailProps) {
         <div>
           <p className="text-xs text-gray-500 mb-2 font-medium">HTTP</p>
           <HttpDetail input={event.input} output={event.output} />
+        </div>
+      )}
+
+      {isSdk && (
+        <div>
+          <p className="text-xs text-gray-500 mb-2 font-medium">SDK</p>
+          <div className="space-y-2">
+            <div>
+              <p className="text-xs text-gray-600 mb-1">操作</p>
+              <code className="text-xs font-mono text-gray-300 break-all">{primaryInput}</code>
+            </div>
+            {outputStatus && (
+              <div>
+                <p className="text-xs text-gray-600 mb-1">输出状态</p>
+                <span className={`text-xs font-mono ${outputStatus === 'ok' ? 'text-green-400' : 'text-red-400'}`}>
+                  {outputStatus}
+                </span>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Generic panel for unknown event types */}
+      {!isKnown && (
+        <div>
+          <p className="text-xs text-gray-500 mb-2 font-medium">通用事件详情</p>
+          <div className="space-y-2">
+            <div>
+              <p className="text-xs text-gray-600 mb-1">类型</p>
+              <code className="text-xs font-mono text-gray-300">{event.type}</code>
+            </div>
+            {event.operation && (
+              <div>
+                <p className="text-xs text-gray-600 mb-1">操作</p>
+                <code className="text-xs font-mono text-gray-300 break-all">{event.operation}</code>
+              </div>
+            )}
+            <div>
+              <p className="text-xs text-gray-600 mb-1">主要输入</p>
+              <code className="text-xs font-mono text-gray-300 break-all">{primaryInput}</code>
+            </div>
+            {event.input && Object.keys(event.input).length > 0 && (
+              <div>
+                <p className="text-xs text-gray-600 mb-1">Input</p>
+                <JsonViewer data={event.input} maxHeight="150px" />
+              </div>
+            )}
+            {event.output && Object.keys(event.output).length > 0 && (
+              <div>
+                <p className="text-xs text-gray-600 mb-1">Output</p>
+                <JsonViewer data={event.output} maxHeight="150px" />
+              </div>
+            )}
+            {event.file_changes && event.file_changes.length > 0 && (
+              <div>
+                <p className="text-xs text-gray-600 mb-1">文件变更</p>
+                <FileDiff changes={event.file_changes} />
+              </div>
+            )}
+          </div>
         </div>
       )}
 

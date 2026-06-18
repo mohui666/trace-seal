@@ -10,12 +10,12 @@ TraceSeal 是 AI Agent 的操作黑匣子 + 执行前安全防火墙 + 失败回
 traceseal run → events.jsonl / manifest.json → traceseal replay → traceseal explain
 ```
 
-下一阶段的桌面原型架构是：
+阶段 2 的桌面原型架构是：
 
 ```text
 Python Core（拦截 / 记录 / policy / replay / explain / sandbox）
         ↓ dashboard-data JSON
-Electron + React + TypeScript + TailwindCSS（只负责展示）
+Electron + React + TypeScript + TailwindCSS（展示真实 runs，不承载拦截逻辑）
 ```
 
 ## 项目背景
@@ -56,8 +56,11 @@ trace-seal/
 ├── tests/              # MVP 自动测试
 ├── docs/               # 规格、规则、事故案例、Dashboard 设计
 ├── desktop/electron/   # Electron main/preload/IPC/Python runner 数据运行层
+├── desktop/renderer/   # React + TypeScript + TailwindCSS Renderer
+├── packaging/          # PyInstaller 入口与打包输出目录
+├── scripts/            # Windows 一键构建脚本
 ├── attestation/        # 预留
-└── dashboard/          # Dashboard JSON export；Electron UI 后续接入
+└── dashboard/          # Dashboard JSON export；Electron 通过 IPC 消费
 ```
 
 ## 文档
@@ -65,7 +68,7 @@ trace-seal/
 - [项目规格说明书](docs/spec.md)（目标规格 + 当前 MVP 状态）
 - [策略规则设计](docs/policy-rules.md)（下一阶段 policy.yaml DSL 草案；当前实现见 `policy/default_policy.json`）
 - [事故测试案例](docs/incident-examples.md)（delete/env/git/http 案例已落地）
-- [Dashboard 设计](docs/dashboard-design.md)（数据接口已完成，Electron UI 待实现）
+- [Dashboard 设计](docs/dashboard-design.md)（Renderer 已接入 Electron preload API 和真实 runs 数据）
 - [演示脚本](docs/demo.md)（5 分钟展示讲稿）
 - [路线图](docs/roadmap.md)（阶段计划）
 - [飞书项目文档](docs/feishu_project_doc.md)
@@ -204,7 +207,7 @@ python -m traceseal dashboard-data policy
 
 ## Electron 数据运行层
 
-Electron runtime 位于 `desktop/electron/`，只包含 main process、preload、IPC 和 Python CLI runner，不包含 React UI。
+Electron runtime 位于 `desktop/electron/`，包含 main process、preload、IPC 和 Python CLI runner。React Renderer 位于 `desktop/renderer/`，只展示数据，不直接访问 Node.js。
 
 Renderer 通过 preload 暴露的固定 API 访问数据：
 
@@ -221,6 +224,79 @@ window.traceSeal.getRuntimeInfo()
 - `contextIsolation: true`
 - `nodeIntegration: false`
 - Renderer 不直接访问 Node.js、`fs`、`child_process` 或任意 IPC channel。
+
+开发模式启动：
+
+```powershell
+cd C:\Users\mohui666\Documents\projectA\trace-seal
+
+cd desktop\renderer
+npm install
+npm run build
+
+cd ..\electron
+npm install
+npm start
+```
+
+如果需要接 Vite dev server，可先启动 Renderer：
+
+```powershell
+cd desktop\renderer
+npm run dev
+```
+
+然后在 Electron 侧设置：
+
+```powershell
+cd ..\electron
+$env:TRACESEAL_RENDERER_URL = "http://localhost:5173"
+npm start
+```
+
+## Windows EXE / 安装包构建
+
+一键构建脚本：
+
+```powershell
+cd C:\Users\mohui666\Documents\projectA\trace-seal
+powershell -ExecutionPolicy Bypass -File scripts\build-windows.ps1
+```
+
+脚本会按顺序执行：
+
+1. Python unittest
+2. PyInstaller 打包 Python Core
+3. Renderer install / typecheck / test / build
+4. Electron install / typecheck / test
+5. Electron Forge make
+
+主要输出：
+
+```text
+packaging/dist/traceseal-core/traceseal-core.exe
+desktop/electron/out/TraceSeal-win32-x64/resources/renderer/index.html
+desktop/electron/out/TraceSeal-win32-x64/resources/traceseal-core/traceseal-core.exe
+desktop/electron/out/make/squirrel.windows/x64/TraceSeal-Setup.exe
+```
+
+开发环境下 Electron 调用：
+
+```text
+python -m traceseal dashboard-data ...
+```
+
+打包环境下 Electron 根据 `app.isPackaged` 自动改为调用：
+
+```text
+resources/traceseal-core/traceseal-core.exe dashboard-data ...
+```
+
+因此安装包在没有单独安装 Python 的 Windows 环境中，也能打开 Dashboard、读取 policy，并通过 bundled Core 读取 runs。若已安装应用需要读取某个工作区的历史 runs，可设置：
+
+```powershell
+$env:TRACESEAL_REPOSITORY_ROOT = "C:\path\to\trace-seal"
+```
 
 ## MVP Policy
 
@@ -282,6 +358,12 @@ npm run typecheck
 npm test
 ```
 
+完整桌面打包验证：
+
+```powershell
+powershell -ExecutionPolicy Bypass -File scripts\build-windows.ps1
+```
+
 ## 当前架构说明
 
 第一版继续使用 Python 做拦截引擎，不现在重构成 Rust：
@@ -299,12 +381,12 @@ npm test
 - `bad_agent_http.py` 默认启用 `TRACESEAL_OFFLINE_HTTP=1` 离线模拟，避免测试和演示依赖真实外网。
 - sandbox 是 workspace 复制，不是 Docker/overlayfs。
 - Git 操作当前主要通过 shell 命令风险识别，完整 Git diff / HEAD / staged 状态记录仍待扩展。
-- 文件读取记录、`httpx`、完整 HTTP cassette、Dashboard 和 attestation 仍属于后续增强。
+- 文件读取记录、`httpx`、完整 HTTP cassette、policy 编辑器和 attestation 仍属于后续增强。
 
 ## 后续方向
 
 - 已补充 `.env` 写入、Git push、HTTP POST 案例；下一步可补级联测试失败和更多真实项目事故案例。
 - 扩展 policy DSL：`allow / warn / deny / require_approval`、路径匹配、命令 pattern 匹配。
-- 增加 Dashboard：运行总览、事件时间线、高风险操作、文件 diff、HTTP 记录、Git diff、首次错误。
+- 继续增强 Dashboard：更完整的文件 diff、HTTP 记录、Git diff、首次错误可视化和 policy 只读/编辑闭环。
 - 升级 sandbox：Docker / overlayfs。
 - 增加签名审计证明 attestation。

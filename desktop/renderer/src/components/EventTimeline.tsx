@@ -2,12 +2,7 @@ import { useState } from 'react';
 import type { TraceEvent } from '../api';
 import { RiskBadge } from './RiskBadge';
 import { EventDetail } from './EventDetail';
-
-function getOutputStatus(event: TraceEvent): string | null {
-  const s = event.output?.status;
-  if (typeof s === 'string') return s;
-  return null;
-}
+import { getEventOutputStatus, formatTime } from '../utils/safety';
 
 interface EventTimelineProps {
   events: TraceEvent[];
@@ -30,6 +25,7 @@ export function EventTimeline({ events }: EventTimelineProps) {
           const isExpanded = expandedId === event.id;
           const hasRisk = !!event.risk?.level;
           const isHarmful = hasRisk && (event.risk?.level === 'high' || event.risk?.level === 'critical');
+          const outputStatus = getEventOutputStatus(event);
 
           return (
             <div key={event.id} className={`relative pl-8 pr-2 py-1.5 rounded ${isHarmful ? 'bg-red-950/20 border border-red-900/30' : ''}`}>
@@ -70,10 +66,10 @@ export function EventTimeline({ events }: EventTimelineProps) {
                 </div>
                 <div className="flex items-center gap-2 mt-0.5">
                   <span className="text-[10px] text-gray-600 font-mono">{event.id}</span>
-                  {event.ts && <span className="text-[10px] text-gray-600">{event.ts.slice(11, 19)}</span>}
-                  {(event.output?.status != null) && (
-                    <span className={`text-[10px] ${getOutputStatus(event) === 'ok' ? 'text-gray-600' : 'text-red-400'}`}>
-                      {getOutputStatus(event)}
+                  {event.ts && <span className="text-[10px] text-gray-600">{formatTime(event.ts)}</span>}
+                  {outputStatus && (
+                    <span className={`text-[10px] ${outputStatus === 'ok' ? 'text-gray-600' : 'text-red-400'}`}>
+                      {outputStatus}
                     </span>
                   )}
                 </div>

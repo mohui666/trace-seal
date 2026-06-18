@@ -1,15 +1,25 @@
 {
   "name": "traceseal-electron-runtime",
+  "productName": "TraceSeal",
   "version": "0.1.0",
+  "description": "TraceSeal desktop runtime for the Python Core dashboard data API",
+  "author": "TraceSeal",
   "private": true,
   "type": "commonjs",
+  "main": "dist/src/main.js",
   "scripts": {
     "build": "tsc -p tsconfig.json",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "test": "npm run build && node --test dist/tests/*.test.js",
-    "start": "npm run build && electron dist/src/main.js"
+    "start": "npm run build && electron dist/src/main.js",
+    "prepare:resources": "node scripts/preparePackageResources.cjs",
+    "package": "npm run build && npm run prepare:resources && electron-forge package",
+    "make": "npm run build && npm run prepare:resources && electron-forge make"
   },
   "devDependencies": {
+    "@electron-forge/cli": "^7.11.2",
+    "@electron-forge/maker-squirrel": "^7.11.2",
+    "@electron-forge/maker-zip": "^7.11.2",
     "@types/node": "^22.10.0",
     "electron": "^42.4.1",
     "typescript": "^5.7.0"

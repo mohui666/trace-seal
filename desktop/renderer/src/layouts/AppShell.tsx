@@ -1,5 +1,6 @@
 import { NavLink, Outlet } from 'react-router-dom';
 import type { ReactNode } from 'react';
+import { isElectronEnv } from '../utils/safety';
 
 function Sidebar() {
   const linkClass = ({ isActive }: { isActive: boolean }) =>
@@ -37,11 +38,18 @@ function Sidebar() {
 }
 
 function TopBar() {
+  const isLive = isElectronEnv();
+
   return (
     <header className="h-12 border-b border-gray-800 bg-gray-950 flex items-center justify-between px-6 flex-shrink-0">
       <div className="flex items-center gap-2">
-        <span className="w-2 h-2 rounded-full bg-emerald-500" aria-hidden="true" />
-        <span className="text-xs text-gray-400">Mock Mode</span>
+        <span
+          className={`w-2 h-2 rounded-full ${isLive ? 'bg-emerald-500' : 'bg-yellow-500'}`}
+          aria-hidden="true"
+        />
+        <span className="text-xs text-gray-400">
+          {isLive ? 'Live Electron' : 'Mock Data'}
+        </span>
       </div>
       <div className="flex items-center gap-4">
         <span className="text-xs text-gray-500">TraceSeal Dashboard</span>

@@ -1,8 +1,8 @@
 # TraceSeal Dashboard 原型设计
 
-> 当前状态：已完成 Dashboard 数据接口，Electron UI 待实现。  
-> 技术栈决策：Electron + React + TypeScript + TailwindCSS。  
-> 数据来源：`python -m traceseal dashboard-data runs/latest`。
+> 当前状态：已完成 Dashboard 数据接口、Electron main/preload/IPC 运行层、Renderer 真实数据接入和 Windows 打包链路。
+> 技术栈决策：Electron + React + TypeScript + TailwindCSS。
+> 数据来源：开发环境为 `python -m traceseal dashboard-data ...`；打包环境为 bundled `resources/traceseal-core/traceseal-core.exe dashboard-data ...`。
 
 ## 1. 分层架构
 
@@ -270,15 +270,15 @@ interface FileChange {
 
 风格要点：暗色主题、卡片式布局、事件时间线竖线连接、代码块使用等宽字体、风险 Badge 用圆角标签。
 
-## 11. 最小 Electron 实现建议
+## 11. 最小 Electron 实现状态
 
-第一版 UI 只需要：
+第一版 UI/运行层已经按以下方式落地：
 
-1. 调用 `python -m traceseal dashboard-data runs/latest`。
-2. 解析 JSON。
-3. 渲染运行概要卡片。
-4. 渲染事件时间线。
-5. 渲染 first harmful 和 suggested policy。
+1. Renderer 只调用 `window.traceSeal.*`，不直接访问 Node.js。
+2. Electron main 通过固定 IPC 调用 Python Core。
+3. 开发环境调用 `python -m traceseal dashboard-data ...`。
+4. 打包环境调用 bundled `traceseal-core.exe dashboard-data ...`。
+5. Renderer 渲染运行概要、事件时间线、first harmful 和 suggested policy。
 
 不要先做复杂图表、用户系统、云同步或 policy 编辑器。
 

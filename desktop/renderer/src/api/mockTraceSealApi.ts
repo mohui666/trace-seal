@@ -1,4 +1,4 @@
-import type { TraceSealApi, DashboardRunExport, RunSummary, PolicyRule, RuntimeInfo } from './contracts';
+import type { TraceSealApi, DashboardRunExport, RunSummary, PolicyRule, RuntimeInfo, WorkspaceInfo } from './contracts';
 import {
   deleteRun,
   envRun,
@@ -68,5 +68,17 @@ export const mockTraceSealApi: TraceSealApi = {
   async getRuntimeInfo(): Promise<RuntimeInfo> {
     await delay(null);
     return runtimeInfo;
+  },
+
+  async selectWorkspace(): Promise<WorkspaceInfo> {
+    return delay({ path: 'Mock Workspace', valid: true, hasRuns: true, hasPolicy: true });
+  },
+
+  async getWorkspace(): Promise<WorkspaceInfo> {
+    return delay({ path: 'Mock Workspace', valid: true, hasRuns: true, hasPolicy: true });
+  },
+
+  async clearWorkspace(): Promise<void> {
+    await delay(null);
   },
 };

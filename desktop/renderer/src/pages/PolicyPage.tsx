@@ -3,10 +3,12 @@ import { useAsync } from '../hooks/useAsync';
 import { getTraceSealApi } from '../api';
 import { PolicyList, FilterBar, LoadingState, ErrorState, PageHeader } from '../components';
 import type { RiskLevel, PolicyAction } from '../api';
+import { useWorkspace } from '../workspace';
 
 export function PolicyPage() {
   const api = useMemo(() => getTraceSealApi(), []);
-  const { status, data: rules, error, refetch } = useAsync(() => api.getPolicy(), [api]);
+  const { revision } = useWorkspace();
+  const { status, data: rules, error, refetch } = useAsync(() => api.getPolicy(), [api, revision]);
 
   const [search, setSearch] = useState('');
   const [riskFilter, setRiskFilter] = useState<RiskLevel | 'all'>('all');

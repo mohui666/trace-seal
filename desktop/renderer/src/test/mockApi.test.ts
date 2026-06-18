@@ -68,6 +68,6 @@ describe('Mock API', () => {
   it('getRuntimeInfo returns info', async () => {
     const info = await mockTraceSealApi.getRuntimeInfo();
     expect(info.platform).toBe('win32');
-    expect(info.version).toBe('0.2.0-dev');
+    expect(info.version).toBe('0.2.0-rc');
   });
 });

@@ -10,5 +10,6 @@ export type {
   RunSummary,
   PolicyRule,
   RuntimeInfo,
+  WorkspaceInfo,
   TraceSealApi,
 } from './contracts';

@@ -4,13 +4,15 @@ import { useAsync } from '../hooks/useAsync';
 import { getTraceSealApi } from '../api';
 import { EventTimeline, LoadingState, ErrorState, PageHeader, RunStatusBadge, RiskBadge } from '../components';
 import { formatDate, formatCommand } from '../utils/safety';
+import { useWorkspace } from '../workspace';
 
 export function RunDetailPage() {
   const { id } = useParams<{ id: string }>();
   const api = useMemo(() => getTraceSealApi(), []);
+  const { revision } = useWorkspace();
   const { status, data: run, error, refetch } = useAsync(
     () => api.getRun(id!),
-    [api, id],
+    [api, id, revision],
     { enabled: !!id }
   );
 

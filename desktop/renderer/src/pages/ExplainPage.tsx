@@ -3,13 +3,15 @@ import { useParams, Link } from 'react-router-dom';
 import { useAsync } from '../hooks/useAsync';
 import { getTraceSealApi } from '../api';
 import { ExplainPanel, LoadingState, ErrorState, PageHeader } from '../components';
+import { useWorkspace } from '../workspace';
 
 export function ExplainPage() {
   const { id } = useParams<{ id: string }>();
   const api = useMemo(() => getTraceSealApi(), []);
+  const { revision } = useWorkspace();
   const { status, data: run, error, refetch } = useAsync(
     () => api.getRun(id!),
-    [api, id],
+    [api, id, revision],
     { enabled: !!id }
   );
 

@@ -260,7 +260,7 @@ export async function resolveTraceSealCommand(options: PythonRunnerOptions = {})
 }
 
 export class PythonDashboardRunner {
-  private readonly repositoryRoot: string;
+  private repositoryRoot: string;
   private readonly timeoutMs: number;
   private readonly python?: PythonCommandSpec;
   private readonly spawnImpl?: typeof spawn;
@@ -280,6 +280,14 @@ export class PythonDashboardRunner {
     this.isPackaged = options.isPackaged;
     this.resourcesPath = options.resourcesPath;
     this.coreExecutablePath = options.coreExecutablePath;
+  }
+
+  setRepositoryRoot(repositoryRoot: string): void {
+    this.repositoryRoot = path.resolve(repositoryRoot);
+  }
+
+  getRepositoryRoot(): string {
+    return this.repositoryRoot;
   }
 
   private async commandSpec(): Promise<TraceSealCommandSpec> {

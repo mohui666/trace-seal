@@ -71,12 +71,22 @@ export interface RuntimeInfo {
   version?: string;
 }
 
+export interface WorkspaceInfo {
+  path: string | null;
+  valid: boolean;
+  hasRuns: boolean;
+  hasPolicy: boolean;
+}
+
 export interface TraceSealApi {
   getLatestRun(): Promise<DashboardRunExport>;
   listRuns(): Promise<RunSummary[]>;
   getRun(runId: string): Promise<DashboardRunExport>;
   getPolicy(): Promise<PolicyRule[]>;
   getRuntimeInfo(): Promise<RuntimeInfo>;
+  selectWorkspace(): Promise<WorkspaceInfo>;
+  getWorkspace(): Promise<WorkspaceInfo>;
+  clearWorkspace(): Promise<void>;
 }
 
 declare global {

@@ -11,6 +11,7 @@ import {
   parsePythonCommand,
   resolveTraceSealCommand,
   runJsonCommand,
+  PythonDashboardRunner,
 } from "../src/pythonRunner";
 import { TraceSealRuntimeError } from "../src/types";
 import { validateRunId } from "../src/validation";
@@ -82,6 +83,15 @@ test("packagedRepositoryRoot prefers TRACESEAL_REPOSITORY_ROOT over packaged cwd
   const configured = path.join(os.tmpdir(), "TraceSeal Project With Spaces");
   assert.equal(packagedRepositoryRoot({ TRACESEAL_REPOSITORY_ROOT: configured } as NodeJS.ProcessEnv, "C:\\ignored"), path.resolve(configured));
   assert.equal(packagedRepositoryRoot({} as NodeJS.ProcessEnv, configured), path.resolve(configured));
+});
+
+test("PythonDashboardRunner switches repository root without rebuilding the runner", () => {
+  const first = path.join(os.tmpdir(), "trace workspace one");
+  const second = path.join(os.tmpdir(), "跟踪 工作区 two");
+  const runner = new PythonDashboardRunner({ repositoryRoot: first });
+  assert.equal(runner.getRepositoryRoot(), path.resolve(first));
+  runner.setRepositoryRoot(second);
+  assert.equal(runner.getRepositoryRoot(), path.resolve(second));
 });
 
 test("runJsonCommand parses JSON stdout", async () => {

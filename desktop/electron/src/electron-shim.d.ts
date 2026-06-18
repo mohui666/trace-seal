@@ -3,6 +3,7 @@ declare module "electron" {
     whenReady(): Promise<void>;
     on(event: string, listener: (...args: unknown[]) => void): void;
     quit(): void;
+    getPath(name: string): string;
   };
 
   export class BrowserWindow {
@@ -22,5 +23,9 @@ declare module "electron" {
 
   export const ipcRenderer: {
     invoke(channel: string, ...args: unknown[]): Promise<unknown>;
+  };
+
+  export const dialog: {
+    showOpenDialog(options: { properties: string[] }): Promise<{ canceled: boolean; filePaths: string[] }>;
   };
 }

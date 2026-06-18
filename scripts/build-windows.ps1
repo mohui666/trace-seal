@@ -128,6 +128,24 @@ if (-not $Installer) {
     throw "TraceSeal-Setup.exe was not produced"
 }
 
+$PackagedResources = Join-Path $RepoRoot "desktop\electron\out\TraceSeal-win32-x64\resources"
+$RequiredPackagedFiles = @(
+    (Join-Path $PackagedResources "renderer\index.html"),
+    (Join-Path $PackagedResources "traceseal-core\traceseal-core.exe")
+)
+foreach ($RequiredFile in $RequiredPackagedFiles) {
+    if (-not (Test-Path $RequiredFile)) {
+        throw "Packaged application is missing required resource: $RequiredFile"
+    }
+}
+
+$HashFile = Join-Path $Installer.DirectoryName "SHA256SUMS.txt"
+$InstallerHash = Get-FileHash -Algorithm SHA256 -LiteralPath $Installer.FullName
+"$($InstallerHash.Hash.ToLowerInvariant()) *$($Installer.Name)" | Set-Content -LiteralPath $HashFile -Encoding utf8
+
 Write-Host ""
 Write-Host "TraceSeal Windows installer:" -ForegroundColor Green
 Write-Host $Installer.FullName
+Write-Host "SHA256 manifest:" -ForegroundColor Green
+Write-Host $HashFile
+Write-Host $InstallerHash.Hash.ToLowerInvariant()

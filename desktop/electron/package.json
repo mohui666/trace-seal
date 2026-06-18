@@ -1,7 +1,7 @@
 {
   "name": "traceseal-electron-runtime",
   "productName": "TraceSeal",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "TraceSeal desktop runtime for the Python Core dashboard data API",
   "author": "TraceSeal",
   "private": true,

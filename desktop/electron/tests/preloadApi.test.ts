@@ -1,4 +1,6 @@
 import assert from "node:assert/strict";
+import fs from "node:fs";
+import path from "node:path";
 import test from "node:test";
 import { createTraceSealApi } from "../src/preloadApi";
 import { IPC_CHANNELS } from "../src/ipc";
@@ -27,4 +29,16 @@ test("preload API invokes fixed IPC channels", async () => {
     [IPC_CHANNELS.getPolicy, []],
     [IPC_CHANNELS.getRuntimeInfo, []],
   ]);
+});
+
+test("compiled preload is self-contained for the Electron sandbox", () => {
+  const compiledPreload = fs.readFileSync(
+    path.resolve(process.cwd(), "dist", "src", "preload.js"),
+    "utf8",
+  );
+  assert.doesNotMatch(compiledPreload, /require\(["']\.\//);
+  assert.match(compiledPreload, /require\(["']electron["']\)/);
+  for (const channel of Object.values(IPC_CHANNELS)) {
+    assert.ok(compiledPreload.includes(channel), `missing fixed IPC channel ${channel}`);
+  }
 });

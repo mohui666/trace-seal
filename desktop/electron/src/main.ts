@@ -1,10 +1,34 @@
+import { spawn } from "node:child_process";
+import fs from "node:fs";
 import path from "node:path";
 import { app, BrowserWindow, dialog, ipcMain } from "electron";
 import { registerTraceSealIpc } from "./ipc";
 import { PythonDashboardRunner } from "./pythonRunner";
 import { preloadPath, rendererIndexPath } from "./runtimePaths";
 import { findRepositoryRoot } from "./pythonRunner";
+import { planSquirrelStartup, squirrelShortcutArgs } from "./squirrel";
 import { WorkspaceController, WorkspaceStore } from "./workspace";
+
+// Handle Squirrel.Windows install / update / uninstall lifecycle events.
+// On these events the app must exit immediately (before app.whenReady()) so
+// Update.exe can finalize the install / remove bundled files on uninstall.
+// Update.exe does not auto-create Start Menu / Desktop shortcuts in this build,
+// so on install/update we ask it to create them, and on uninstall to remove
+// them. The Update.exe call is detached so it does not block the app exit that
+// Squirrel's installer is waiting for. --squirrel-firstrun and ordinary
+// launches fall through and run normally.
+const squirrelPlan = planSquirrelStartup();
+if (squirrelPlan.shouldQuit) {
+  const args = squirrelShortcutArgs(squirrelPlan.shortcutAction, squirrelPlan.layout.shortcutTarget);
+  if (args && fs.existsSync(squirrelPlan.layout.updateExe)) {
+    try {
+      spawn(squirrelPlan.layout.updateExe, args, { detached: true, stdio: "ignore" }).unref();
+    } catch {
+      // Best effort: shortcut creation must not block the Squirrel lifecycle.
+    }
+  }
+  app.quit();
+}
 
 function rendererUrl(): string | null {
   return process.env.TRACESEAL_RENDERER_URL || null;

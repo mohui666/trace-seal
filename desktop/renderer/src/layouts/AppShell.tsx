@@ -31,7 +31,7 @@ function Sidebar() {
         </NavLink>
       </nav>
       <div className="px-3 py-4 border-t border-gray-800">
-        <p className="text-xs text-gray-600">v0.2.0 RC</p>
+        <p className="text-xs text-gray-600">v0.2.0</p>
       </div>
     </aside>
   );

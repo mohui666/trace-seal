@@ -25,7 +25,7 @@
 
 - 规则数：4 条
 - Demo 数：4 个
-- 自动测试：Python 13 个、Renderer 96 个、Electron 33 个
+- 自动测试：Python 13 个、Renderer 96 个、Electron 45 个
 - Dashboard 数据接口：1 个 JSON export
 - 默认安全模式：warn；可通过 `TRACESEAL_POLICY_MODE=block` 切换阻断
 
@@ -44,7 +44,7 @@
 
 ---
 
-## 阶段 2：最小 Electron Desktop Dashboard — 功能完成，Release Candidate 验证中
+## 阶段 2：最小 Electron Desktop Dashboard — 已完成
 
 **时间**：2026 Q3
 
@@ -60,7 +60,7 @@
 - TailwindCSS
 - Python Core CLI 作为数据来源
 
-### 已交付 / 继续打磨
+### 已交付
 
 | 模块 | 内容 |
 |---|---|
@@ -70,7 +70,7 @@
 | 打包分发 | 已完成：Electron Forge + PyInstaller，生成 `TraceSeal-Setup.exe` |
 | 无 Python 分发 | 已完成：生产环境调用 `resources/traceseal-core/traceseal-core.exe` |
 | 工作区选择 | 已完成：系统目录选择框、`settings.json` 持久化、切换/清除和数据自动刷新 |
-| RC 构建检查 | 已完成：资源校验、Windows x64 安装包和 `SHA256SUMS.txt` |
+| 正式发布检查 | 已完成：资源校验、干净 Windows VM 验证、Windows x64 安装包和 `SHA256SUMS.txt` |
 | 首页 | 已最小接入：run 概览、事件数、高风险数、最近事故；后续继续视觉打磨 |
 | Runs 列表 | 已最小接入：run_id、命令、时间、退出码、事件数、高风险数 |
 | Run Detail | 已最小接入：事件时间线、事件详情、文件变更、Shell/HTTP 摘要 |
@@ -85,17 +85,20 @@
 - 不做 policy 编辑器完整闭环
 - 不把拦截逻辑搬进 Electron
 
-### Release Candidate 验证状态
+### v0.2.0 正式发布状态
 
 - 已完成开发模式真实 runs 联调。
 - 已完成本机打包版和安装版验证。
 - 已验证工作区持久化、无效目录、Unicode 路径和无 runs 空状态。
-- 尚未完成独立全新 Windows 虚拟机验证。
+- 已完成独立干净 Windows VM 验证，结论为 `PASS WITH KNOWN ISSUES`。
+- v0.2.0 已正式发布，Windows x64 安装包可从 GitHub Releases 获取。
 - 安装包尚未代码签名，SmartScreen 可能提示未知发布者。
+- 当前仅验证 Windows x64；未提供 macOS/Linux 安装包。
+- 当前仍仅支持 Python Agent，Sandbox 仍为目录复制。
 
 ---
 
-## 阶段 3：Core 增强
+## 阶段 3：Core 增强 — 计划中
 
 目标：补齐当前 Python Core 的工程缺口。
 
@@ -149,6 +152,6 @@
 |---|---|---|
 | v0.1.0 | 2026-06 | Python CLI MVP：run/replay/explain |
 | v0.1.1 | 2026-06 | 补 env/git/http 案例与 dashboard-data JSON |
-| v0.2.0 | 2026-06 | Electron 数据运行层、Renderer 真实数据联调、Windows 安装包 |
+| v0.2.0 | 2026-06 | 已发布：Electron 数据运行层、Renderer 真实数据联调、Windows x64 安装包 |
 | v0.3.0 | 计划 | Core 增强：读取、os.system、httpx、Git diff |
 | v1.0.0 | 远期 | 产品化 Guard + Dashboard |

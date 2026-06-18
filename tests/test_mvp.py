@@ -24,7 +24,14 @@ class TraceSealMvpTest(unittest.TestCase):
             text=True,
             capture_output=True,
             env=env,
-            check=True,
+            check=False,
+        )
+        self.assertEqual(
+            completed.returncode,
+            0,
+            f"TraceSeal agent run failed with exit code {completed.returncode}\n"
+            f"stdout:\n{completed.stdout}\n"
+            f"stderr:\n{completed.stderr}",
         )
         latest = self.repo / "runs" / "latest"
         self.assertTrue(latest.exists(), completed.stdout + completed.stderr)

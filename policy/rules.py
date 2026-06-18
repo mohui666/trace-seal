@@ -55,6 +55,24 @@ DEFAULT_RULES = {
             "reason": "HTTP POST can exfiltrate sensitive data outside the workspace",
             "suggested_policy": 'deny http "POST https://*/**"',
         },
+        {
+            "rule_id": "sensitive_http_request",
+            "event_type": "network.http",
+            "pattern": "httpx request with sensitive query parameters, headers, cookies, or auth",
+            "risk_level": "high",
+            "action": "warn",
+            "reason": "network request carries sensitive authentication metadata",
+            "suggested_policy": 'require_approval httpx "<method> <url>"',
+        },
+        {
+            "rule_id": "insecure_http_request",
+            "event_type": "network.http",
+            "pattern": "plaintext http:// request",
+            "risk_level": "medium",
+            "action": "warn",
+            "reason": "plaintext HTTP can expose request metadata in transit",
+            "suggested_policy": 'require_approval httpx "http://*/**"',
+        },
     ]
 }
 
@@ -202,6 +220,33 @@ def evaluate_http_request(method: str, url: str) -> dict[str, Any]:
     return risk("low", [], None, "allow")
 
 
+def evaluate_httpx_request(
+    method: str,
+    url: str,
+    *,
+    scheme: str,
+    host: str,
+    sensitive_query: bool = False,
+    sensitive_headers: bool = False,
+    has_userinfo: bool = False,
+) -> dict[str, Any]:
+    method_upper = method.upper()
+    if sensitive_query or sensitive_headers or has_userinfo:
+        reasons: list[str] = []
+        if sensitive_query:
+            reasons.append("sensitive query parameter redacted")
+        if sensitive_headers:
+            reasons.append("sensitive request header or authentication metadata redacted")
+        if has_userinfo:
+            reasons.append("URL user information redacted")
+        return risk("high", reasons, "sensitive_http_request", "warn")
+    if scheme.lower() == "http":
+        return risk("medium", [f"plaintext HTTP request: {method_upper} {url}"], "insecure_http_request", "warn")
+    if host.lower() not in {"localhost", "127.0.0.1", "::1"}:
+        return risk("medium", [f"outbound HTTP request: {method_upper} {url}"], "http_request", "warn")
+    return risk("low", [], None, "allow")
+
+
 def suggest_policy_for_event(event: dict[str, Any]) -> str:
     rule = (event.get("risk") or {}).get("policy_rule")
     command = (event.get("input") or {}).get("command", "")
@@ -220,6 +265,11 @@ def suggest_policy_for_event(event: dict[str, Any]) -> str:
     if rule == "suspicious_http_post":
         url = (event.get("input") or {}).get("url", "<url>")
         return f'deny http "POST {url}"'
-    if event.get("type") == "http":
+    if rule == "sensitive_http_request":
+        inp = event.get("input") or {}
+        return f'require_approval httpx "{inp.get("method", "GET")} {inp.get("url", "<url>")}"'
+    if rule == "insecure_http_request":
+        return 'require_approval httpx "http://*/**"'
+    if event.get("type") in {"http", "network.http"}:
         return 'review http "<method> <url>"'
     return "review event and add a targeted deny rule"

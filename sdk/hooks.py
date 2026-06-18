@@ -12,6 +12,7 @@ from typing import Any
 from policy.rules import command_to_string, evaluate_file_read, evaluate_file_write, evaluate_http_request, evaluate_shell_command, is_git_push, is_rm_rf, rm_targets
 from recorder.core import record_event, summarize_env
 from recorder.workspace import diff_trees, snapshot_tree
+from sdk.httpx_hooks import install as install_httpx_hooks
 
 _INSTALLED = False
 _SUPPRESS_FILE_EVENTS = 0
@@ -944,6 +945,7 @@ def install() -> None:
     urllib.request.urlopen = traced_urlopen
     if requests is not None and _ORIG_REQUESTS_SESSION_REQUEST is not None:  # pragma: no branch
         requests.sessions.Session.request = traced_requests_request
+    httpx_installed = install_httpx_hooks()
     record_event(
         {
             "type": "sdk",
@@ -961,6 +963,7 @@ def install() -> None:
                     "os.system",
                     "urllib",
                     "requests?",
+                    "httpx" if httpx_installed else "httpx?",
                     "shutil.rmtree",
                     "os.remove",
                 ],

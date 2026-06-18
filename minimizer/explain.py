@@ -12,7 +12,7 @@ def _risk_score(event: dict[str, Any]) -> int:
     risk = event.get("risk") or {}
     score = RISK_ORDER.get(risk.get("level", "low"), 0)
     rule = risk.get("policy_rule")
-    if rule in {"dangerous_delete", "env_write", "git_push", "suspicious_http_post"}:
+    if rule in {"dangerous_delete", "env_write", "sensitive_file_read", "git_push", "suspicious_http_post"}:
         score = max(score, 2)
     for change in event.get("file_changes") or []:
         path = str(change.get("path", "")).replace("\\", "/")
@@ -38,6 +38,8 @@ def _event_headline(event: dict[str, Any]) -> str:
         return f"Shell 命令{source}: {inp.get('command', '')}"
     if typ == "file.write":
         return f"文件写入: {inp.get('path', '')}"
+    if typ == "file.read":
+        return f"文件读取 ({inp.get('source', 'unknown')}): {inp.get('path', '')}"
     if typ == "file.delete":
         return f"文件删除: {inp.get('path', '')}"
     if typ == "http":
@@ -54,6 +56,8 @@ def _translate_reason(reason: str) -> str:
         return reason.replace("write to environment/config file: ", "写入环境/配置文件: ", 1)
     if reason.startswith("sensitive environment file modified: "):
         return reason.replace("sensitive environment file modified: ", "敏感环境配置文件被修改: ", 1)
+    if reason.startswith("sensitive file read: "):
+        return reason.replace("sensitive file read: ", "读取敏感文件: ", 1)
     if reason == "modified protected environment file":
         return "修改了受保护的环境配置文件"
     if reason == "git push publishes repository state":

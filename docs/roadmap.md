@@ -104,8 +104,8 @@
 
 | 能力 | 状态 |
 |---|---|
-| 文件读取拦截 | 待做 |
-| `os.system()` 拦截 | 待做 |
+| 文件读取记录 | 已完成：Python `open` / `Path` 常见读取 API，只记录元数据 |
+| `os.system()` 拦截 | 已完成 |
 | `httpx` 拦截 | 待做 |
 | Git diff / HEAD / staged 记录 | 待做 |
 | HTTP cassette 脱敏记录 | 待做 |

@@ -108,6 +108,7 @@ class DashboardDataTest(unittest.TestCase):
         ids = {r["rule_id"] for r in rules}
         self.assertIn("dangerous_delete", ids)
         self.assertIn("env_write", ids)
+        self.assertIn("sensitive_file_read", ids)
         self.assertIn("git_push", ids)
         self.assertIn("suspicious_http_post", ids)
         self.assertTrue(all("suggested_policy" in rule for rule in rules))

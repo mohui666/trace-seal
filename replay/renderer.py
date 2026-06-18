@@ -26,6 +26,8 @@ def _event_title(event: dict[str, Any]) -> str:
         return f"Shell 命令{source}: {inp.get('command', '')}"
     if typ == "file.write":
         return f"文件写入: {inp.get('path', '')}"
+    if typ == "file.read":
+        return f"文件读取 ({inp.get('source', 'unknown')}): {inp.get('path', '')}"
     if typ == "file.delete":
         return f"文件删除: {inp.get('path', '')}"
     if typ == "http":
@@ -60,6 +62,8 @@ def _translate_reason(reason: str) -> str:
         return reason.replace("write to environment/config file: ", "写入环境/配置文件: ", 1)
     if reason.startswith("sensitive environment file modified: "):
         return reason.replace("sensitive environment file modified: ", "敏感环境配置文件被修改: ", 1)
+    if reason.startswith("sensitive file read: "):
+        return reason.replace("sensitive file read: ", "读取敏感文件: ", 1)
     if reason == "git push publishes repository state":
         return "git push 会发布仓库状态"
     if reason == "remote git push requested":
@@ -97,6 +101,8 @@ def replay_run(run_dir: str | Path) -> str:
         if status:
             rc = output.get("returncode")
             lines.append(f"  输出: 状态={_translate_status(status)}" + (f" returncode={rc}" if rc is not None else ""))
+            if event.get("type") == "file.read":
+                lines.append(f"  读取字节: {output.get('bytes_read', 0)} 文件大小={output.get('file_size')}")
         if changes:
             summary: dict[str, int] = {}
             for change in changes:

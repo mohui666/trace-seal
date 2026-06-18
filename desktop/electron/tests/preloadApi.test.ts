@@ -7,7 +7,10 @@ import { IPC_CHANNELS } from "../src/ipc";
 
 test("preload API exposes only the approved TraceSeal methods", () => {
   const api = createTraceSealApi(async () => ({}));
-  assert.deepEqual(Object.keys(api).sort(), ["getLatestRun", "getPolicy", "getRun", "getRuntimeInfo", "listRuns"].sort());
+  assert.deepEqual(Object.keys(api).sort(), [
+    "getLatestRun", "getPolicy", "getRun", "getRuntimeInfo", "listRuns",
+    "selectWorkspace", "getWorkspace", "clearWorkspace",
+  ].sort());
   assert.equal(Object.isFrozen(api), true);
 });
 
@@ -22,12 +25,18 @@ test("preload API invokes fixed IPC channels", async () => {
   await api.getRun("run_20260617_000000_000000");
   await api.getPolicy();
   await api.getRuntimeInfo();
+  await api.selectWorkspace();
+  await api.getWorkspace();
+  await api.clearWorkspace();
   assert.deepEqual(calls, [
     [IPC_CHANNELS.getLatestRun, []],
     [IPC_CHANNELS.listRuns, []],
     [IPC_CHANNELS.getRun, ["run_20260617_000000_000000"]],
     [IPC_CHANNELS.getPolicy, []],
     [IPC_CHANNELS.getRuntimeInfo, []],
+    [IPC_CHANNELS.selectWorkspace, []],
+    [IPC_CHANNELS.getWorkspace, []],
+    [IPC_CHANNELS.clearWorkspace, []],
   ]);
 });
 

@@ -25,7 +25,7 @@
 
 - 规则数：4 条
 - Demo 数：4 个
-- 测试数：5 个
+- 自动测试：Python 13 个、Renderer 96 个、Electron 33 个
 - Dashboard 数据接口：1 个 JSON export
 - 默认安全模式：warn；可通过 `TRACESEAL_POLICY_MODE=block` 切换阻断
 
@@ -44,7 +44,7 @@
 
 ---
 
-## 阶段 2：最小 Electron Desktop Dashboard — 运行层已完成
+## 阶段 2：最小 Electron Desktop Dashboard — 功能完成，Release Candidate 验证中
 
 **时间**：2026 Q3
 
@@ -69,6 +69,8 @@
 | 安全边界 | 已完成：`contextIsolation: true`、`nodeIntegration: false`、固定 preload API |
 | 打包分发 | 已完成：Electron Forge + PyInstaller，生成 `TraceSeal-Setup.exe` |
 | 无 Python 分发 | 已完成：生产环境调用 `resources/traceseal-core/traceseal-core.exe` |
+| 工作区选择 | 已完成：系统目录选择框、`settings.json` 持久化、切换/清除和数据自动刷新 |
+| RC 构建检查 | 已完成：资源校验、Windows x64 安装包和 `SHA256SUMS.txt` |
 | 首页 | 已最小接入：run 概览、事件数、高风险数、最近事故；后续继续视觉打磨 |
 | Runs 列表 | 已最小接入：run_id、命令、时间、退出码、事件数、高风险数 |
 | Run Detail | 已最小接入：事件时间线、事件详情、文件变更、Shell/HTTP 摘要 |
@@ -82,6 +84,14 @@
 - 不做复杂图表
 - 不做 policy 编辑器完整闭环
 - 不把拦截逻辑搬进 Electron
+
+### Release Candidate 验证状态
+
+- 已完成开发模式真实 runs 联调。
+- 已完成本机打包版和安装版验证。
+- 已验证工作区持久化、无效目录、Unicode 路径和无 runs 空状态。
+- 尚未完成独立全新 Windows 虚拟机验证。
+- 安装包尚未代码签名，SmartScreen 可能提示未知发布者。
 
 ---
 
@@ -100,7 +110,7 @@
 | force push 与普通 push 细分 | 待做 |
 | 域名白名单 / 黑名单 | 待做 |
 | 级联错误案例 | 待做 |
-| GitHub Actions CI | 待做 |
+| GitHub Actions Windows 构建 CI | 已完成 |
 
 ---
 

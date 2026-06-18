@@ -1,7 +1,10 @@
-import { app, BrowserWindow, ipcMain } from "electron";
+import path from "node:path";
+import { app, BrowserWindow, dialog, ipcMain } from "electron";
 import { registerTraceSealIpc } from "./ipc";
 import { PythonDashboardRunner } from "./pythonRunner";
 import { preloadPath, rendererIndexPath } from "./runtimePaths";
+import { findRepositoryRoot } from "./pythonRunner";
+import { WorkspaceController, WorkspaceStore } from "./workspace";
 
 function rendererUrl(): string | null {
   return process.env.TRACESEAL_RENDERER_URL || null;
@@ -44,15 +47,23 @@ function createWindow(): void {
   );
 }
 
-registerTraceSealIpc(
-  ipcMain,
-  new PythonDashboardRunner({
+app.whenReady().then(() => {
+  const fallbackRoot = app.isPackaged ? process.cwd() : findRepositoryRoot(__dirname);
+  const runner = new PythonDashboardRunner({
+    repositoryRoot: fallbackRoot,
     isPackaged: app.isPackaged,
     resourcesPath: process.resourcesPath,
-  }),
-);
-
-app.whenReady().then(() => {
+  });
+  const workspace = new WorkspaceController(
+    new WorkspaceStore(path.join(app.getPath("userData"), "settings.json")),
+    runner,
+    async () => {
+      const result = await dialog.showOpenDialog({ properties: ["openDirectory"] });
+      return result.canceled ? null : result.filePaths[0] || null;
+    },
+    fallbackRoot,
+  );
+  registerTraceSealIpc(ipcMain, runner, workspace);
   createWindow();
   app.on("activate", () => {
     if (BrowserWindow.getAllWindows().length === 0) {

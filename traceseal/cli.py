@@ -16,6 +16,15 @@ from replay.renderer import replay_run
 from sandbox.workspace import copy_workspace
 
 
+def configure_utf8_stdio() -> None:
+    """Keep the CLI's Chinese output usable when Windows redirects stdio."""
+
+    for stream in (sys.stdout, sys.stderr):
+        reconfigure = getattr(stream, "reconfigure", None)
+        if callable(reconfigure):
+            reconfigure(encoding="utf-8", errors="replace")
+
+
 def utc_now() -> str:
     return datetime.now(timezone.utc).isoformat()
 
@@ -206,6 +215,7 @@ def build_parser() -> argparse.ArgumentParser:
 
 
 def main(argv: list[str] | None = None) -> int:
+    configure_utf8_stdio()
     parser = build_parser()
     args = parser.parse_args(argv)
     return int(args.func(args))

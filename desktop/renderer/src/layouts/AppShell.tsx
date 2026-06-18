@@ -1,6 +1,6 @@
-import { NavLink, Outlet } from 'react-router-dom';
+import { NavLink, Outlet, useNavigate } from 'react-router-dom';
 import type { ReactNode } from 'react';
-import { isElectronEnv } from '../utils/safety';
+import { useWorkspace } from '../workspace';
 
 function Sidebar() {
   const linkClass = ({ isActive }: { isActive: boolean }) =>
@@ -31,41 +31,139 @@ function Sidebar() {
         </NavLink>
       </nav>
       <div className="px-3 py-4 border-t border-gray-800">
-        <p className="text-xs text-gray-600">v0.2.0-dev</p>
+        <p className="text-xs text-gray-600">v0.2.0 RC</p>
       </div>
     </aside>
   );
 }
 
 function TopBar() {
-  const isLive = isElectronEnv();
+  const { workspace, busy, isLive, selectWorkspace, clearWorkspace } = useWorkspace();
+  const navigate = useNavigate();
+
+  const chooseWorkspace = async () => {
+    try {
+      const previousPath = workspace.path;
+      const selected = await selectWorkspace();
+      if (selected.valid && selected.path && selected.path !== previousPath) navigate('/');
+    } catch {
+      // WorkspaceContext renders the structured error state.
+    }
+  };
+
+  const clear = async () => {
+    try {
+      await clearWorkspace();
+      navigate('/');
+    } catch {
+      // WorkspaceContext renders the structured error state.
+    }
+  };
 
   return (
-    <header className="h-12 border-b border-gray-800 bg-gray-950 flex items-center justify-between px-6 flex-shrink-0">
-      <div className="flex items-center gap-2">
-        <span
-          className={`w-2 h-2 rounded-full ${isLive ? 'bg-emerald-500' : 'bg-yellow-500'}`}
-          aria-hidden="true"
-        />
-        <span className="text-xs text-gray-400">
-          {isLive ? 'Live Electron' : 'Mock Data'}
-        </span>
+    <header className="min-h-14 border-b border-gray-800 bg-gray-950 flex items-center justify-between gap-4 px-6 py-2 flex-shrink-0">
+      <div className="flex items-center gap-3 min-w-0">
+        <div className="flex items-center gap-2 shrink-0">
+          <span
+            className={`w-2 h-2 rounded-full ${isLive ? 'bg-emerald-500' : 'bg-yellow-500'}`}
+            aria-hidden="true"
+          />
+          <span className="text-xs text-gray-400">
+            {isLive ? 'Live Electron' : 'Mock Data'}
+          </span>
+        </div>
+        {isLive && (
+          <div className="min-w-0 border-l border-gray-800 pl-3">
+            <p className="text-[10px] text-gray-600">当前工作区</p>
+            <p className={`text-xs truncate max-w-[520px] ${workspace.valid ? 'text-gray-300' : 'text-amber-400'}`} title={workspace.path ?? undefined}>
+              {workspace.path ?? '尚未选择'}
+            </p>
+          </div>
+        )}
       </div>
-      <div className="flex items-center gap-4">
-        <span className="text-xs text-gray-500">TraceSeal Dashboard</span>
+      <div className="flex items-center gap-2 shrink-0">
+        {isLive && (
+          <>
+            <button
+              type="button"
+              onClick={() => void chooseWorkspace()}
+              disabled={busy}
+              className="px-3 py-1.5 text-xs rounded-lg border border-emerald-800 text-emerald-400 hover:bg-emerald-950/40 disabled:opacity-50"
+            >
+              {workspace.valid ? '切换工作区' : '选择工作区'}
+            </button>
+            {workspace.path && (
+              <button
+                type="button"
+                onClick={() => void clear()}
+                disabled={busy}
+                className="px-3 py-1.5 text-xs rounded-lg border border-gray-700 text-gray-400 hover:bg-gray-800 disabled:opacity-50"
+              >
+                清除工作区
+              </button>
+            )}
+          </>
+        )}
+        <span className="text-xs text-gray-500 ml-2">TraceSeal Dashboard</span>
       </div>
     </header>
   );
 }
 
+function WorkspacePrompt() {
+  const { workspace, status, error, busy, selectWorkspace, reloadWorkspace } = useWorkspace();
+
+  if (status === 'loading') {
+    return <div className="h-full grid place-items-center text-sm text-gray-400">正在读取工作区设置...</div>;
+  }
+
+  if (status === 'error') {
+    return (
+      <div className="h-full grid place-items-center p-8">
+        <div className="max-w-lg w-full rounded-xl border border-red-900/60 bg-red-950/20 p-6 text-center">
+          <h2 className="text-base font-semibold text-red-300">工作区 API 出错</h2>
+          <p className="text-xs text-red-400/80 mt-2 break-all">{error?.message ?? '未知错误'}</p>
+          <button onClick={() => void reloadWorkspace()} className="mt-4 px-4 py-2 text-xs rounded-lg bg-gray-800 text-gray-200 hover:bg-gray-700">重试</button>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="h-full grid place-items-center p-8">
+      <div className="max-w-xl w-full rounded-xl border border-gray-800 bg-gray-900 p-8 text-center shadow-2xl">
+        <div className="mx-auto w-12 h-12 rounded-xl bg-emerald-950/60 border border-emerald-900 grid place-items-center text-emerald-400 text-xl">⌂</div>
+        <h2 className="text-lg font-semibold text-gray-100 mt-4">
+          {workspace.path ? '工作区无效' : '选择 TraceSeal 工作区'}
+        </h2>
+        <p className="text-sm text-gray-500 mt-2">
+          {workspace.path
+            ? '保存的目录不存在或当前无法访问，请重新选择一个目录。'
+            : '选择用于保存 runs 和 policy 的项目目录。空目录也可以作为新工作区。'}
+        </p>
+        {workspace.path && <p className="text-xs font-mono text-amber-400 mt-3 break-all">{workspace.path}</p>}
+        <button
+          type="button"
+          onClick={() => void selectWorkspace().catch(() => undefined)}
+          disabled={busy}
+          className="mt-6 px-5 py-2.5 text-sm rounded-lg bg-emerald-600 text-white hover:bg-emerald-500 disabled:opacity-50"
+        >
+          {busy ? '正在选择...' : workspace.path ? '重新选择工作区' : '选择工作区'}
+        </button>
+      </div>
+    </div>
+  );
+}
+
 export function AppShell({ children }: { children?: ReactNode }) {
+  const { workspace, isLive } = useWorkspace();
   return (
     <div className="flex h-screen w-screen overflow-hidden bg-gray-950">
       <Sidebar />
       <div className="flex-1 flex flex-col min-w-0">
         <TopBar />
         <main className="flex-1 overflow-auto">
-          {children ?? <Outlet />}
+          {isLive && !workspace.valid ? <WorkspacePrompt /> : (children ?? <Outlet />)}
         </main>
       </div>
     </div>

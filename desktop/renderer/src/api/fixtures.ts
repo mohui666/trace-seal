@@ -525,5 +525,5 @@ export const runtimeInfo: RuntimeInfo = {
   pythonCommand: 'python',
   repositoryRoot: '/home/user/trace-seal',
   platform: 'win32',
-  version: '0.2.0-dev',
+  version: '0.2.0-rc',
 };

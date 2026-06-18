@@ -74,6 +74,9 @@ function createMockApi(): TraceSealApi {
     getRun: vi.fn(),
     getPolicy: vi.fn(),
     getRuntimeInfo: vi.fn(),
+    selectWorkspace: vi.fn(),
+    getWorkspace: vi.fn(),
+    clearWorkspace: vi.fn(),
   };
 }
 
@@ -217,7 +220,7 @@ describe('Renderer integration', () => {
       );
 
       await waitFor(() => {
-        expect(screen.getByText('暂无运行记录')).toBeInTheDocument();
+        expect(screen.getAllByText('暂无运行记录').length).toBeGreaterThan(0);
       });
     });
   });

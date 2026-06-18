@@ -22,9 +22,17 @@ class TraceSealMvpTest(unittest.TestCase):
             [sys.executable, "-m", "traceseal", "run", sys.executable, f"examples/{script_name}"],
             cwd=self.repo,
             text=True,
+            encoding="utf-8",
             capture_output=True,
             env=env,
-            check=True,
+            check=False,
+        )
+        self.assertEqual(
+            completed.returncode,
+            0,
+            f"TraceSeal agent run failed with exit code {completed.returncode}\n"
+            f"stdout:\n{completed.stdout}\n"
+            f"stderr:\n{completed.stderr}",
         )
         latest = self.repo / "runs" / "latest"
         self.assertTrue(latest.exists(), completed.stdout + completed.stderr)
@@ -40,6 +48,7 @@ class TraceSealMvpTest(unittest.TestCase):
             [sys.executable, "-m", "traceseal", "explain", run_dir],
             cwd=self.repo,
             text=True,
+            encoding="utf-8",
             capture_output=True,
             check=True,
         )
@@ -73,6 +82,7 @@ class TraceSealMvpTest(unittest.TestCase):
             [sys.executable, "-m", "traceseal", "replay", "runs/latest"],
             cwd=self.repo,
             text=True,
+            encoding="utf-8",
             capture_output=True,
             check=True,
         )

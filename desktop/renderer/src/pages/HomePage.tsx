@@ -3,11 +3,13 @@ import { Link } from 'react-router-dom';
 import { useAsync } from '../hooks/useAsync';
 import { getTraceSealApi } from '../api';
 import { StatCard, RunsTable, LoadingState, ErrorState, EmptyState, RiskBadge } from '../components';
+import { useWorkspace } from '../workspace';
 
 export function HomePage() {
   const api = useMemo(() => getTraceSealApi(), []);
-  const latestRun = useAsync(() => api.getLatestRun(), [api]);
-  const runsList = useAsync(() => api.listRuns(), [api]);
+  const { revision } = useWorkspace();
+  const latestRun = useAsync(() => api.getLatestRun(), [api, revision]);
+  const runsList = useAsync(() => api.listRuns(), [api, revision]);
 
   // Loading
   if (latestRun.status === 'loading' && runsList.status === 'loading') {
@@ -44,7 +46,9 @@ export function HomePage() {
       {/* Latest run card */}
       <div className="rounded-lg border border-gray-800 bg-gray-900 p-5">
         <h3 className="text-sm font-medium text-gray-200 mb-3">最近运行</h3>
-        {latestRun.status === 'error' ? (
+        {runsList.status === 'success' && runs.length === 0 ? (
+          <EmptyState title="暂无运行记录" description="当前工作区还没有 Runs，运行 traceseal run 来生成第一条记录" />
+        ) : latestRun.status === 'error' ? (
           <div className="flex items-center gap-2 text-red-400 text-xs">
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z" /></svg>
             获取最近运行失败
@@ -96,7 +100,7 @@ export function HomePage() {
             </div>
           </div>
         ) : (
-          <EmptyState title="暂无运行记录" description="运行 traceseal run 来生成第一条记录" />
+          <EmptyState title="暂无运行记录" description="当前工作区还没有 Runs，运行 traceseal run 来生成第一条记录" />
         )}
       </div>
 
@@ -111,7 +115,7 @@ export function HomePage() {
         {runsList.status === 'error' ? (
           <div className="text-xs text-red-400">加载失败</div>
         ) : runs.length === 0 ? (
-          <EmptyState title="暂无运行记录" description="运行 traceseal run 来生成第一条记录" />
+          <EmptyState title="暂无运行记录" description="当前工作区还没有 Runs，运行 traceseal run 来生成第一条记录" />
         ) : (
           <RunsTable runs={runs.slice(0, 5)} />
         )}

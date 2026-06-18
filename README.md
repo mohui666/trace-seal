@@ -1,4 +1,4 @@
-# TraceSeal MVP
+# TraceSeal v0.2.0 Release Candidate
 
 TraceSeal 是 AI Agent 的操作黑匣子 + 执行前安全防火墙 + 失败回放系统。
 
@@ -217,6 +217,9 @@ window.traceSeal.listRuns()
 window.traceSeal.getRun(runId)
 window.traceSeal.getPolicy()
 window.traceSeal.getRuntimeInfo()
+window.traceSeal.selectWorkspace()
+window.traceSeal.getWorkspace()
+window.traceSeal.clearWorkspace()
 ```
 
 安全配置：
@@ -238,6 +241,14 @@ cd ..\electron
 npm install
 npm start
 ```
+
+首次启动时点击“选择工作区”，选择 TraceSeal 项目目录。顶部栏会显示当前目录，并提供“切换工作区”和“清除工作区”。工作区设置保存在：
+
+```text
+%APPDATA%\TraceSeal\settings.json
+```
+
+工作区只要求目录存在且可访问；可以暂时没有 `runs/` 或 `policy/`。切换后首页、Runs 和 Policy 会通过统一 API 自动刷新，不需要重启或刷新窗口。
 
 如果需要接 Vite dev server，可先启动 Renderer：
 
@@ -270,6 +281,7 @@ powershell -ExecutionPolicy Bypass -File scripts\build-windows.ps1
 3. Renderer install / typecheck / test / build
 4. Electron install / typecheck / test
 5. Electron Forge make
+6. 校验 Renderer/Python Core 资源并生成 SHA256
 
 主要输出：
 
@@ -278,6 +290,7 @@ packaging/dist/traceseal-core/traceseal-core.exe
 desktop/electron/out/TraceSeal-win32-x64/resources/renderer/index.html
 desktop/electron/out/TraceSeal-win32-x64/resources/traceseal-core/traceseal-core.exe
 desktop/electron/out/make/squirrel.windows/x64/TraceSeal-Setup.exe
+desktop/electron/out/make/squirrel.windows/x64/SHA256SUMS.txt
 ```
 
 开发环境下 Electron 调用：
@@ -292,11 +305,9 @@ python -m traceseal dashboard-data ...
 resources/traceseal-core/traceseal-core.exe dashboard-data ...
 ```
 
-因此安装包在没有单独安装 Python 的 Windows 环境中，也能打开 Dashboard、读取 policy，并通过 bundled Core 读取 runs。若已安装应用需要读取某个工作区的历史 runs，可设置：
+因此安装包在没有单独安装 Python 的 Windows 环境中，也能打开 Dashboard、读取 policy，并通过 bundled Core 读取 runs。安装版不再要求设置 `TRACESEAL_REPOSITORY_ROOT`，直接通过系统目录选择框选择工作区。
 
-```powershell
-$env:TRACESEAL_REPOSITORY_ROOT = "C:\path\to\trace-seal"
-```
+当前安装包目标平台是 **Windows x64**，尚未提供 macOS/Linux 安装包。安装包尚未代码签名，Windows SmartScreen 可能显示未知发布者提示。当前已完成本机开发版、打包版和安装版验证，但尚未在独立的全新 Windows 虚拟机中完成验证。
 
 ## MVP Policy
 
@@ -334,13 +345,15 @@ python -m traceseal run python examples/bad_agent_delete.py
 python -m unittest discover -s tests -v
 ```
 
-当前自动测试覆盖：
+Python 核心案例测试覆盖：
 
 - `test_bad_agent_delete_detected`
 - `test_env_write_detected`
 - `test_git_push_detected`
 - `test_replay_latest`
 - `test_explain_latest`
+
+当前完整基线：Python 13 tests、Renderer 96 tests、Electron 33 tests。
 
 完整 Python 验证：
 
@@ -356,6 +369,15 @@ cd desktop/electron
 npm install
 npm run typecheck
 npm test
+```
+
+Renderer 验证：
+
+```powershell
+cd desktop/renderer
+npm run typecheck
+npm test
+npm run build
 ```
 
 完整桌面打包验证：

@@ -10,6 +10,9 @@ const traceSealApi = Object.freeze({
   getRun: (runId: string) => ipcRenderer.invoke("traceseal:getRun", runId),
   getPolicy: () => ipcRenderer.invoke("traceseal:getPolicy"),
   getRuntimeInfo: () => ipcRenderer.invoke("traceseal:getRuntimeInfo"),
+  selectWorkspace: () => ipcRenderer.invoke("traceseal:selectWorkspace"),
+  getWorkspace: () => ipcRenderer.invoke("traceseal:getWorkspace"),
+  clearWorkspace: () => ipcRenderer.invoke("traceseal:clearWorkspace"),
 });
 
 contextBridge.exposeInMainWorld(

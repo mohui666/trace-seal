@@ -4,10 +4,12 @@ import { useAsync } from '../hooks/useAsync';
 import { getTraceSealApi } from '../api';
 import { RunsTable, FilterBar, LoadingState, ErrorState, EmptyState, PageHeader } from '../components';
 import type { RunStatus } from '../api';
+import { useWorkspace } from '../workspace';
 
 export function RunsPage() {
   const api = useMemo(() => getTraceSealApi(), []);
-  const { status, data: runs, error, refetch } = useAsync(() => api.listRuns(), [api]);
+  const { revision } = useWorkspace();
+  const { status, data: runs, error, refetch } = useAsync(() => api.listRuns(), [api, revision]);
   const navigate = useNavigate();
 
   const [search, setSearch] = useState('');
@@ -50,7 +52,7 @@ export function RunsPage() {
           onClear={clearFilters}
         />
         {runs && runs.length === 0 ? (
-          <EmptyState title="暂无运行记录" description="运行 traceseal run 来生成第一条记录" />
+          <EmptyState title="暂无运行记录" description="当前工作区还没有 Runs，运行 traceseal run 来生成第一条记录" />
         ) : (
           <RunsTable runs={filtered} onRowClick={(id) => navigate(`/runs/${id}`)} />
         )}

@@ -35,7 +35,20 @@ test("registerTraceSealIpc maps fixed channels to runner methods", async () => {
     },
   };
   const ipc = new FakeIpcMain();
-  registerTraceSealIpc(ipc, runner);
+  const workspace = {
+    async selectWorkspace() {
+      calls.push("workspace:select");
+      return { path: "repo", valid: true, hasRuns: true, hasPolicy: true };
+    },
+    getWorkspace() {
+      calls.push("workspace:get");
+      return { path: "repo", valid: true, hasRuns: true, hasPolicy: true };
+    },
+    clearWorkspace() {
+      calls.push("workspace:clear");
+    },
+  };
+  registerTraceSealIpc(ipc, runner, workspace);
 
   assert.deepEqual([...ipc.handlers.keys()].sort(), Object.values(IPC_CHANNELS).sort());
   assert.deepEqual(await ipc.handlers.get(IPC_CHANNELS.getLatestRun)?.({}, undefined), { run_id: "run_latest" });
@@ -49,7 +62,14 @@ test("registerTraceSealIpc maps fixed channels to runner methods", async () => {
     repositoryRoot: "repo",
     platform: "test",
   });
-  assert.deepEqual(calls, ["latest", "list", "run:run_20260617_000000_000000", "policy", "runtime"]);
+  assert.deepEqual(await ipc.handlers.get(IPC_CHANNELS.getWorkspace)?.({}), {
+    path: "repo", valid: true, hasRuns: true, hasPolicy: true,
+  });
+  assert.deepEqual(await ipc.handlers.get(IPC_CHANNELS.selectWorkspace)?.({}), {
+    path: "repo", valid: true, hasRuns: true, hasPolicy: true,
+  });
+  await ipc.handlers.get(IPC_CHANNELS.clearWorkspace)?.({});
+  assert.deepEqual(calls, ["latest", "list", "run:run_20260617_000000_000000", "policy", "runtime", "workspace:get", "workspace:select", "workspace:clear"]);
 });
 
 test("getRun IPC rejects unsafe runId before runner is called", async () => {
@@ -63,7 +83,8 @@ test("getRun IPC rejects unsafe runId before runner is called", async () => {
     async getPolicy() {},
     async getRuntimeInfo() {},
   };
-  registerTraceSealIpc(ipc, runner);
+  const workspace = { async selectWorkspace() {}, getWorkspace() {}, clearWorkspace() {} };
+  registerTraceSealIpc(ipc, runner, workspace);
   await assert.rejects(
     Promise.resolve(ipc.handlers.get(IPC_CHANNELS.getRun)?.({}, "../evil")),
     (error: unknown) => error instanceof TraceSealRuntimeError && error.code === "INVALID_RUN_ID",

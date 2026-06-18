@@ -1,6 +1,6 @@
 # TraceSeal Dashboard 原型设计
 
-> 当前状态：已完成 Dashboard 数据接口、Electron main/preload/IPC 运行层、Renderer 真实数据接入和 Windows 打包链路。
+> 当前状态：阶段 2 功能完成，v0.2.0 Release Candidate 验证中；已完成真实数据、工作区选择和 Windows 打包链路。
 > 技术栈决策：Electron + React + TypeScript + TailwindCSS。
 > 数据来源：开发环境为 `python -m traceseal dashboard-data ...`；打包环境为 bundled `resources/traceseal-core/traceseal-core.exe dashboard-data ...`。
 
@@ -68,6 +68,20 @@ window.traceSeal.listRuns()
 window.traceSeal.getRun(runId)
 window.traceSeal.getPolicy()
 window.traceSeal.getRuntimeInfo()
+window.traceSeal.selectWorkspace()
+window.traceSeal.getWorkspace()
+window.traceSeal.clearWorkspace()
+```
+
+工作区 API 不接收 Renderer 提供的路径。`selectWorkspace()` 只能使用 Electron main 打开的系统目录选择框结果。选择保存在 `app.getPath("userData")/settings.json`，目录失效或 JSON 损坏时安全回退到首次启动状态。
+
+```typescript
+interface WorkspaceInfo {
+  path: string | null;
+  valid: boolean;
+  hasRuns: boolean;
+  hasPolicy: boolean;
+}
 ```
 
 安全边界：
@@ -85,8 +99,8 @@ Dashboard
 ├── /runs                # 运行列表
 ├── /runs/:id            # 运行详情
 ├── /runs/:id/explain    # 事故分析
-├── /policy              # 策略管理（后续）
-└── /settings            # 设置（后续）
+├── /policy              # 策略规则只读展示
+└── TopBar               # 当前工作区、选择、切换、清除
 ```
 
 ## 4. 首页 `/`
@@ -279,6 +293,8 @@ interface FileChange {
 3. 开发环境调用 `python -m traceseal dashboard-data ...`。
 4. 打包环境调用 bundled `traceseal-core.exe dashboard-data ...`。
 5. Renderer 渲染运行概要、事件时间线、first harmful 和 suggested policy。
+6. Workspace Provider 统一管理选择状态和 revision；切换后各页面重新请求数据，不刷新窗口。
+7. 工作区允许有/无 `runs/`、有/无 `policy/`，最低要求仅为目录存在且可访问。
 
 不要先做复杂图表、用户系统、云同步或 policy 编辑器。
 

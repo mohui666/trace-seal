@@ -73,12 +73,22 @@ export interface RuntimeInfo {
   version?: string;
 }
 
+export interface WorkspaceInfo {
+  path: string | null;
+  valid: boolean;
+  hasRuns: boolean;
+  hasPolicy: boolean;
+}
+
 export interface TraceSealApi {
   getLatestRun(): Promise<DashboardRunExport>;
   listRuns(): Promise<RunSummary[]>;
   getRun(runId: string): Promise<DashboardRunExport>;
   getPolicy(): Promise<PolicyRule[]>;
   getRuntimeInfo(): Promise<RuntimeInfo>;
+  selectWorkspace(): Promise<WorkspaceInfo>;
+  getWorkspace(): Promise<WorkspaceInfo>;
+  clearWorkspace(): Promise<void>;
 }
 
 export type TraceSealErrorCode =
@@ -87,6 +97,7 @@ export type TraceSealErrorCode =
   | "INVALID_JSON"
   | "RUN_NOT_FOUND"
   | "INVALID_RUN_ID"
+  | "INVALID_WORKSPACE"
   | "TIMEOUT"
   | "INTERNAL_ERROR";
 

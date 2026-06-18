@@ -96,7 +96,10 @@ def command_for_display(command: Iterable[str]) -> str:
 
 
 def run_command(args: argparse.Namespace) -> int:
-    if not args.command:
+    command = list(args.command)
+    if command[:1] == ["--"]:
+        command = command[1:]
+    if not command:
         raise SystemExit("usage: traceseal run <command...>")
 
     project_root = Path.cwd().resolve()
@@ -117,8 +120,8 @@ def run_command(args: argparse.Namespace) -> int:
     manifest = {
         "schema_version": 1,
         "run_id": run_id,
-        "command": args.command,
-        "command_display": command_for_display(args.command),
+        "command": command,
+        "command_display": command_for_display(command),
         "original_cwd": str(project_root),
         "sandbox_cwd": str(sandbox_root),
         "run_dir": str(run_dir),
@@ -133,7 +136,7 @@ def run_command(args: argparse.Namespace) -> int:
     error: str | None = None
     try:
         print(f"[traceseal] 正在执行: {manifest['command_display']}", flush=True)
-        completed = subprocess.run(args.command, cwd=sandbox_root, env=env)
+        completed = subprocess.run(command, cwd=sandbox_root, env=env)
         exit_code = completed.returncode
     except FileNotFoundError as exc:
         error = f"命令不存在: {exc}"

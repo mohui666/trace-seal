@@ -23,6 +23,16 @@
       "suggested_policy": "deny file_write \".env*\""
     },
     {
+      "rule_id": "sensitive_file_read",
+      "event_type": "file.read",
+      "pattern": ".env, SSH keys, PEM/key files, or credential/secret/token/password paths",
+      "matcher": "policy.rules.evaluate_file_read",
+      "risk_level": "high",
+      "action": "warn",
+      "reason": "reading sensitive files can expose credentials or secrets",
+      "suggested_policy": "require_approval file_read \"<sensitive-path>\""
+    },
+    {
       "rule_id": "git_push",
       "event_type": "shell",
       "pattern": "git push",

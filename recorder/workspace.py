@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import fnmatch
 import hashlib
+import io
 import os
 from datetime import datetime, timezone
 from pathlib import Path
@@ -35,7 +36,8 @@ def _is_excluded(path: Path, root: Path) -> bool:
 
 def sha256_file(path: Path) -> str:
     h = hashlib.sha256()
-    with path.open("rb") as fh:
+    # Recorder-internal hashing must not generate user-visible file.read noise.
+    with io.open(path, "rb") as fh:
         for chunk in iter(lambda: fh.read(1024 * 1024), b""):
             h.update(chunk)
     return h.hexdigest()

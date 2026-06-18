@@ -9,16 +9,20 @@ import urllib.request
 from pathlib import Path
 from typing import Any
 
-from policy.rules import command_to_string, evaluate_file_write, evaluate_http_request, evaluate_shell_command, is_git_push, is_rm_rf, rm_targets
+from policy.rules import command_to_string, evaluate_file_read, evaluate_file_write, evaluate_http_request, evaluate_shell_command, is_git_push, is_rm_rf, rm_targets
 from recorder.core import record_event, summarize_env
 from recorder.workspace import diff_trees, snapshot_tree
 
 _INSTALLED = False
 _SUPPRESS_FILE_EVENTS = 0
+_SUPPRESS_READ_EVENTS = 0
 
 _ORIG_OPEN = builtins.open
 _ORIG_SUBPROCESS_RUN = subprocess.run
 _ORIG_OS_SYSTEM = os.system
+_ORIG_PATH_OPEN = Path.open
+_ORIG_PATH_READ_TEXT = Path.read_text
+_ORIG_PATH_READ_BYTES = Path.read_bytes
 _ORIG_PATH_WRITE_TEXT = Path.write_text
 _ORIG_PATH_WRITE_BYTES = Path.write_bytes
 _ORIG_SHUTIL_RMTREE = shutil.rmtree
@@ -73,6 +77,16 @@ def _is_trace_internal(path: Any) -> bool:
             pass
         p.relative_to(run_dir)
         return True
+    except Exception:
+        return False
+
+
+def _is_read_noise(path: Any) -> bool:
+    if path is None or _is_trace_internal(path):
+        return True
+    try:
+        normalized = Path(path).resolve().as_posix().lower()
+        return normalized.endswith("/policy/default_policy.json")
     except Exception:
         return False
 
@@ -183,11 +197,194 @@ class _TracingFile:
         return getattr(self._wrapped, name)
 
 
+def _file_size(path: Any) -> int | None:
+    try:
+        return Path(path).stat().st_size
+    except (OSError, TypeError, ValueError):
+        return None
+
+
+def _read_size(value: Any, encoding: str | None = None) -> int:
+    if value is None:
+        return 0
+    if isinstance(value, (bytes, bytearray, memoryview)):
+        return len(value)
+    if isinstance(value, str):
+        return len(value.encode(encoding or "utf-8", errors="replace"))
+    if isinstance(value, (list, tuple)):
+        return sum(_read_size(item, encoding) for item in value)
+    return 0
+
+
+def _record_read_event(
+    path: Any,
+    mode: str,
+    source: str,
+    risk: dict[str, Any],
+    *,
+    status: str,
+    success: bool,
+    bytes_read: int = 0,
+    exception: str | None = None,
+) -> None:
+    if _SUPPRESS_READ_EVENTS or _is_read_noise(path):
+        return
+    output: dict[str, Any] = {
+        "status": status,
+        "success": success,
+        "bytes_read": bytes_read,
+        "file_size": _file_size(path),
+    }
+    if exception is not None:
+        output["exception"] = exception
+    record_event(
+        {
+            "type": "file.read",
+            "operation": "file.read",
+            "input": {"path": _rel_path(path), "mode": mode, "source": source},
+            "output": output,
+            "risk": risk,
+            "file_changes": [],
+        }
+    )
+
+
+class _TracingReadFile:
+    def __init__(self, wrapped: Any, path: Any, mode: str, source: str, risk: dict[str, Any]):
+        self._wrapped = wrapped
+        self._path = path
+        self._mode = mode
+        self._source = source
+        self._risk = risk
+        self._closed_recorded = False
+        self._bytes_read = 0
+        self._encoding = getattr(wrapped, "encoding", None)
+        self._exception: str | None = None
+
+    def _count(self, value: Any) -> Any:
+        self._bytes_read += _read_size(value, self._encoding)
+        return value
+
+    def _call_read(self, method: Any, *args: Any, **kwargs: Any) -> Any:
+        try:
+            return self._count(method(*args, **kwargs))
+        except Exception as exc:
+            self._exception = repr(exc)
+            raise
+
+    def read(self, *args: Any, **kwargs: Any) -> Any:
+        return self._call_read(self._wrapped.read, *args, **kwargs)
+
+    def readline(self, *args: Any, **kwargs: Any) -> Any:
+        return self._call_read(self._wrapped.readline, *args, **kwargs)
+
+    def readlines(self, *args: Any, **kwargs: Any) -> Any:
+        return self._call_read(self._wrapped.readlines, *args, **kwargs)
+
+    def readinto(self, buffer: Any) -> int:
+        try:
+            count = self._wrapped.readinto(buffer)
+        except Exception as exc:
+            self._exception = repr(exc)
+            raise
+        if count:
+            self._bytes_read += int(count)
+        return count
+
+    def close(self) -> Any:
+        try:
+            return self._wrapped.close()
+        finally:
+            self._record_close()
+
+    def _record_close(self) -> None:
+        if self._closed_recorded:
+            return
+        self._closed_recorded = True
+        _record_read_event(
+            self._path,
+            self._mode,
+            self._source,
+            self._risk,
+            status="exception" if self._exception else "ok",
+            success=self._exception is None,
+            bytes_read=self._bytes_read,
+            exception=self._exception,
+        )
+
+    def __enter__(self) -> "_TracingReadFile":
+        self._wrapped.__enter__()
+        return self
+
+    def __exit__(self, exc_type: Any, exc: Any, tb: Any) -> Any:
+        if exc is not None:
+            self._exception = repr(exc)
+        try:
+            return self._wrapped.__exit__(exc_type, exc, tb)
+        finally:
+            self._record_close()
+
+    def __iter__(self) -> "_TracingReadFile":
+        return self
+
+    def __next__(self) -> Any:
+        try:
+            return self._count(next(self._wrapped))
+        except StopIteration:
+            raise
+        except Exception as exc:
+            self._exception = repr(exc)
+            raise
+
+    def __del__(self) -> None:
+        try:
+            self._record_close()
+        except Exception:
+            pass
+
+    def __getattr__(self, name: str) -> Any:
+        return getattr(self._wrapped, name)
+
+
 def _is_write_mode(mode: Any) -> bool:
     return any(flag in str(mode or "r") for flag in ["w", "a", "x", "+"])
 
 
+def _is_read_mode(mode: Any) -> bool:
+    return "r" in str(mode or "r") and not _is_write_mode(mode)
+
+
+def _read_risk(path: Any, mode: str, source: str) -> dict[str, Any]:
+    risk = evaluate_file_read(_rel_path(path))
+    if risk.get("action") == "deny":
+        _record_read_event(
+            path,
+            mode,
+            source,
+            risk,
+            status="blocked",
+            success=False,
+            exception="TraceSeal policy denied file read",
+        )
+        raise PermissionError(f"TraceSeal policy denied file read: {_rel_path(path)}")
+    return risk
+
+
+def _open_read_file(opener: Any, file: Any, mode: str, source: str, *args: Any, **kwargs: Any) -> Any:
+    if _SUPPRESS_READ_EVENTS or _is_read_noise(file):
+        return opener(file, mode, *args, **kwargs)
+    risk = _read_risk(file, mode, source)
+    try:
+        wrapped = opener(file, mode, *args, **kwargs)
+    except Exception as exc:
+        _record_read_event(file, mode, source, risk, status="exception", success=False, exception=repr(exc))
+        raise
+    return _TracingReadFile(wrapped, file, mode, source, risk)
+
+
 def traced_open(file: Any, mode: str = "r", *args: Any, **kwargs: Any) -> Any:
+    if _is_read_mode(mode):
+        return _open_read_file(_ORIG_OPEN, file, mode, "builtins.open", *args, **kwargs)
     if not _is_write_mode(mode) or _is_trace_internal(file):
         return _ORIG_OPEN(file, mode, *args, **kwargs)
     rel = _rel_path(file)
@@ -207,6 +404,53 @@ def traced_open(file: Any, mode: str = "r", *args: Any, **kwargs: Any) -> Any:
     before = snapshot_tree(file, _workspace_root())
     wrapped = _ORIG_OPEN(file, mode, *args, **kwargs)
     return _TracingFile(wrapped, file, mode, before)
+
+
+def traced_path_open(self: Path, mode: str = "r", *args: Any, **kwargs: Any) -> Any:
+    if _is_read_mode(mode):
+        return _open_read_file(_ORIG_PATH_OPEN, self, mode, "Path.open", *args, **kwargs)
+    return _ORIG_PATH_OPEN(self, mode, *args, **kwargs)
+
+
+def traced_path_read_text(self: Path, *args: Any, **kwargs: Any) -> str:
+    global _SUPPRESS_READ_EVENTS
+    source = "Path.read_text"
+    mode = "r"
+    if _SUPPRESS_READ_EVENTS or _is_read_noise(self):
+        return _ORIG_PATH_READ_TEXT(self, *args, **kwargs)
+    risk = _read_risk(self, mode, source)
+    _SUPPRESS_READ_EVENTS += 1
+    try:
+        data = _ORIG_PATH_READ_TEXT(self, *args, **kwargs)
+    except Exception as exc:
+        _SUPPRESS_READ_EVENTS -= 1
+        _record_read_event(self, mode, source, risk, status="exception", success=False, exception=repr(exc))
+        raise
+    else:
+        _SUPPRESS_READ_EVENTS -= 1
+    encoding = kwargs.get("encoding") or (args[0] if args else None)
+    _record_read_event(self, mode, source, risk, status="ok", success=True, bytes_read=_read_size(data, encoding))
+    return data
+
+
+def traced_path_read_bytes(self: Path) -> bytes:
+    global _SUPPRESS_READ_EVENTS
+    source = "Path.read_bytes"
+    mode = "rb"
+    if _SUPPRESS_READ_EVENTS or _is_read_noise(self):
+        return _ORIG_PATH_READ_BYTES(self)
+    risk = _read_risk(self, mode, source)
+    _SUPPRESS_READ_EVENTS += 1
+    try:
+        data = _ORIG_PATH_READ_BYTES(self)
+    except Exception as exc:
+        _SUPPRESS_READ_EVENTS -= 1
+        _record_read_event(self, mode, source, risk, status="exception", success=False, exception=repr(exc))
+        raise
+    else:
+        _SUPPRESS_READ_EVENTS -= 1
+    _record_read_event(self, mode, source, risk, status="ok", success=True, bytes_read=len(data))
+    return data
 
 
 def traced_path_write_text(self: Path, data: str, *args: Any, **kwargs: Any) -> int:
@@ -689,6 +933,9 @@ def install() -> None:
     builtins.open = traced_open
     subprocess.run = traced_subprocess_run
     os.system = traced_os_system
+    Path.open = traced_path_open
+    Path.read_text = traced_path_read_text
+    Path.read_bytes = traced_path_read_bytes
     Path.write_text = traced_path_write_text
     Path.write_bytes = traced_path_write_bytes
     shutil.rmtree = traced_rmtree
@@ -702,7 +949,22 @@ def install() -> None:
             "type": "sdk",
             "operation": "install_hooks",
             "input": {"pid": os.getpid()},
-            "output": {"status": "ok", "hooks": ["open", "Path.write_text", "subprocess.run", "os.system", "urllib", "requests?", "shutil.rmtree", "os.remove"]},
+            "output": {
+                "status": "ok",
+                "hooks": [
+                    "open",
+                    "Path.open",
+                    "Path.read_text",
+                    "Path.read_bytes",
+                    "Path.write_text",
+                    "subprocess.run",
+                    "os.system",
+                    "urllib",
+                    "requests?",
+                    "shutil.rmtree",
+                    "os.remove",
+                ],
+            },
             "risk": {"level": "low", "reasons": [], "policy_rule": None, "action": "allow"},
             "file_changes": [],
             "env": summarize_env(),

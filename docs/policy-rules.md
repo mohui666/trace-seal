@@ -9,6 +9,7 @@
 |---|---|---|---|---|---|
 | `dangerous_delete` | `shell` | `rm -rf` / `rmdir /s /q` | critical | warn | `bad_agent_delete.py` |
 | `env_write` | `file.write` | 写入 `.env` / `.env.*` | high | warn | `bad_agent_env.py` |
+| `sensitive_file_read` | `file.read` | 读取 `.env`、SSH key、PEM/key 或 credential/secret/token/password 路径 | high | warn | `bad_agent_file_read.py` |
 | `git_push` | `shell` | `git push ...` | high | warn | `bad_agent_git.py` |
 | `suspicious_http_post` | `http` | HTTP `POST` 到外部 URL 或携带敏感字段 | high | warn | `bad_agent_http.py` |
 
@@ -95,7 +96,19 @@ deny file_write ".env*"
 
 演示话术：这个案例使用 `sk-demo-secret` 等演示占位符，不包含真实密钥；重点是证明 TraceSeal 能发现敏感配置文件写入。
 
-### 3.3 git_push
+### 3.3 sensitive_file_read
+
+| 字段 | 值 |
+|---|---|
+| 触发 | `.env` / `.env.*`、`id_rsa`、`id_ed25519`、`*.pem`、`*.key`、`.ssh` 及 credential/secret/token/password 类路径 |
+| 当前实现 | `policy.rules.evaluate_file_read()` |
+| 风险说明 | 读取敏感路径可能暴露凭据或密钥。 |
+| warn 模式 | 执行读取并记录元数据，不记录文件全文。 |
+| block 模式 | 在读取前阻断并记录 `status=blocked`。 |
+
+该能力是 Python-level instrumentation，覆盖 `builtins.open` 和常见 `Path` API，不是 OS-level EDR，不承诺捕获 C 扩展或外部进程的读取。
+
+### 3.4 git_push
 
 | 字段 | 值 |
 |---|---|
@@ -121,7 +134,7 @@ require_approval git "push"
 
 演示话术：前置的修改、测试、提交可能都是正常操作，但直接 `git push origin main` 跨越了本地工作区边界，需要至少 `require_approval`。
 
-### 3.4 suspicious_http_post
+### 3.5 suspicious_http_post
 
 | 字段 | 值 |
 |---|---|
@@ -160,6 +173,9 @@ python -m traceseal run python examples/bad_agent_git.py
 python -m traceseal explain runs/latest
 
 python -m traceseal run python examples/bad_agent_http.py
+python -m traceseal explain runs/latest
+
+python -m traceseal run -- python examples/bad_agent_file_read.py
 python -m traceseal explain runs/latest
 ```
 

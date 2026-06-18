@@ -29,6 +29,15 @@ DEFAULT_RULES = {
             "suggested_policy": 'deny file_write ".env*"',
         },
         {
+            "rule_id": "sensitive_file_read",
+            "event_type": "file.read",
+            "pattern": ".env, SSH keys, PEM/key files, or credential/secret/token/password paths",
+            "risk_level": "high",
+            "action": "warn",
+            "reason": "reading sensitive files can expose credentials or secrets",
+            "suggested_policy": 'require_approval file_read "<sensitive-path>"',
+        },
+        {
             "rule_id": "git_push",
             "event_type": "shell",
             "pattern": "git push",
@@ -162,6 +171,26 @@ def evaluate_file_write(path: str) -> dict[str, Any]:
     return risk("low", [], None, "allow")
 
 
+def evaluate_file_read(path: str) -> dict[str, Any]:
+    normalized = path.replace("\\", "/").lower()
+    parts = [part for part in normalized.split("/") if part]
+    name = parts[-1] if parts else normalized
+    sensitive_names = {"id_rsa", "id_ed25519", "credentials", "credential", "secret", "secrets", "token", "tokens", "password", "passwd"}
+    sensitive_word = re.search(r"(?:^|[._-])(credentials?|secrets?|tokens?|password|passwd)(?:[._-]|$)", name) is not None
+    sensitive = (
+        name == ".env"
+        or name.startswith(".env.")
+        or name in sensitive_names
+        or sensitive_word
+        or name.endswith((".pem", ".key"))
+        or ".ssh" in parts
+        or any(marker in parts for marker in {"credentials", "secrets", "tokens"})
+    )
+    if sensitive:
+        return risk("high", [f"sensitive file read: {path}"], "sensitive_file_read", "warn")
+    return risk("low", [], None, "allow")
+
+
 def evaluate_http_request(method: str, url: str) -> dict[str, Any]:
     method_upper = method.upper()
     normalized = url.lower()
@@ -183,6 +212,9 @@ def suggest_policy_for_event(event: dict[str, Any]) -> str:
         return f'deny shell "rm -rf {clean}/**"'
     if rule == "env_write":
         return 'deny file_write ".env*"'
+    if rule == "sensitive_file_read":
+        path = (event.get("input") or {}).get("path", "<sensitive-path>")
+        return f'require_approval file_read "{path}"'
     if rule == "git_push":
         return 'require_approval git "push"'
     if rule == "suspicious_http_post":

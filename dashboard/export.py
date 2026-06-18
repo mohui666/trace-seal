@@ -99,7 +99,7 @@ def _event_operation(event: dict[str, Any]) -> str:
     inp = event.get("input") or {}
     if typ == "shell":
         return str(inp.get("command", ""))
-    if typ in {"file.write", "file.delete"}:
+    if typ in {"file.read", "file.write", "file.delete"}:
         return str(inp.get("path", ""))
     if typ == "http":
         return f"{inp.get('method', 'GET')} {inp.get('url', '')}"

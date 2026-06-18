@@ -1,4 +1,8 @@
-# TraceSeal v0.2.0 Release Candidate
+# TraceSeal
+
+**Latest release: [v0.2.0](https://github.com/mohui666/trace-seal/releases/tag/v0.2.0)**
+
+Windows x64 installer is available on GitHub Releases.
 
 TraceSeal 是 AI Agent 的操作黑匣子 + 执行前安全防火墙 + 失败回放系统。
 
@@ -10,7 +14,7 @@ TraceSeal 是 AI Agent 的操作黑匣子 + 执行前安全防火墙 + 失败回
 traceseal run → events.jsonl / manifest.json → traceseal replay → traceseal explain
 ```
 
-阶段 2 的桌面原型架构是：
+已完成的阶段 2 桌面原型架构是：
 
 ```text
 Python Core（拦截 / 记录 / policy / replay / explain / sandbox）
@@ -307,7 +311,7 @@ resources/traceseal-core/traceseal-core.exe dashboard-data ...
 
 因此安装包在没有单独安装 Python 的 Windows 环境中，也能打开 Dashboard、读取 policy，并通过 bundled Core 读取 runs。安装版不再要求设置 `TRACESEAL_REPOSITORY_ROOT`，直接通过系统目录选择框选择工作区。
 
-当前安装包目标平台是 **Windows x64**，尚未提供 macOS/Linux 安装包。安装包尚未代码签名，Windows SmartScreen 可能显示未知发布者提示。当前已完成本机开发版、打包版和安装版验证，但尚未在独立的全新 Windows 虚拟机中完成验证。
+当前安装包目标平台是 **Windows x64**，尚未提供 macOS/Linux 安装包。安装包尚未代码签名，Windows SmartScreen 可能显示未知发布者提示。v0.2.0 已完成独立干净 Windows VM 验证并正式发布；验证结论为 `PASS WITH KNOWN ISSUES`。当前仍只支持 Python Agent，sandbox 仍是目录复制而非 Docker/overlayfs。
 
 ## MVP Policy
 
@@ -353,7 +357,7 @@ Python 核心案例测试覆盖：
 - `test_replay_latest`
 - `test_explain_latest`
 
-当前完整基线：Python 13 tests、Renderer 96 tests、Electron 33 tests。
+当前完整基线：Python 13 tests、Renderer 96 tests、Electron 45 tests。
 
 完整 Python 验证：
 

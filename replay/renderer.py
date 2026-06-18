@@ -30,7 +30,7 @@ def _event_title(event: dict[str, Any]) -> str:
         return f"文件读取 ({inp.get('source', 'unknown')}): {inp.get('path', '')}"
     if typ == "file.delete":
         return f"文件删除: {inp.get('path', '')}"
-    if typ == "http":
+    if typ in {"http", "network.http"}:
         return f"HTTP 请求: {inp.get('method', 'GET')} {inp.get('url', '')}"
     if typ == "sdk":
         return f"SDK: {event.get('operation', '')}"
@@ -72,6 +72,14 @@ def _translate_reason(reason: str) -> str:
         return reason.replace("suspicious outbound HTTP POST: ", "可疑的出站 HTTP POST: ", 1)
     if reason.startswith("outbound HTTP request: "):
         return reason.replace("outbound HTTP request: ", "出站 HTTP 请求: ", 1)
+    if reason.startswith("plaintext HTTP request: "):
+        return reason.replace("plaintext HTTP request: ", "明文 HTTP 请求: ", 1)
+    if reason == "sensitive query parameter redacted":
+        return "敏感查询参数已脱敏"
+    if reason == "sensitive request header or authentication metadata redacted":
+        return "敏感请求头或认证元数据已脱敏"
+    if reason == "URL user information redacted":
+        return "URL 用户信息已脱敏"
     return reason
 
 

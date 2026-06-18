@@ -37,7 +37,7 @@
 | Sandbox 为目录复制 | 不是 Docker/overlayfs，无真正资源隔离 | Core 增强 / Rust Guard |
 | 无独立 Git hook | Git 操作通过 subprocess 间接捕获 | Core 增强 |
 | 无 `os.system()` 拦截 | 仅拦截 `subprocess.run()` | Core 增强 |
-| 无 `httpx` 拦截 | HTTP 仅支持 `urllib` 和可选 `requests` | Core 增强 |
+| `httpx` 为 Python 层拦截 | 已覆盖函数式 API、`Client` 和 `AsyncClient`，非系统级防火墙 | Rust Guard |
 | Policy 为 JSON + Python matcher | 暂无用户可编辑 YAML DSL | Core 增强 |
 | Dashboard 仍是最小原型 | 已接入 Electron + Renderer + 真实 runs，交互和视觉还需打磨 | 阶段 2/3 |
 | 无防篡改日志 | 审计日志当前可被修改 | Rust Guard 阶段 |
@@ -106,7 +106,7 @@
 |---|---|
 | 文件读取记录 | 已完成：Python `open` / `Path` 常见读取 API，只记录元数据 |
 | `os.system()` 拦截 | 已完成 |
-| `httpx` 拦截 | 待做 |
+| `httpx` 拦截 | 已完成：同步/异步 API、元数据记录、敏感 header/query 脱敏 |
 | Git diff / HEAD / staged 记录 | 待做 |
 | HTTP cassette 脱敏记录 | 待做 |
 | `policy.yaml` DSL | 待做 |

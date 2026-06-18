@@ -101,7 +101,7 @@ def _event_operation(event: dict[str, Any]) -> str:
         return str(inp.get("command", ""))
     if typ in {"file.read", "file.write", "file.delete"}:
         return str(inp.get("path", ""))
-    if typ == "http":
+    if typ in {"http", "network.http"}:
         return f"{inp.get('method', 'GET')} {inp.get('url', '')}"
     return str(event.get("operation", ""))
 

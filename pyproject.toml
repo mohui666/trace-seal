@@ -9,6 +9,7 @@ description = "TraceSeal MVP: operation recorder, safety policy, replay and expl
 readme = "README.md"
 requires-python = ">=3.10"
 authors = [{ name = "TraceSeal" }]
+dependencies = ["httpx>=0.27,<1"]
 
 [project.scripts]
 traceseal = "traceseal.cli:main"

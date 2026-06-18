@@ -12,6 +12,8 @@
 | `sensitive_file_read` | `file.read` | 读取 `.env`、SSH key、PEM/key 或 credential/secret/token/password 路径 | high | warn | `bad_agent_file_read.py` |
 | `git_push` | `shell` | `git push ...` | high | warn | `bad_agent_git.py` |
 | `suspicious_http_post` | `http` | HTTP `POST` 到外部 URL 或携带敏感字段 | high | warn | `bad_agent_http.py` |
+| `sensitive_http_request` | `network.http` | `httpx` 请求含敏感 query/header/cookie/auth | high | warn | `bad_agent_httpx.py` |
+| `insecure_http_request` | `network.http` | 明文 `http://` 请求 | medium | warn | `bad_agent_httpx.py` |
 
 每条规则至少包含：
 
@@ -160,6 +162,19 @@ deny http "POST https://exfil.example.invalid/collect"
 
 演示话术：当前 demo 默认 `TRACESEAL_OFFLINE_HTTP=1`，因此不会真实访问危险 URL，但事件、风险和建议规则都会完整产生。
 
+### 3.6 sensitive_http_request
+
+| 字段 | 值 |
+|---|---|
+| 触发 | `httpx` URL 含 token/api_key/secret/password 等 query，或请求含 Authorization/Cookie/X-API-Key 等敏感认证元数据 |
+| 当前实现 | `sdk.httpx_hooks` + `policy.rules.evaluate_httpx_request()` |
+| warn 模式 | 请求正常执行，敏感值替换为 `<redacted>`，不记录请求/响应全文。 |
+| block 模式 | 请求前阻断 high-risk 请求并记录 `status=blocked`。 |
+
+### 3.7 insecure_http_request
+
+明文 `http://` 请求标记为 medium/warn；本地 HTTP demo 也保留该标记，敏感 query/header 规则优先级更高。该能力是 Python-level instrumentation，不是系统级网络防火墙或完整 DLP/WAF。
+
 ## 4. 规则验证命令
 
 ```powershell
@@ -176,6 +191,9 @@ python -m traceseal run python examples/bad_agent_http.py
 python -m traceseal explain runs/latest
 
 python -m traceseal run -- python examples/bad_agent_file_read.py
+python -m traceseal explain runs/latest
+
+python -m traceseal run -- python examples/bad_agent_httpx.py
 python -m traceseal explain runs/latest
 ```
 

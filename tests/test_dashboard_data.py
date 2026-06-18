@@ -111,6 +111,8 @@ class DashboardDataTest(unittest.TestCase):
         self.assertIn("sensitive_file_read", ids)
         self.assertIn("git_push", ids)
         self.assertIn("suspicious_http_post", ids)
+        self.assertIn("sensitive_http_request", ids)
+        self.assertIn("insecure_http_request", ids)
         self.assertTrue(all("suggested_policy" in rule for rule in rules))
 
 

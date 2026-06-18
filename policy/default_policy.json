@@ -51,6 +51,26 @@
       "action": "warn",
       "reason": "HTTP POST can exfiltrate sensitive data outside the workspace",
       "suggested_policy": "deny http \"POST https://*/**\""
+    },
+    {
+      "rule_id": "sensitive_http_request",
+      "event_type": "network.http",
+      "pattern": "httpx request with sensitive query parameters, headers, cookies, or auth",
+      "matcher": "policy.rules.evaluate_httpx_request",
+      "risk_level": "high",
+      "action": "warn",
+      "reason": "network request carries sensitive authentication metadata",
+      "suggested_policy": "require_approval httpx \"<method> <url>\""
+    },
+    {
+      "rule_id": "insecure_http_request",
+      "event_type": "network.http",
+      "pattern": "plaintext http:// request",
+      "matcher": "policy.rules.evaluate_httpx_request",
+      "risk_level": "medium",
+      "action": "warn",
+      "reason": "plaintext HTTP can expose request metadata in transit",
+      "suggested_policy": "require_approval httpx \"http://*/**\""
     }
   ]
 }

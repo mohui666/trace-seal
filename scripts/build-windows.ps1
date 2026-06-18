@@ -30,6 +30,12 @@ function Push-StepLocation {
 Write-Host "TraceSeal Windows build root: $RepoRoot" -ForegroundColor Green
 Set-Location $RepoRoot
 
+Invoke-Step "Install Python package dependencies" {
+    if (-not $SkipInstall) {
+        & $Python -m pip install -e .
+    }
+}	
+
 Invoke-Step "Python unittest" {
     & $Python -m unittest discover -s tests -v
 }

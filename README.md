@@ -128,6 +128,7 @@ runs/latest                 # 文本指针，内容是最新 run_id
 | `examples/bad_agent_http.py` | `suspicious_http_post` | 模拟向外部 URL POST 敏感数据；默认离线模拟，不真实访问危险 URL。 |
 | `examples/bad_agent_os_system.py` | `dangerous_delete` | 用 `os.system()` 尝试删除 sandbox 内含 Unicode/空格的 demo 目录；warn 执行，block/deny 阻断并保留文件。 |
 | `examples/bad_agent_file_read.py` | `sensitive_file_read` | 读取 sandbox 内合成的普通/敏感 demo 文件，只记录路径、API、模式和字节数，不记录文件全文。 |
+| `examples/bad_agent_httpx.py` | `sensitive_http_request` | 向本地临时 HTTP server 发起同步/异步 `httpx` 请求，验证元数据记录与敏感参数脱敏。 |
 
 分别运行：
 
@@ -155,6 +156,18 @@ python -m traceseal explain runs/latest
 TraceSeal v0.3.0 开始记录 Python 层的 `open(..., "r")`、`open(..., "rb")`、`Path.open()`、`Path.read_text()` 和 `Path.read_bytes()`。`file.read` 事件包含路径、读取模式、来源 API、成功/失败状态、读取字节数和文件大小；**默认不保存完整文件内容**。
 
 `.env`、SSH 私钥、`*.pem` / `*.key` 以及 credential/secret/token/password 类路径会命中 `sensitive_file_read` 并提高风险级别。这是 `sitecustomize` + monkey patch 实现的 **Python-level instrumentation**，不是系统或内核级 EDR；C 扩展、外部进程或未被 patch 覆盖的底层 I/O 可能不会被捕获。
+
+## Python httpx 请求记录（v0.3.0）
+
+TraceSeal v0.3.0 支持 `httpx.get/post/put/patch/delete/request`、`httpx.Client` 和 `httpx.AsyncClient` 的常见请求 API。`network.http` 事件记录 method、脱敏 URL、host、scheme、path、来源 API、status code、成功/失败和耗时；**不记录完整请求体或响应体**。
+
+`Authorization`、`Cookie`、`X-API-Key` 等敏感 header 值，以及 token、api_key、secret、password、signature、session 等 query 参数会替换为 `<redacted>`。这是 Python-level instrumentation，不是系统级网络防火墙；该 hook 不保证捕获 `requests`、`urllib`、`aiohttp`、`curl`、浏览器或外部进程的流量（TraceSeal 对部分 `requests` / `urllib` API 另有独立的 MVP hook）。
+
+```powershell
+python -m traceseal run -- python examples/bad_agent_httpx.py
+python -m traceseal dashboard-data runs/latest
+python -m traceseal explain runs/latest
+```
 
 ## 查看 replay
 
@@ -341,6 +354,8 @@ resources/traceseal-core/traceseal-core.exe dashboard-data ...
 - `env_write`: 标记写入 `.env` / `.env.*`
 - `git_push`: 标记 `git push`
 - `suspicious_http_post`: 标记可疑 HTTP POST
+- `sensitive_http_request`: 标记并脱敏带敏感 query/header/auth/cookie 的 `httpx` 请求
+- `insecure_http_request`: 标记明文 `http://` 请求
 
 如需把高危操作改为阻断，可设置：
 
@@ -379,8 +394,9 @@ Python 核心案例测试覆盖：
 - `test_os_system_dashboard_and_first_harmful_event`
 - `test_os_system_replay_and_explain`
 - `FileReadTrackingTest` 的 5 个文件读取/敏感风险/Dashboard/replay/explain 测试
+- `HttpxInterceptionTest` 的 5 个同步/异步 API、脱敏、失败、Dashboard/replay/explain 测试
 
-当前完整基线：Python 22 tests、Renderer 96 tests、Electron 45 tests。
+当前完整基线：Python 27 tests、Renderer 96 tests、Electron 45 tests。
 
 完整 Python 验证：
 
@@ -431,7 +447,8 @@ powershell -ExecutionPolicy Bypass -File scripts\build-windows.ps1
 - sandbox 是 workspace 复制，不是 Docker/overlayfs。
 - Git 操作当前主要通过 shell 命令风险识别，完整 Git diff / HEAD / staged 状态记录仍待扩展。
 - 文件读取是 Python 层 monkey patch，不保证捕获 C 扩展、外部进程或所有底层读取。
-- `httpx`、完整 HTTP cassette、policy 编辑器和 attestation 仍属于后续增强。
+- `httpx` 记录为 Python 层 monkey patch，不是系统级防火墙，不捕获外部进程或所有 HTTP 客户端。
+- 完整 HTTP cassette、policy 编辑器和 attestation 仍属于后续增强。
 
 ## 后续方向
 

@@ -123,6 +123,12 @@ def rm_targets(command: str, tokens: list[str] | None = None) -> list[str]:
     low0 = t[0].strip("\"'").lower()
     if low0 in {"rm", "/bin/rm", "busybox"}:
         return [x for x in t[1:] if not str(x).startswith("-")]
+    if low0 in {"rmdir", "rd"}:
+        return [
+            str(x).strip("\"'")
+            for x in t[1:]
+            if str(x).strip("\"'").lower() not in {"/s", "/q"}
+        ]
     m = re.search(r"rm\s+-[rfRF]+\s+(.+)$", command)
     if m:
         rest = m.group(1).strip()

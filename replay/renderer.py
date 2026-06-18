@@ -22,7 +22,8 @@ def _event_title(event: dict[str, Any]) -> str:
     typ = event.get("type")
     inp = event.get("input") or {}
     if typ == "shell":
-        return f"Shell 命令: {inp.get('command', '')}"
+        source = f" ({event.get('operation')})" if event.get("operation") == "os.system" else ""
+        return f"Shell 命令{source}: {inp.get('command', '')}"
     if typ == "file.write":
         return f"文件写入: {inp.get('path', '')}"
     if typ == "file.delete":

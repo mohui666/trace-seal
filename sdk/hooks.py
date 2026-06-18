@@ -18,6 +18,7 @@ _SUPPRESS_FILE_EVENTS = 0
 
 _ORIG_OPEN = builtins.open
 _ORIG_SUBPROCESS_RUN = subprocess.run
+_ORIG_OS_SYSTEM = os.system
 _ORIG_PATH_WRITE_TEXT = Path.write_text
 _ORIG_PATH_WRITE_BYTES = Path.write_bytes
 _ORIG_SHUTIL_RMTREE = shutil.rmtree
@@ -416,6 +417,93 @@ def traced_subprocess_run(*popenargs: Any, **kwargs: Any) -> subprocess.Complete
         raise
 
 
+def _os_system_exit_code(status: int) -> int:
+    """Return the shell exit code while preserving os.system's raw result."""
+
+    if os.name == "nt":
+        return status
+    try:
+        return os.waitstatus_to_exitcode(status)
+    except (AttributeError, ValueError):  # pragma: no cover - legacy/platform fallback
+        return status
+
+
+def _os_system_blocked_status() -> int:
+    # os.system returns a wait status on POSIX and the shell return code on
+    # Windows. Use the conventional "command cannot execute" exit code.
+    return 126 if os.name == "nt" else 126 << 8
+
+
+def traced_os_system(command: str) -> int:
+    """Trace and apply shell policy to an os.system command."""
+
+    command_text = str(command)
+    tokens = None  # Let the shared policy tokenize raw shell syntax itself.
+    risk = evaluate_shell_command(command_text, tokens)
+    start = time.time()
+
+    targets = rm_targets(command_text, tokens) if is_rm_rf(command_text, tokens) else []
+    before: dict[str, dict[str, Any]] = {}
+    for target in targets:
+        before.update(snapshot_tree(target, _workspace_root()))
+
+    if risk.get("action") == "deny":
+        status = _os_system_blocked_status()
+        record_event(
+            {
+                "type": "shell",
+                "operation": "os.system",
+                "duration_ms": int((time.time() - start) * 1000),
+                "input": {"command": command_text, "args": None, "targets": targets, "shell": True},
+                "output": {
+                    "status": "blocked",
+                    "returncode": status,
+                    "exit_code": _os_system_exit_code(status),
+                    "stderr": "TraceSeal policy denied os.system command",
+                },
+                "risk": risk,
+                "file_changes": [],
+            }
+        )
+        return status
+
+    try:
+        status = _ORIG_OS_SYSTEM(command_text)
+        after: dict[str, dict[str, Any]] = {}
+        for target in targets:
+            after.update(snapshot_tree(target, _workspace_root()))
+        exit_code = _os_system_exit_code(status)
+        record_event(
+            {
+                "type": "shell",
+                "operation": "os.system",
+                "duration_ms": int((time.time() - start) * 1000),
+                "input": {"command": command_text, "args": None, "targets": targets, "shell": True},
+                "output": {
+                    "status": "ok" if exit_code == 0 else "failed",
+                    "returncode": status,
+                    "exit_code": exit_code,
+                },
+                "risk": risk,
+                "file_changes": diff_trees(before, after),
+            }
+        )
+        return status
+    except Exception as exc:
+        record_event(
+            {
+                "type": "shell",
+                "operation": "os.system",
+                "duration_ms": int((time.time() - start) * 1000),
+                "input": {"command": command_text, "args": None, "targets": targets, "shell": True},
+                "output": {"status": "exception", "exception": repr(exc)},
+                "risk": risk,
+                "file_changes": [],
+            }
+        )
+        raise
+
+
 def traced_rmtree(path: Any, *args: Any, **kwargs: Any) -> Any:
     before = snapshot_tree(path, _workspace_root())
     try:
@@ -600,6 +688,7 @@ def install() -> None:
     _INSTALLED = True
     builtins.open = traced_open
     subprocess.run = traced_subprocess_run
+    os.system = traced_os_system
     Path.write_text = traced_path_write_text
     Path.write_bytes = traced_path_write_bytes
     shutil.rmtree = traced_rmtree
@@ -613,7 +702,7 @@ def install() -> None:
             "type": "sdk",
             "operation": "install_hooks",
             "input": {"pid": os.getpid()},
-            "output": {"status": "ok", "hooks": ["open", "Path.write_text", "subprocess.run", "urllib", "requests?", "shutil.rmtree", "os.remove"]},
+            "output": {"status": "ok", "hooks": ["open", "Path.write_text", "subprocess.run", "os.system", "urllib", "requests?", "shutil.rmtree", "os.remove"]},
             "risk": {"level": "low", "reasons": [], "policy_rule": None, "action": "allow"},
             "file_changes": [],
             "env": summarize_env(),

@@ -1,0 +1,108 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+
+jobs:
+  test-python:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Run Python tests
+        shell: pwsh
+        run: |
+          python -m pip install -e .
+          python -m unittest discover -s tests -v
+
+  test-renderer:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Run Renderer tests
+        shell: pwsh
+        run: |
+          cd desktop/renderer
+          npm install
+          npm run typecheck
+          npm test
+          npm run build
+
+  test-electron:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Run Electron tests
+        shell: pwsh
+        run: |
+          cd desktop/electron
+          npm install
+          npm run typecheck
+          npm test
+
+  build-and-verify:
+    needs: [test-python, test-renderer, test-electron]
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Build Windows package
+        shell: pwsh
+        run: .\scripts\build-windows.ps1
+
+      - name: Verify release artifacts
+        shell: pwsh
+        run: |
+          $result = .\scripts\verify-release.ps1 -Mode Artifacts
+          if ($LASTEXITCODE -ne 0) {
+            Write-Error "Artifact verification FAILED"
+            exit 1
+          }
+
+      - name: Upload TraceSeal-Setup.exe
+        uses: actions/upload-artifact@v4
+        with:
+          name: TraceSeal-Setup
+          path: desktop/electron/out/make/squirrel.windows/x64/TraceSeal-Setup.exe
+
+      - name: Upload SHA256SUMS.txt
+        uses: actions/upload-artifact@v4
+        with:
+          name: SHA256SUMS
+          path: desktop/electron/out/make/squirrel.windows/x64/SHA256SUMS.txt
+
+  # -----------------------------------------------------------------------
+  # create-release step is DISABLED until clean Windows validation completes.
+  # Uncomment and adjust when the project is ready for a formal GitHub Release.
+  # -----------------------------------------------------------------------
+  # create-release:
+  #   needs: [build-and-verify]
+  #   if: startsWith(github.ref, 'refs/tags/v')
+  #   runs-on: windows-latest
+  #   steps:
+  #     - uses: actions/checkout@v4
+  #     - name: Create GitHub Release
+  #       uses: softprops/action-gh-release@v2
+  #       with:
+  #         files: |
+  #           desktop/electron/out/make/squirrel.windows/x64/TraceSeal-Setup.exe
+  #           desktop/electron/out/make/squirrel.windows/x64/SHA256SUMS.txt

@@ -179,7 +179,7 @@ python -m traceseal explain runs/latest
 
 TraceSeal 会在 Agent 运行前后记录 Git branch、HEAD、`git status --short`、staged、unstaged 和 untracked 文件，分别写入 `git_state_before.json` 与 `git_state_after.json`。`manifest.json` 同时保存 before/after 简要信息和计数摘要，`dashboard-data run <run_id>` 通过新增的 `git_state` 字段导出完整元数据。
 
-采集器只执行本地只读 Git 命令，不 fetch、pull、push、remote、clone 或 commit，不访问远端，也不保存完整源码 diff。正常仓库的 `.git` 目录会复制到 sandbox，Agent 的 `git add` 等操作只修改该副本；若源 workspace 使用 `.git` 指针文件（linked worktree），TraceSeal 会丢弃该指针以避免触及原仓库。Git 未安装、非 Git 目录或命令失败时，错误会写入 `error` metadata，不会让 `traceseal run` 崩溃。
+采集器只执行本地只读 Git 命令，不 fetch、pull、push、remote、clone 或 commit，不访问远端，也不保存完整源码 diff。正常仓库的 `.git` 目录会复制到 sandbox，Agent 的 `git add` 等操作只修改该副本；副本会移除 remote/include 配置与 hooks，并禁用 Agent 进程的 Git transport。若源 workspace 使用 `.git` 指针文件（linked worktree），TraceSeal 会丢弃该指针以避免触及原仓库。Git 未安装、非 Git 目录或命令失败时，错误会写入 `error` metadata，不会让 `traceseal run` 崩溃。
 
 ```powershell
 python -m traceseal run -- python examples/bad_agent_git_state.py

@@ -74,6 +74,11 @@ def build_child_env(project_root: Path, sandbox_root: Path, run_dir: Path, run_i
     # Prevent tools such as git from walking out of runs/<id>/workspace and
     # discovering the real repository .git directory above runs/.
     env["GIT_CEILING_DIRECTORIES"] = str(run_dir)
+    # Git state operations such as add/status need the copied repository, but
+    # transports are disabled for the Agent process so alternate invocation
+    # paths cannot contact a configured remote.
+    env["GIT_ALLOW_PROTOCOL"] = ""
+    env["GIT_PROTOCOL_FROM_USER"] = "0"
     env.setdefault("PYTHONIOENCODING", "utf-8")
     env.setdefault("PYTHONDONTWRITEBYTECODE", "1")
     return env

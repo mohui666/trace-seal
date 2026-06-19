@@ -129,6 +129,10 @@ class GitStateTest(unittest.TestCase):
         )
         self._git("add", "agent.py")
         self._git("commit", "-m", "add agent")
+        self._git("remote", "add", "origin", "https://embedded-token@example.invalid/repo.git")
+        hooks = self.root / ".git" / "hooks"
+        hooks.mkdir(exist_ok=True)
+        (hooks / "pre-commit").write_text("should not enter sandbox\n", encoding="utf-8")
 
         completed = self._run_traceseal([sys.executable, "agent.py"])
         self.assertEqual(completed.returncode, 0, completed.stdout + completed.stderr)
@@ -145,6 +149,9 @@ class GitStateTest(unittest.TestCase):
         self.assertEqual((self.root / "tracked.txt").read_text(encoding="utf-8"), "baseline\n")
         self.assertFalse((self.root / "staged.txt").exists())
         self.assertFalse((self.root / "untracked.txt").exists())
+        sandbox_git = self.root / "runs" / run_id / "workspace" / ".git"
+        self.assertNotIn("embedded-token", (sandbox_git / "config").read_text(encoding="utf-8"))
+        self.assertFalse((sandbox_git / "hooks").exists())
 
 
 if __name__ == "__main__":

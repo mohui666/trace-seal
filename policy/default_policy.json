@@ -39,8 +39,68 @@
       "matcher": "policy.rules.is_git_push",
       "risk_level": "high",
       "action": "warn",
-      "reason": "git push publishes code or history outside the local workspace",
+      "reason": "git push publishes local code or history to a remote repository",
       "suggested_policy": "require_approval git \"push\""
+    },
+    {
+      "rule_id": "git_force_push",
+      "event_type": "shell",
+      "pattern": "git push --force or git push -f",
+      "matcher": "policy.rules.classify_git_push",
+      "risk_level": "critical",
+      "action": "warn",
+      "reason": "force push can rewrite remote history and disrupt collaborators",
+      "suggested_policy": "deny git \"push --force\""
+    },
+    {
+      "rule_id": "git_force_with_lease",
+      "event_type": "shell",
+      "pattern": "git push --force-with-lease",
+      "matcher": "policy.rules.classify_git_push",
+      "risk_level": "high",
+      "action": "warn",
+      "reason": "force-with-lease can still rewrite remote history",
+      "suggested_policy": "require_approval git \"push --force-with-lease\""
+    },
+    {
+      "rule_id": "git_mirror_push",
+      "event_type": "shell",
+      "pattern": "git push --mirror",
+      "matcher": "policy.rules.classify_git_push",
+      "risk_level": "critical",
+      "action": "warn",
+      "reason": "mirror push can overwrite remote refs",
+      "suggested_policy": "deny git \"push --mirror\""
+    },
+    {
+      "rule_id": "git_delete_remote_branch",
+      "event_type": "shell",
+      "pattern": "git push --delete or a colon-prefixed delete refspec",
+      "matcher": "policy.rules.classify_git_push",
+      "risk_level": "critical",
+      "action": "warn",
+      "reason": "deleting a remote branch can remove shared work",
+      "suggested_policy": "require_approval git \"push --delete\""
+    },
+    {
+      "rule_id": "git_force_refspec_push",
+      "event_type": "shell",
+      "pattern": "git push with a plus-prefixed refspec",
+      "matcher": "policy.rules.classify_git_push",
+      "risk_level": "critical",
+      "action": "warn",
+      "reason": "plus-prefixed refspec can force-update remote refs",
+      "suggested_policy": "deny git \"push +<refspec>\""
+    },
+    {
+      "rule_id": "git_bulk_push",
+      "event_type": "shell",
+      "pattern": "git push --all or git push --tags",
+      "matcher": "policy.rules.classify_git_push",
+      "risk_level": "high",
+      "action": "warn",
+      "reason": "pushing all branches or tags can publish more refs than intended",
+      "suggested_policy": "require_approval git \"push --all/--tags\""
     },
     {
       "rule_id": "suspicious_http_post",

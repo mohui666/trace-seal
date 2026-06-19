@@ -11,6 +11,12 @@
 | `env_write` | `file.write` | 写入 `.env` / `.env.*` | high | warn | `bad_agent_env.py` |
 | `sensitive_file_read` | `file.read` | 读取 `.env`、SSH key、PEM/key 或 credential/secret/token/password 路径 | high | warn | `bad_agent_file_read.py` |
 | `git_push` | `shell` | `git push ...` | high | warn | `bad_agent_git.py` |
+| `git_force_push` | `shell` | `git push --force` / `-f` | critical | warn | `bad_agent_git_push_classification.py` |
+| `git_force_with_lease` | `shell` | `git push --force-with-lease` | high | warn | `bad_agent_git_push_classification.py` |
+| `git_mirror_push` | `shell` | `git push --mirror` | critical | warn | `bad_agent_git_push_classification.py` |
+| `git_delete_remote_branch` | `shell` | `--delete` / `:branch` refspec | critical | warn | `bad_agent_git_push_classification.py` |
+| `git_force_refspec_push` | `shell` | `+ref` / `+src:dst` | critical | warn | `bad_agent_git_push_classification.py` |
+| `git_bulk_push` | `shell` | `git push --all` / `--tags` | high | warn | `bad_agent_git_push_classification.py` |
 | `suspicious_http_post` | `http` | HTTP `POST` 到外部 URL 或携带敏感字段 | high | warn | `bad_agent_http.py` |
 | `sensitive_http_request` | `network.http` | `httpx` 请求含敏感 query/header/cookie/auth | high | warn | `bad_agent_httpx.py` |
 | `insecure_http_request` | `network.http` | 明文 `http://` 请求 | medium | warn | `bad_agent_httpx.py` |
@@ -115,7 +121,7 @@ deny file_write ".env*"
 | 字段 | 值 |
 |---|---|
 | 触发 | `git push ...` |
-| 当前实现 | `policy.rules.is_git_push()` |
+| 当前实现 | `policy.rules.classify_git_push()` + `is_git_push()`；subprocess 与 os.system 均离线模拟 |
 | 风险说明 | `git push` 会把本地状态发布到远端；即使不是 `--force`，也应要求人工确认。 |
 | warn 模式 | SDK 离线模拟，不执行真实 push，不接触远端。 |
 | block 模式 | 模拟阻断并记录 `status=blocked`。 |
@@ -135,6 +141,20 @@ require_approval git "push"
 ```
 
 演示话术：前置的修改、测试、提交可能都是正常操作，但直接 `git push origin main` 跨越了本地工作区边界，需要至少 `require_approval`。
+
+分类 metadata：
+
+```json
+{
+  "kind": "push",
+  "push_type": "force_refspec",
+  "remote": "origin",
+  "refs": ["+main:main"],
+  "protected_branch": true
+}
+```
+
+`push_type` 支持 `normal`、`force`、`force_with_lease`、`mirror`、`delete_remote_branch`、`force_refspec`、`all`、`tags`。默认仍为 warn，以保持旧 demo 兼容；`TRACESEAL_POLICY_MODE=block/deny/enforce` 时沿用现有 high/critical enforcement 语义。无论 warn 或 block，检测到的 Git push 都不会调用真实 Git 远端。
 
 ### 3.5 suspicious_http_post
 
@@ -230,4 +250,4 @@ rules:
 
 字段：`version/mode/rules`；rule 支持 `id/description/match/risk_level/action/reason/suggested_policy`。match 字段支持 `event_type/path/command/method/host/url/risk_level/sensitive`，操作符支持 exact 标量简写、`exact/contains/contains_any/glob/any_of/regex`。无效 regex 在加载期报错并安全 fallback。
 
-action 支持 `allow/warn/deny/require_approval`。第一版 `require_approval` 只记录 metadata；`deny` 仅在现有 Shell/HTTP enforcement 路径生效，不引入审批 UI。后续增强为 force push 细分、域名白名单/黑名单和级联错误案例。
+action 支持 `allow/warn/deny/require_approval`。第一版 `require_approval` 只记录 metadata；`deny` 仅在现有 Shell/HTTP enforcement 路径生效，不引入审批 UI。后续增强为域名白名单/黑名单和级联错误案例。

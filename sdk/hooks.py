@@ -9,7 +9,7 @@ import urllib.request
 from pathlib import Path
 from typing import Any
 
-from policy.rules import command_to_string, evaluate_file_read, evaluate_file_write, evaluate_http_request, evaluate_shell_command, is_git_push, is_rm_rf, rm_targets
+from policy.rules import classify_git_push, command_to_string, evaluate_file_read, evaluate_file_write, evaluate_http_request, evaluate_shell_command, is_git_push, is_rm_rf, rm_targets
 from recorder.core import record_event, summarize_env
 from recorder.workspace import diff_trees, snapshot_tree
 from sdk.httpx_hooks import install as install_httpx_hooks
@@ -567,6 +567,7 @@ def _simulate_git_push(args: Any, command: str, tokens: list[str] | None, shell:
     """Record git push without contacting any remote."""
 
     risk = evaluate_shell_command(command, tokens)
+    git_operation = classify_git_push(command, tokens)
     blocked = risk.get("action") == "deny"
     returncode = 126 if blocked else 0
     stderr = "TraceSeal policy denied git push" if blocked else None
@@ -576,7 +577,7 @@ def _simulate_git_push(args: Any, command: str, tokens: list[str] | None, shell:
             "type": "shell",
             "operation": "subprocess.run",
             "duration_ms": int((time.time() - start) * 1000),
-            "input": {"command": command, "args": tokens, "shell": shell, "simulated": True},
+            "input": {"command": command, "args": tokens, "shell": shell, "simulated": True, "git_operation": git_operation},
             "output": {
                 "status": "blocked" if blocked else "simulated",
                 "returncode": returncode,
@@ -689,6 +690,34 @@ def traced_os_system(command: str) -> int:
     tokens = None  # Let the shared policy tokenize raw shell syntax itself.
     risk = evaluate_shell_command(command_text, tokens)
     start = time.time()
+
+    if is_git_push(command_text, tokens):
+        blocked = risk.get("action") == "deny"
+        status = _os_system_blocked_status() if blocked else 0
+        record_event(
+            {
+                "type": "shell",
+                "operation": "os.system",
+                "duration_ms": int((time.time() - start) * 1000),
+                "input": {
+                    "command": command_text,
+                    "args": None,
+                    "shell": True,
+                    "simulated": True,
+                    "git_operation": classify_git_push(command_text, tokens),
+                },
+                "output": {
+                    "status": "blocked" if blocked else "simulated",
+                    "returncode": status,
+                    "exit_code": _os_system_exit_code(status),
+                    "stderr": "TraceSeal policy denied git push" if blocked else None,
+                    "simulation": "git push is not executed in TraceSeal",
+                },
+                "risk": risk,
+                "file_changes": [],
+            }
+        )
+        return status
 
     targets = rm_targets(command_text, tokens) if is_rm_rf(command_text, tokens) else []
     before: dict[str, dict[str, Any]] = {}

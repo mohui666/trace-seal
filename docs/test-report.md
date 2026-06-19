@@ -131,3 +131,12 @@ OK
 - dashboard-data policy/run 与 explain 已暴露 `policy_source`、`rule_id`、`action`、`reason`、`suggested_policy`。
 - `examples/bad_agent_policy_yaml.py` 仅使用 sandbox、本地 MockTransport 和合成 demo secret；危险删除被 YAML deny 稳定阻断，HTTP query/header 仍脱敏。
 - 新增 13 个 YAML policy 专项测试；Python 全量测试共 56 个，全部通过。
+
+## 10. 2026-06-19 Git push 风险细分验收
+
+- 新增 `classify_git_push()`，区分 normal、force、force-with-lease、mirror、delete remote branch、force refspec、`--all` 和 `--tags`。
+- 默认 JSON policy 与示例 YAML policy 新增精确 rule_id、risk、reason 和 suggested policy；普通 `git_push` 保持 high/warn 兼容。
+- Shell 事件增加 `git_operation.push_type/remote/refs/protected_branch`，dashboard-data、replay 和 explain 可见。
+- `subprocess.run()` 与 `os.system()` 的 Git push 均离线模拟，不调用真实 Git 或远端网络。
+- 新增 `examples/bad_agent_git_push_classification.py` 和 6 个测试方法（含 16 组分类 subtests）。
+- Python 全量测试共 62 个，全部通过。

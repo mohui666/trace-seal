@@ -64,6 +64,8 @@ def _translate_reason(reason: str) -> str:
         return "git push 会发布仓库状态"
     if reason == "remote git push requested":
         return "请求远程 git push"
+    if reason == "git push publishes local code or history to a remote repository":
+        return "请求远程 git push；该操作会向远端发布本地代码或历史"
     if reason.startswith("suspicious outbound HTTP POST: "):
         return reason.replace("suspicious outbound HTTP POST: ", "可疑的出站 HTTP POST: ", 1)
     if reason.startswith("outbound HTTP request: "):
@@ -123,6 +125,14 @@ def explain_run(run_dir: str | Path) -> str:
     lines: list[str] = []
     lines.append("首次有害工具调用:")
     lines.append(f"[{event.get('id')}] {_event_headline(event)}")
+    git_operation = (event.get("input") or {}).get("git_operation") or (event.get("risk") or {}).get("git_operation")
+    if isinstance(git_operation, dict):
+        lines.append("")
+        lines.append("Git push 分类:")
+        lines.append(f"- push_type: {git_operation.get('push_type')}")
+        lines.append(f"- remote: {git_operation.get('remote')}")
+        lines.append(f"- refs: {git_operation.get('refs') or []}")
+        lines.append(f"- protected_branch: {git_operation.get('protected_branch')}")
     lines.append("")
     lines.append("原因:")
     for reason in _reasons(event, manifest):

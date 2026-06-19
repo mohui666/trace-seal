@@ -23,9 +23,9 @@
 
 ### 当前指标
 
-- 规则数：4 条
-- Demo 数：4 个
-- 自动测试：Python 13 个、Renderer 96 个、Electron 45 个
+- 规则数：7 条
+- Demo 数：8 个
+- 自动测试：Python 35 个、Renderer 96 个、Electron 45 个
 - Dashboard 数据接口：1 个 JSON export
 - 默认安全模式：warn；可通过 `TRACESEAL_POLICY_MODE=block` 切换阻断
 
@@ -107,7 +107,7 @@
 | 文件读取记录 | 已完成：Python `open` / `Path` 常见读取 API，只记录元数据 |
 | `os.system()` 拦截 | 已完成 |
 | `httpx` 拦截 | 已完成：同步/异步 API、元数据记录、敏感 header/query 脱敏 |
-| Git diff / HEAD / staged 记录 | 待做 |
+| Git diff / HEAD / staged 记录 | 已完成：run 前后记录 branch、HEAD、status、staged、unstaged、untracked 元数据，并导出 dashboard-data 摘要 |
 | HTTP cassette 脱敏记录 | 待做 |
 | `policy.yaml` DSL | 待做 |
 | force push 与普通 push 细分 | 待做 |

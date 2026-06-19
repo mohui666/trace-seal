@@ -1,7 +1,7 @@
 # TraceSeal 项目规格说明书
 
-> 最后更新：2026-06-17  
-> 当前版本：MVP v1 + Desktop Dashboard 数据层
+> 最后更新：2026-06-19
+> 当前版本：v0.3.0 Core 增强进行中 + Desktop Dashboard 数据层
 
 ## 1. TraceSeal 解决的问题
 
@@ -14,6 +14,7 @@ AI Agent 自动读写文件、执行 Shell、发 HTTP 请求、操作 Git 时，
 | 能否回放事故？ | `traceseal replay` 做 transcript replay，重建事件时间线。 |
 | 下次如何提前阻断？ | `policy/default_policy.json` + warn/block 模式。 |
 | 桌面端如何展示？ | `traceseal dashboard-data` 导出 JSON，供 Electron 读取。 |
+| Agent 改动了哪些 Git 文件？ | run 前后记录 branch、HEAD、staged、unstaged、untracked 元数据。 |
 
 一句话：TraceSeal 是 AI Agent 的操作黑匣子 + 执行前安全防火墙 + 失败回放系统。
 
@@ -92,6 +93,7 @@ Agent 将敏感 payload POST 到外部 URL。demo 使用 `TRACESEAL_OFFLINE_HTTP
 | sdk | HTTP 拦截 | `urllib.request.urlopen`、可选 `requests.Session.request`；demo 支持离线模拟 |
 | recorder | 事件记录 | `events.jsonl`，包含 cwd、env 摘要、输入/输出、风险、文件变更 |
 | recorder | Run 产物 | `manifest.json`、`workspace_before.json`、`workspace_after.json` |
+| recorder | Git 状态 | `git_state_before.json`、`git_state_after.json`，只保存路径、状态、branch、HEAD 等元数据 |
 | sandbox | 最小隔离 | 复制 workspace 到 `runs/<run_id>/workspace` |
 | replay | transcript replay | 重建时间线，不重新执行副作用 |
 | minimizer | explain | 定位首次高风险/有害事件，输出原因和建议规则 |
@@ -108,15 +110,14 @@ Agent 将敏感 payload POST 到外部 URL。demo 使用 `TRACESEAL_OFFLINE_HTTP
 | `examples/bad_agent_env.py` | `env_write` | 写入 `.env`，模拟敏感配置污染。 |
 | `examples/bad_agent_git.py` | `git_push` | 模拟 `git push origin main`，不会真实推送。 |
 | `examples/bad_agent_http.py` | `suspicious_http_post` | 离线模拟向外部 URL POST 敏感数据。 |
+| `examples/bad_agent_git_state.py` | Git 状态审计 | 制造 unstaged、staged、untracked 三类状态，不 commit、不访问远端。 |
 
 ## 7. 第一版仍不做什么
 
 | 不做 | 原因 |
 |---|---|
 | 非 Python Agent 支持 | 先聚焦 Python 生态。 |
-| `os.system()` 完整拦截 | 当前重点是 `subprocess.run()`，后续补。 |
-| `httpx` 拦截 | 当前已有 urllib/requests，后续补。 |
-| 完整 Git diff/HEAD/staged 记录 | 当前只做 git push 风险识别。 |
+| 完整源码 Git diff 内容 | 默认只保存文件路径与状态，避免复制源码内容。 |
 | 真正确定性副作用重放 | 当前是 transcript replay。 |
 | Docker/overlayfs sandbox | 当前 workspace 复制足够演示。 |
 | `policy.yaml` DSL | 当前使用 JSON + Python matcher，后续升级。 |

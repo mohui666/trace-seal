@@ -104,3 +104,11 @@ OK
 - `bad_agent_git.py` 中的 `git push origin main` 由 TraceSeal SDK 离线模拟，不会真实推送远端。
 - 当前继续保持 Python Core 路线；Rust Guard 是远期阶段。
 - Electron + React + TypeScript + TailwindCSS 只作为后续 Dashboard 展示层。
+
+## 7. 2026-06-19 Git 状态记录验收
+
+- 新增 `recorder/git_state.py`，覆盖非 Git 目录、branch/HEAD、unstaged、staged、untracked、Git 缺失和失败降级。
+- run 新增 `git_state_before.json` / `git_state_after.json`，manifest 新增 `git.before` / `git.after` / `git.summary`。
+- `dashboard-data run <run_id>` 新增兼容性字段 `git_state`，包含 before、after 和 summary。
+- `examples/bad_agent_git_state.py` 在 sandbox 内制造三类 Git 变更，不 commit、不 push、不访问网络。
+- Python 全量测试：35 个，全部通过。

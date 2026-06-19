@@ -4,7 +4,6 @@ import shutil
 from pathlib import Path
 
 IGNORE_NAMES = {
-    ".git",
     "runs",
     "__pycache__",
     ".pytest_cache",
@@ -29,3 +28,11 @@ def copy_workspace(src: str | Path, dst: str | Path) -> None:
         return {name for name in names if name in IGNORE_NAMES}
 
     shutil.copytree(src_path, dst_path, ignore=ignore)
+
+    # A linked worktree stores .git as a pointer file. Copying that pointer
+    # would let Git commands in the sandbox mutate the original worktree's
+    # index, so only self-contained .git directories are retained.
+    source_git = src_path / ".git"
+    copied_git = dst_path / ".git"
+    if source_git.is_file() and copied_git.exists():
+        copied_git.unlink()

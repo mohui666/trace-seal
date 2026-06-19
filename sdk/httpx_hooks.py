@@ -2,12 +2,14 @@ from __future__ import annotations
 
 import contextvars
 import functools
+import json
 import time
 from typing import Any, Callable
 from urllib.parse import parse_qsl, quote, urlencode, urlsplit, urlunsplit
 
 from policy.rules import evaluate_httpx_request
 from recorder.core import record_event
+from recorder.http_cassette import is_sensitive_header, redact_headers, summarize_body
 
 try:
     import httpx  # type: ignore
@@ -42,6 +44,7 @@ SENSITIVE_QUERY = {
     "sig",
     "session",
     "cookie",
+    "credential",
 }
 
 _SOURCE: contextvars.ContextVar[str | None] = contextvars.ContextVar("traceseal_httpx_source", default=None)
@@ -110,7 +113,7 @@ def _redact_headers(client: Any, request_headers: Any, cookies: Any, auth: Any) 
     result: dict[str, str] = {}
     sensitive = False
     for name, value in combined.items():
-        if name.lower() in SENSITIVE_HEADERS:
+        if name.lower() in SENSITIVE_HEADERS or is_sensitive_header(name):
             result[name] = "<redacted>"
             sensitive = True
         else:
@@ -165,6 +168,7 @@ def _metadata(client: Any, method: Any, url: Any, kwargs: dict[str, Any]) -> tup
         "path": url_data["path"],
         "source": source,
         "headers": headers,
+        "body_summary": _request_body_summary(kwargs, headers),
     }
     risk = evaluate_httpx_request(
         method_text,
@@ -176,6 +180,48 @@ def _metadata(client: Any, method: Any, url: Any, kwargs: dict[str, Any]) -> tup
         has_userinfo=url_data["has_userinfo"],
     )
     return event_input, risk
+
+
+def _content_type(headers: Any) -> str | None:
+    for name, value in dict(headers or {}).items():
+        if str(name).lower() == "content-type":
+            return str(value)
+    return None
+
+
+def _request_body_summary(kwargs: dict[str, Any], headers: dict[str, str]) -> dict[str, Any]:
+    content_type = _content_type(headers)
+    if "json" in kwargs and kwargs.get("json") is not None:
+        try:
+            encoded = json.dumps(kwargs["json"], ensure_ascii=False, separators=(",", ":")).encode("utf-8")
+        except Exception:
+            encoded = None
+        return summarize_body(
+            encoded,
+            content_type=content_type or "application/json",
+            present=True,
+        )
+    if "content" in kwargs and kwargs.get("content") is not None:
+        return summarize_body(kwargs.get("content"), content_type=content_type, present=True)
+    if "data" in kwargs and kwargs.get("data") is not None:
+        return summarize_body(
+            kwargs.get("data") if isinstance(kwargs.get("data"), (str, bytes, bytearray, memoryview)) else None,
+            content_type=content_type or "application/x-www-form-urlencoded",
+            present=True,
+        )
+    if "files" in kwargs and kwargs.get("files") is not None:
+        return summarize_body(None, content_type=content_type or "multipart/form-data", present=True)
+    return summarize_body(None, content_type=content_type, present=False)
+
+
+def _response_metadata(response: Any) -> tuple[dict[str, str], dict[str, Any]]:
+    headers = redact_headers(dict(getattr(response, "headers", {}) or {}))
+    content_type = _content_type(headers)
+    try:
+        content = response.content
+    except Exception:
+        content = None
+    return headers, summarize_body(content, content_type=content_type, present=content is not None and len(content) > 0)
 
 
 def _record(event_input: dict[str, Any], risk: dict[str, Any], start: float, *, response: Any = None, exception: Exception | None = None, blocked: bool = False) -> None:
@@ -193,11 +239,14 @@ def _record(event_input: dict[str, Any], risk: dict[str, Any], start: float, *, 
     else:
         status_code = getattr(response, "status_code", None)
         success = bool(getattr(response, "is_success", status_code is not None and 200 <= status_code < 400))
+        response_headers, response_body = _response_metadata(response)
         output = {
             "status": "ok" if success else "failed",
             "success": success,
             "status_code": status_code,
             "duration_ms": duration_ms,
+            "headers": response_headers,
+            "body_summary": response_body,
         }
     record_event(
         {

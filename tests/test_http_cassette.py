@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 import argparse
+import contextlib
+import io
 import json
 import os
 import subprocess
@@ -169,7 +171,11 @@ class HttpCassetteTest(unittest.TestCase):
             original_cwd = Path.cwd()
             try:
                 os.chdir(tmp)
-                with mock.patch("traceseal.cli.generate_http_cassette", side_effect=RuntimeError("synthetic failure")):
+                with (
+                    mock.patch("traceseal.cli.generate_http_cassette", side_effect=RuntimeError("synthetic failure")),
+                    contextlib.redirect_stdout(io.StringIO()),
+                    contextlib.redirect_stderr(io.StringIO()),
+                ):
                     exit_code = run_command(
                         argparse.Namespace(command=["--", sys.executable, "-c", "print('agent completed')"])
                     )

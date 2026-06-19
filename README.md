@@ -114,6 +114,14 @@ TraceSeal 会区分普通 `git push`、force push、force-with-lease、mirror pu
 
 事件的 `input.git_operation`（以及 dashboard-data 的事件顶层 `git_operation`）包含 `push_type`、`remote`、`refs` 和 `protected_branch`；replay/explain 同步展示分类。所有 Git push 仍由 SDK 离线模拟，demo 和测试不会调用真实 Git 远端。
 
+## 域名白名单 / 黑名单（v0.3.0）
+
+TraceSeal 支持对 HTTP 请求目标 host 做策略判断。工作区 `policy.yaml` 可配置 `domain_policy.allow_domains`、`deny_domains`、`warn_domains`、localhost/private-network 开关、未知外部域名告警和 deny 阻断开关；默认 JSON policy 提供兼容 fallback。
+
+host 分类包括 `localhost`、`loopback`、`private`、`external`、公网 `ip` 和 `unknown`，全程只解析 URL/host 字符串，不执行 DNS 查询。域名 pattern 使用现有 host `glob`，例如 `*.example.com`；同样可使用 exact、contains、contains_any、any_of 和 regex。
+
+HTTP 事件、HTTP cassette、dashboard-data、replay 和 explain 会展示 `domain_policy` metadata，包括 `domain_decision`、`matched_domain_rule`、allow/deny/warn list 命中状态。`examples/bad_agent_domain_policy.py` 使用 `httpx.MockTransport`，不会访问真实外网。
+
 ## 运行 bad agent demo
 
 ```powershell
@@ -158,6 +166,7 @@ runs/latest                 # 文本指针，内容是最新 run_id
 | `examples/bad_agent_http_cassette.py` | HTTP cassette 脱敏 | 使用本地 HTTP server 生成 GET/POST cassette，验证 query、header 和 body 摘要脱敏。 |
 | `examples/bad_agent_policy_yaml.py` | YAML policy DSL | 在 sandbox 内加载示例 YAML，触发 `.env`、危险删除和本地脱敏 HTTP 规则。 |
 | `examples/bad_agent_git_push_classification.py` | Git push 分类 | 离线模拟 normal/force/lease/mirror/delete/refspec/all/tags push，不访问远端。 |
+| `examples/bad_agent_domain_policy.py` | 域名策略 | 通过 MockTransport 离线触发 localhost、loopback、denylist、warnlist、unknown external 与 insecure HTTP。 |
 
 分别运行：
 
@@ -414,6 +423,9 @@ resources/traceseal-core/traceseal-core.exe dashboard-data ...
 - `git_push`: 普通 push（high）
 - `git_force_push` / `git_mirror_push` / `git_delete_remote_branch` / `git_force_refspec_push`: 高破坏性 push（critical）
 - `git_force_with_lease` / `git_bulk_push`: 可能改写历史或批量发布 refs（high）
+- `domain_denylist_match` / `domain_warnlist_match`: deny/warn 域名命中
+- `domain_unknown_external`: 未在 allowlist 中的外部 host
+- `domain_allowlist_match` / `domain_localhost_allowed`: trusted/local host 放行 metadata
 - `suspicious_http_post`: 标记可疑 HTTP POST
 - `sensitive_http_request`: 标记并脱敏带敏感 query/header/auth/cookie 的 `httpx` 请求
 - `insecure_http_request`: 标记明文 `http://` 请求
@@ -457,8 +469,9 @@ Python 核心案例测试覆盖：
 - `FileReadTrackingTest` 的 5 个文件读取/敏感风险/Dashboard/replay/explain 测试
 - `HttpxInterceptionTest` 的 5 个同步/异步 API、脱敏、失败、Dashboard/replay/explain 测试
 - `GitPushClassificationTest` 的 push 类型、规则、metadata、YAML、dashboard/explain 和零远端调用测试
+- `DomainPolicyTest` / `DomainPolicyIntegrationTest` 的名单、host 分类、fallback、cassette 脱敏和离线 demo 测试
 
-当前完整基线：Python 62 tests、Renderer 96 tests、Electron 45 tests。
+当前完整基线：Python 71 tests、Renderer 96 tests、Electron 45 tests。
 
 完整 Python 验证：
 
@@ -515,7 +528,7 @@ powershell -ExecutionPolicy Bypass -File scripts\build-windows.ps1
 ## 后续方向
 
 - 已补充 `.env` 写入、Git push 分类和 HTTP POST 案例；下一步可补级联测试失败和更多真实项目事故案例。
-- 继续扩展 policy：域名白名单/黑名单。
+- 阶段 3 剩余：级联错误案例。
 - 继续增强 Dashboard：Git/HTTP cassette 可视化、首次错误可视化和 policy 只读/编辑闭环。
 - 升级 sandbox：Docker / overlayfs。
 - 增加签名审计证明 attestation。

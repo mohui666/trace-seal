@@ -140,3 +140,12 @@ OK
 - `subprocess.run()` 与 `os.system()` 的 Git push 均离线模拟，不调用真实 Git 或远端网络。
 - 新增 `examples/bad_agent_git_push_classification.py` 和 6 个测试方法（含 16 组分类 subtests）。
 - Python 全量测试共 62 个，全部通过。
+
+## 11. 2026-06-19 HTTP 域名白名单 / 黑名单验收
+
+- policy YAML 新增可选 `domain_policy`：allow/deny/warn domains、localhost/private 开关、unknown external 告警与 deny 阻断开关。
+- host 分类覆盖 localhost、loopback、private、external、公网 IP 和 unknown；不进行 DNS 查询。
+- 默认 JSON policy 和示例 YAML 同步新增 denylist、warnlist、unknown external、allowlist 和 localhost rule metadata。
+- HTTP event、cassette、dashboard-data、replay、explain 均展示 domain decision 与 matched domain rule。
+- `examples/bad_agent_domain_policy.py` 使用 `httpx.MockTransport`，不会访问真实外网；敏感 query/header 继续脱敏，body 仍只记录摘要。
+- 新增 9 个域名策略专项测试；Python 全量测试共 71 个，全部通过。

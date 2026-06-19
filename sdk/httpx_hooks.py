@@ -179,6 +179,7 @@ def _metadata(client: Any, method: Any, url: Any, kwargs: dict[str, Any]) -> tup
         sensitive_headers=sensitive_headers,
         has_userinfo=url_data["has_userinfo"],
     )
+    event_input["domain_policy"] = risk.get("domain_policy")
     return event_input, risk
 
 

@@ -1,6 +1,15 @@
 version: 1
 mode: warn
 
+domain_policy:
+  allow_domains: ["localhost", "127.0.0.1", "::1", "*.trusted.test"]
+  deny_domains: ["*.malware.test", "evil.example.com"]
+  warn_domains: ["*.unknown.test"]
+  allow_localhost: true
+  allow_private_networks: false
+  warn_on_unknown_external: true
+  block_on_deny: false
+
 rules:
   - id: deny-dangerous-delete
     description: Block recursive force delete
@@ -35,6 +44,30 @@ rules:
     reason: Reading sensitive files can expose credentials
     suggested_policy: 'require_approval file_read "<sensitive-path>"'
 
+  - id: domain_denylist_match
+    description: Warn on explicitly denied domains
+    match:
+      event_type:
+        any_of: [http, network.http]
+      host:
+        glob: "*.malware.test"
+    risk_level: critical
+    action: warn
+    reason: HTTP request targets a denylisted domain
+    suggested_policy: 'deny http host "*.malware.test"'
+
+  - id: domain_warnlist_match
+    description: Warn on domains requiring review
+    match:
+      event_type:
+        any_of: [http, network.http]
+      host:
+        glob: "*.unknown.test"
+    risk_level: high
+    action: warn
+    reason: HTTP request targets a warnlisted domain
+    suggested_policy: 'require_approval http host "*.unknown.test"'
+
   - id: warn-sensitive-http
     description: Warn on sensitive HTTP requests
     match:
@@ -59,6 +92,42 @@ rules:
     action: warn
     reason: Plaintext HTTP can expose request metadata
     suggested_policy: 'require_approval http "http://*/**"'
+
+  - id: domain_localhost_allowed
+    description: Allow localhost and loopback traffic
+    match:
+      event_type:
+        any_of: [http, network.http]
+      host_class:
+        any_of: [localhost, loopback]
+    risk_level: low
+    action: allow
+    reason: Localhost traffic is allowed for local test servers
+    suggested_policy: 'allow http host localhost'
+
+  - id: domain_allowlist_match
+    description: Allow configured trusted domains
+    match:
+      event_type:
+        any_of: [http, network.http]
+      host_allowed: true
+    risk_level: low
+    action: allow
+    reason: HTTP request target is present in the domain allowlist
+    suggested_policy: 'allow http host "<domain>"'
+
+  - id: domain_unknown_external
+    description: Warn on external hosts absent from the allowlist
+    match:
+      event_type:
+        any_of: [http, network.http]
+      host_class:
+        any_of: [external, ip]
+      host_allowed: false
+    risk_level: medium
+    action: warn
+    reason: HTTP request targets an external domain not present in the allowlist
+    suggested_policy: add host to allow_domains or require approval
 
   - id: warn-git-force-with-lease
     description: Warn before rewriting remote history with lease

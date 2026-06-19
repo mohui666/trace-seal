@@ -90,6 +90,7 @@ Agent 将敏感 payload POST 到外部 URL。demo 使用 `TRACESEAL_OFFLINE_HTTP
 | sdk | 删除拦截 | `shutil.rmtree`、`os.remove/unlink`，并跨平台模拟 `rm -rf` |
 | sdk | Shell 拦截 | `subprocess.run()`，记录命令、返回码、stdout/stderr 摘要 |
 | sdk | Git push 风险 | 离线分类 normal/force/force-with-lease/mirror/delete/refspec/all/tags，不访问真实远端 |
+| policy | HTTP 域名策略 | allow/deny/warn 名单、unknown external 告警与 localhost/loopback/private/external/ip/unknown 分类，不做 DNS 查询 |
 | sdk | HTTP 拦截 | `urllib.request.urlopen`、可选 `requests.Session.request`；demo 支持离线模拟 |
 | recorder | 事件记录 | `events.jsonl`，包含 cwd、env 摘要、输入/输出、风险、文件变更 |
 | recorder | Run 产物 | `manifest.json`、workspace/Git 快照与 `http_cassette.jsonl` |
@@ -101,7 +102,7 @@ Agent 将敏感 payload POST 到外部 URL。demo 使用 `TRACESEAL_OFFLINE_HTTP
 | policy | YAML DSL + 默认规则 | 工作区 YAML schema/校验/匹配，支持 allow/warn/deny/require_approval，并兼容默认 JSON matcher |
 | cli | 命令行 | `run`、`replay`、`explain`、`dashboard-data` |
 | dashboard | 数据层 | `dashboard/export.py` 输出 Electron 可读 JSON |
-| tests | 自动化测试 | 62 个 unittest 覆盖 recorder、policy YAML/JSON fallback、Git push 分类、replay、Git 与 HTTP 链路 |
+| tests | 自动化测试 | 71 个 unittest 覆盖 recorder、policy YAML/JSON fallback、Git push/域名策略、replay、Git 与 HTTP 链路 |
 
 ## 6. 已落地事故案例
 
@@ -115,6 +116,7 @@ Agent 将敏感 payload POST 到外部 URL。demo 使用 `TRACESEAL_OFFLINE_HTTP
 | `examples/bad_agent_http_cassette.py` | HTTP cassette | 使用本地 server 生成 GET/POST 脱敏 cassette，不依赖外网。 |
 | `examples/bad_agent_policy_yaml.py` | policy YAML DSL | 在 sandbox 中安装示例 YAML 并触发文件、Shell 与本地 HTTP 规则。 |
 | `examples/bad_agent_git_push_classification.py` | Git push 分类 | 离线触发 normal/force/lease/mirror/delete/refspec/all/tags，不连接远端。 |
+| `examples/bad_agent_domain_policy.py` | HTTP 域名策略 | 通过 MockTransport 离线触发 local、deny/warn/unknown/insecure 类别，不访问外网。 |
 
 ## 7. 第一版仍不做什么
 

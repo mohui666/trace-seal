@@ -8,6 +8,8 @@ from pathlib import Path
 from typing import Any, Iterable
 from urllib.parse import parse_qsl, quote, urlencode, urlsplit, urlunsplit
 
+from policy.domain import DOMAIN_DECISIONS, HOST_CLASSES, classify_host, normalize_host
+
 
 HTTP_EVENT_TYPES = {"http", "network.http"}
 BODY_REDACTION = "body_not_stored_by_default"
@@ -44,6 +46,7 @@ SENSITIVE_QUERY_NAMES = {
 RISK_ORDER = {"low": 0, "medium": 1, "high": 2, "critical": 3}
 SHA256_RE = re.compile(r"^[0-9a-fA-F]{64}$")
 SAFE_ERROR_RE = re.compile(r"^[A-Za-z][A-Za-z0-9_.:-]{0,127}$")
+SAFE_RULE_RE = re.compile(r"^[A-Za-z0-9_.:-]{1,128}$")
 
 
 def body_summary(
@@ -106,6 +109,24 @@ def sanitize_error(value: Any) -> str | None:
         return None
     text = str(value)
     return text if SAFE_ERROR_RE.fullmatch(text) else "http_request_error"
+
+
+def normalize_domain_metadata(value: Any, *, host: Any = None) -> dict[str, Any]:
+    raw = value if isinstance(value, dict) else {}
+    normalized = normalize_host(raw.get("normalized_host") or host)
+    host_class = str(raw.get("host_class") or classify_host(normalized))
+    decision = str(raw.get("domain_decision") or "unknown")
+    rule = str(raw.get("matched_domain_rule") or "")
+    return {
+        "host": normalized,
+        "normalized_host": normalized,
+        "host_class": host_class if host_class in HOST_CLASSES else classify_host(normalized),
+        "matched_domain_rule": rule if SAFE_RULE_RE.fullmatch(rule) else None,
+        "domain_decision": decision if decision in DOMAIN_DECISIONS else "unknown",
+        "allowlisted": bool(raw.get("allowlisted")),
+        "denylisted": bool(raw.get("denylisted")),
+        "warnlisted": bool(raw.get("warnlisted")),
+    }
 
 
 def is_sensitive_header(name: str) -> bool:
@@ -175,6 +196,7 @@ def cassette_entry_from_event(event: dict[str, Any], index: int) -> dict[str, An
     out = event.get("output") if isinstance(event.get("output"), dict) else {}
     risk = event.get("risk") if isinstance(event.get("risk"), dict) else {}
     url_data = redact_url(inp.get("url"))
+    domain = normalize_domain_metadata(inp.get("domain_policy") or risk.get("domain_policy"), host=url_data["host"])
     status_code = out.get("status_code", out.get("code"))
     error = out.get("exception_type") or out.get("error_type") or out.get("error") or out.get("exception")
     return {
@@ -193,6 +215,9 @@ def cassette_entry_from_event(event: dict[str, Any], index: int) -> dict[str, An
         "error": sanitize_error(error),
         "risk_level": str(risk.get("level", "low")),
         "matched_rules": _matched_rules(risk),
+        "domain_policy": domain,
+        "domain_decision": domain["domain_decision"],
+        "matched_domain_rule": domain["matched_domain_rule"],
     }
 
 
@@ -287,6 +312,10 @@ def read_http_cassette(path: Path, *, limit: int = 50) -> tuple[list[dict[str, A
                         "url": raw.get("url_redacted"),
                         "headers": raw.get("request_headers_redacted"),
                         "body_summary": raw.get("request_body_summary"),
+                        "domain_policy": raw.get("domain_policy") or {
+                            "domain_decision": raw.get("domain_decision"),
+                            "matched_domain_rule": raw.get("matched_domain_rule"),
+                        },
                     },
                     "output": {
                         "status_code": raw.get("response_status_code"),

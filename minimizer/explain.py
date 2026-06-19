@@ -134,6 +134,13 @@ def explain_run(run_dir: str | Path) -> str:
         for path in affected:
             lines.append(f"- {path}")
     lines.append("")
+    risk = event.get("risk") or {}
+    lines.append("策略判定:")
+    lines.append(f"- rule_id: {risk.get('rule_id') or risk.get('policy_rule')}")
+    lines.append(f"- action: {risk.get('action')}")
+    lines.append(f"- reason: {risk.get('reason') or ((risk.get('reasons') or [None])[0])}")
+    lines.append(f"- suggested_policy: {risk.get('suggested_policy') or suggest_policy_for_event(event)}")
+    lines.append("")
     lines.append("建议策略:")
     lines.append(suggest_policy_for_event(event))
     lines.append("")

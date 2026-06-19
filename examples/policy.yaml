@@ -1,0 +1,72 @@
+version: 1
+mode: warn
+
+rules:
+  - id: deny-dangerous-delete
+    description: Block recursive force delete
+    match:
+      event_type: shell
+      command:
+        contains: "rm -rf"
+    risk_level: critical
+    action: deny
+    reason: Recursive force delete can remove protected workspace data
+    suggested_policy: 'deny shell "rm -rf <path>/**"'
+
+  - id: warn-env-write
+    description: Warn on .env writes
+    match:
+      event_type: file.write
+      path:
+        glob: ".env*"
+    risk_level: high
+    action: warn
+    reason: Writing environment files can corrupt secrets or config
+    suggested_policy: 'deny file_write ".env*"'
+
+  - id: require-sensitive-read-approval
+    description: Sensitive file reads need approval
+    match:
+      event_type: file.read
+      path:
+        contains_any: [".env", "secret", "token", "password", ".pem", ".key"]
+    risk_level: high
+    action: require_approval
+    reason: Reading sensitive files can expose credentials
+    suggested_policy: 'require_approval file_read "<sensitive-path>"'
+
+  - id: warn-sensitive-http
+    description: Warn on sensitive HTTP requests
+    match:
+      event_type:
+        any_of: [http, network.http]
+      method:
+        any_of: [POST, PUT, PATCH]
+      sensitive: true
+    risk_level: high
+    action: warn
+    reason: HTTP request may carry sensitive data
+    suggested_policy: 'require_approval http "<method> <url>"'
+
+  - id: warn-insecure-http
+    description: Warn on plaintext HTTP
+    match:
+      event_type:
+        any_of: [http, network.http]
+      url:
+        contains: "http://"
+    risk_level: medium
+    action: warn
+    reason: Plaintext HTTP can expose request metadata
+    suggested_policy: 'require_approval http "http://*/**"'
+
+  - id: warn-git-push
+    description: Warn before publishing repository state
+    match:
+      event_type: shell
+      command:
+        contains: "git push"
+    risk_level: high
+    action: warn
+    reason: Git push publishes repository state
+    suggested_policy: 'require_approval git "push"'

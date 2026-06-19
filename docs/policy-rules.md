@@ -1,6 +1,6 @@
 # TraceSeal Policy 规则设计
 
-> 当前 MVP 实现：`policy/default_policy.json` + `policy/rules.py`  
+> 当前实现：工作区 `policy.yaml` / `policy.yml` DSL，缺失或无效时兼容 `policy/default_policy.json` + `policy/rules.py`
 > 当前模式：默认 warn/mark；设置 `TRACESEAL_POLICY_MODE=block` 后，高危操作会被阻断或模拟阻断。
 
 ## 1. 当前规则总览
@@ -209,19 +209,25 @@ $env:TRACESEAL_POLICY_MODE = "block"
 python -m traceseal run python examples/bad_agent_env.py
 ```
 
-## 6. 后续 policy.yaml DSL 方向
+## 6. policy.yaml DSL（v0.3.0）
 
-当前 `policy.yaml` 未实现。下一阶段可以把 JSON + Python matcher 升级为：
+工作区策略按 `policy.yaml`、`policy.yml`、内置 `policy/default_policy.json` 顺序加载。YAML 解析或 schema 校验失败时不终止 run，而是通过 `policy_source.type=yaml_error_fallback` 暴露错误并回退默认 JSON。示例：
 
 ```yaml
-version: "1.0"
-default_action: warn
+version: 1
+mode: warn
 rules:
-  - rule_id: dangerous_delete
-    event_type: shell
-    pattern: "rm -rf **"
+  - id: dangerous-delete
+    match:
+      event_type: shell
+      command:
+        contains: "rm -rf"
     risk_level: critical
     action: deny
+    reason: Recursive force delete can remove protected workspace data
+    suggested_policy: 'deny shell "rm -rf <path>/**"'
 ```
 
-后续增强：路径 glob、域名白名单、force push 细分、审批模式、规则热加载、环境感知规则（development / CI / production）。
+字段：`version/mode/rules`；rule 支持 `id/description/match/risk_level/action/reason/suggested_policy`。match 字段支持 `event_type/path/command/method/host/url/risk_level/sensitive`，操作符支持 exact 标量简写、`exact/contains/contains_any/glob/any_of/regex`。无效 regex 在加载期报错并安全 fallback。
+
+action 支持 `allow/warn/deny/require_approval`。第一版 `require_approval` 只记录 metadata；`deny` 仅在现有 Shell/HTTP enforcement 路径生效，不引入审批 UI。后续增强为 force push 细分、域名白名单/黑名单和级联错误案例。

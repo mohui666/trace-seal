@@ -121,3 +121,13 @@ OK
 - header/query 敏感字段统一替换为 `<redacted>`；请求/响应 body 仅保存 content type、size 和 SHA-256 摘要。
 - `examples/bad_agent_http_cassette.py` 仅访问本地临时 HTTP server，使用合成假 secret。
 - 新增 8 个 cassette 专项测试；Python 全量测试共 43 个。
+
+## 9. 2026-06-19 policy.yaml DSL 验收
+
+- 新增 `policy/dsl.py` 与 `policy/yaml_loader.py`，覆盖 schema 校验、规则匹配和 `policy.yaml` → `policy.yml` → 默认 JSON 加载顺序。
+- YAML 解析/schema/regex 错误不会终止 run；记录 `yaml_error_fallback`、路径和错误后回退 `policy/default_policy.json`。
+- match 支持 `event_type/path/command/method/host/url/risk_level/sensitive`，以及 exact 简写、`exact/contains/contains_any/glob/any_of/regex`。
+- action 支持 `allow/warn/deny/require_approval`；`TRACESEAL_POLICY_MODE` 环境变量继续具有最高优先级。
+- dashboard-data policy/run 与 explain 已暴露 `policy_source`、`rule_id`、`action`、`reason`、`suggested_policy`。
+- `examples/bad_agent_policy_yaml.py` 仅使用 sandbox、本地 MockTransport 和合成 demo secret；危险删除被 YAML deny 稳定阻断，HTTP query/header 仍脱敏。
+- 新增 13 个 YAML policy 专项测试；Python 全量测试共 56 个，全部通过。

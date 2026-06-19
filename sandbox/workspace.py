@@ -14,6 +14,7 @@ IGNORE_NAMES = {
     "node_modules",
     "dist",
     "build",
+    "out",
     ".venv",
     "venv",
 }

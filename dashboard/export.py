@@ -8,7 +8,7 @@ from pathlib import Path
 from typing import Any
 
 from minimizer.explain import find_first_harmful_event
-from policy.rules import RISK_ORDER, load_policy, suggest_policy_for_event
+from policy.rules import RISK_ORDER, load_policy, policy_source, suggest_policy_for_event
 from recorder.git_state import summarize_git_states
 from recorder.http_cassette import read_http_cassette
 from replay.renderer import load_events
@@ -166,6 +166,7 @@ def export_dashboard_data(run_dir: str | Path) -> dict[str, Any]:
         "suggested_policy": suggest_policy_for_event(first_harmful) if first_harmful else None,
         "git_state": _git_state_payload(run_dir, manifest),
         "http_cassette": _http_cassette_payload(run_dir, manifest),
+        "policy_source": manifest.get("policy_source"),
     }
 
 
@@ -286,18 +287,20 @@ def list_runs(repo_root: str | Path | None = None) -> list[dict[str, Any]]:
     return summaries
 
 
-def export_policy_rules() -> list[dict[str, Any]]:
-    rules = load_policy().get("rules", [])
+def export_policy_rules(workspace: str | Path | None = None) -> list[dict[str, Any]]:
+    rules = load_policy(workspace).get("rules", [])
     normalized: list[dict[str, Any]] = []
     for rule in rules:
+        match = rule.get("match") if isinstance(rule.get("match"), dict) else None
         normalized.append(
             {
                 "rule_id": rule.get("rule_id") or rule.get("id"),
-                "event_type": rule.get("event_type") or rule.get("type"),
-                "pattern": rule.get("pattern") or rule.get("match"),
+                "event_type": rule.get("event_type") or rule.get("type") or (match or {}).get("event_type"),
+                "pattern": rule.get("pattern") or match,
                 "risk_level": rule.get("risk_level") or rule.get("risk"),
                 "action": rule.get("action"),
                 "description": rule.get("description") or rule.get("reason"),
+                "reason": rule.get("reason"),
                 "suggested_policy": rule.get("suggested_policy"),
             }
         )
@@ -319,7 +322,7 @@ def handle_dashboard_cli(argv: list[str], repo_root: str | Path | None = None) -
     if command == "policy":
         if len(argv) != 1:
             raise DashboardDataError("INVALID_RUN_ID", "policy does not accept extra arguments", ERROR_EXIT_CODES["INVALID_RUN_ID"])
-        return {"schema_version": 1, "rules": export_policy_rules()}
+        return {"schema_version": 1, "policy_source": policy_source(repo_root), "rules": export_policy_rules(repo_root)}
     if command == "run":
         if len(argv) != 2:
             raise DashboardDataError("INVALID_RUN_ID", "usage: dashboard-data run <run_id>", ERROR_EXIT_CODES["INVALID_RUN_ID"])

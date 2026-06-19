@@ -1,12 +1,13 @@
 from __future__ import annotations
 
-import json
 import os
 import re
 import shlex
-from importlib import resources
 from pathlib import Path
 from typing import Any
+
+from .dsl import first_matching_rule
+from .yaml_loader import load_policy_with_source
 
 DEFAULT_RULES = {
     "rules": [
@@ -79,12 +80,12 @@ DEFAULT_RULES = {
 RISK_ORDER = {"low": 0, "medium": 1, "high": 2, "critical": 3}
 
 
-def load_policy() -> dict[str, Any]:
-    try:
-        text = resources.files("policy").joinpath("default_policy.json").read_text(encoding="utf-8")
-        return json.loads(text)
-    except Exception:
-        return DEFAULT_RULES
+def load_policy(workspace: str | Path | None = None) -> dict[str, Any]:
+    return load_policy_with_source(workspace)[0]
+
+
+def policy_source(workspace: str | Path | None = None) -> dict[str, Any]:
+    return load_policy_with_source(workspace)[1]
 
 
 def _rules_by_id() -> dict[str, dict[str, Any]]:
@@ -98,19 +99,59 @@ def _rules_by_id() -> dict[str, dict[str, Any]]:
 
 
 def _rule(rule_id: str | None) -> dict[str, Any]:
-    return _rules_by_id().get(str(rule_id), {}) if rule_id else {}
+    if not rule_id:
+        return {}
+    selected = _rules_by_id().get(str(rule_id))
+    if selected:
+        return selected
+    return next((item for item in DEFAULT_RULES["rules"] if item.get("rule_id") == rule_id), {})
+
+
+def _policy_mode() -> str:
+    configured = os.environ.get("TRACESEAL_POLICY_MODE")
+    if configured:
+        return configured.lower()
+    return str(load_policy().get("mode", "warn")).lower()
 
 
 def risk(level: str = "low", reasons: list[str] | None = None, policy_rule: str | None = None, action: str = "allow") -> dict[str, Any]:
-    if os.environ.get("TRACESEAL_POLICY_MODE", "warn").lower() in {"block", "deny", "enforce"} and level in {"high", "critical"}:
+    if _policy_mode() in {"block", "deny", "enforce"} and level in {"high", "critical"} and action == "warn":
         action = "deny"
     rule = _rule(policy_rule)
+    reason_list = reasons or ([rule["reason"]] if rule.get("reason") else [])
     return {
         "level": level,
-        "reasons": reasons or ([rule["reason"]] if rule.get("reason") else []),
+        "reasons": reason_list,
+        "reason": reason_list[0] if reason_list else None,
         "policy_rule": policy_rule,
+        "rule_id": policy_rule,
         "action": action,
         "suggested_policy": rule.get("suggested_policy"),
+    }
+
+
+def _yaml_risk(event: dict[str, Any], fallback: dict[str, Any]) -> dict[str, Any]:
+    policy, source = load_policy_with_source()
+    if source["type"] != "yaml":
+        return fallback
+    context = dict(event)
+    context.setdefault("risk_level", fallback.get("level", "low"))
+    matched = first_matching_rule(policy, context)
+    if matched is None:
+        return fallback
+    action = str(matched["action"])
+    level = str(matched["risk_level"])
+    if _policy_mode() in {"block", "deny", "enforce"} and level in {"high", "critical"} and action == "warn":
+        action = "deny"
+    reason = str(matched.get("reason") or matched.get("description") or f"matched policy rule: {matched['id']}")
+    return {
+        "level": level,
+        "reasons": [reason],
+        "reason": reason,
+        "policy_rule": matched["id"],
+        "rule_id": matched["id"],
+        "action": action,
+        "suggested_policy": matched.get("suggested_policy") or None,
     }
 
 
@@ -175,18 +216,22 @@ def evaluate_shell_command(command: str, tokens: list[str] | None = None) -> dic
     if is_rm_rf(command, tokens):
         targets = rm_targets(command, tokens)
         target_text = ", ".join(targets) if targets else "unknown target"
-        return risk("critical", [f"recursive force delete requested: {target_text}"], "dangerous_delete", "warn")
-    if is_git_push(command, tokens):
-        return risk("high", ["remote git push requested"], "git_push", "warn")
-    return risk("low", [], None, "allow")
+        fallback = risk("critical", [f"recursive force delete requested: {target_text}"], "dangerous_delete", "warn")
+    elif is_git_push(command, tokens):
+        fallback = risk("high", ["remote git push requested"], "git_push", "warn")
+    else:
+        fallback = risk("low", [], None, "allow")
+    return _yaml_risk({"event_type": "shell", "command": command}, fallback)
 
 
 def evaluate_file_write(path: str) -> dict[str, Any]:
     name = Path(path).name
     normalized = path.replace("\\", "/")
     if name == ".env" or name.startswith(".env.") or normalized.endswith("/.env"):
-        return risk("high", [f"sensitive environment file modified: {path}"], "env_write", "warn")
-    return risk("low", [], None, "allow")
+        fallback = risk("high", [f"sensitive environment file modified: {path}"], "env_write", "warn")
+    else:
+        fallback = risk("low", [], None, "allow")
+    return _yaml_risk({"event_type": "file.write", "path": normalized}, fallback)
 
 
 def evaluate_file_read(path: str) -> dict[str, Any]:
@@ -205,8 +250,10 @@ def evaluate_file_read(path: str) -> dict[str, Any]:
         or any(marker in parts for marker in {"credentials", "secrets", "tokens"})
     )
     if sensitive:
-        return risk("high", [f"sensitive file read: {path}"], "sensitive_file_read", "warn")
-    return risk("low", [], None, "allow")
+        fallback = risk("high", [f"sensitive file read: {path}"], "sensitive_file_read", "warn")
+    else:
+        fallback = risk("low", [], None, "allow")
+    return _yaml_risk({"event_type": "file.read", "path": normalized}, fallback)
 
 
 def evaluate_http_request(method: str, url: str) -> dict[str, Any]:
@@ -214,10 +261,13 @@ def evaluate_http_request(method: str, url: str) -> dict[str, Any]:
     normalized = url.lower()
     is_local = any(host in normalized for host in ["localhost", "127.0.0.1", "::1"])
     if method_upper == "POST":
-        return risk("high", [f"suspicious outbound HTTP POST: {method_upper} {url}"], "suspicious_http_post", "warn")
-    if not is_local:
-        return risk("medium", [f"outbound HTTP request: {method_upper} {url}"], "http_request", "warn")
-    return risk("low", [], None, "allow")
+        fallback = risk("high", [f"suspicious outbound HTTP POST: {method_upper} {url}"], "suspicious_http_post", "warn")
+    elif not is_local:
+        fallback = risk("medium", [f"outbound HTTP request: {method_upper} {url}"], "http_request", "warn")
+    else:
+        fallback = risk("low", [], None, "allow")
+    host = url.split("://", 1)[-1].split("/", 1)[0].split(":", 1)[0]
+    return _yaml_risk({"event_type": "http", "method": method_upper, "url": url, "host": host, "sensitive": False}, fallback)
 
 
 def evaluate_httpx_request(
@@ -239,15 +289,29 @@ def evaluate_httpx_request(
             reasons.append("sensitive request header or authentication metadata redacted")
         if has_userinfo:
             reasons.append("URL user information redacted")
-        return risk("high", reasons, "sensitive_http_request", "warn")
-    if scheme.lower() == "http":
-        return risk("medium", [f"plaintext HTTP request: {method_upper} {url}"], "insecure_http_request", "warn")
-    if host.lower() not in {"localhost", "127.0.0.1", "::1"}:
-        return risk("medium", [f"outbound HTTP request: {method_upper} {url}"], "http_request", "warn")
-    return risk("low", [], None, "allow")
+        fallback = risk("high", reasons, "sensitive_http_request", "warn")
+    elif scheme.lower() == "http":
+        fallback = risk("medium", [f"plaintext HTTP request: {method_upper} {url}"], "insecure_http_request", "warn")
+    elif host.lower() not in {"localhost", "127.0.0.1", "::1"}:
+        fallback = risk("medium", [f"outbound HTTP request: {method_upper} {url}"], "http_request", "warn")
+    else:
+        fallback = risk("low", [], None, "allow")
+    return _yaml_risk(
+        {
+            "event_type": "network.http",
+            "method": method_upper,
+            "url": url,
+            "host": host,
+            "sensitive": sensitive_query or sensitive_headers or has_userinfo,
+        },
+        fallback,
+    )
 
 
 def suggest_policy_for_event(event: dict[str, Any]) -> str:
+    configured = (event.get("risk") or {}).get("suggested_policy")
+    if configured:
+        return str(configured)
     rule = (event.get("risk") or {}).get("policy_rule")
     command = (event.get("input") or {}).get("command", "")
     if rule == "dangerous_delete":

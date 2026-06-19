@@ -122,6 +122,12 @@ host 分类包括 `localhost`、`loopback`、`private`、`external`、公网 `ip
 
 HTTP 事件、HTTP cassette、dashboard-data、replay 和 explain 会展示 `domain_policy` metadata，包括 `domain_decision`、`matched_domain_rule`、allow/deny/warn list 命中状态。`examples/bad_agent_domain_policy.py` 使用 `httpx.MockTransport`，不会访问真实外网。
 
+## 级联错误案例（v0.3.0）
+
+TraceSeal 提供 `examples/bad_agent_cascade_failure.py`，把敏感文件读取、带合成 secret 的 HTTP 外发尝试、配置破坏、危险删除和危险 Git push 串成一条完整事故链。detector 按 event `seq`（缺失时按 timestamp / 输入顺序）确定性归类；同一 run 出现至少 3 类 stage 时标记为 high cascade，4 类或更多标记为 critical。
+
+demo 使用 `httpx.MockTransport` 和现有 Git push simulation，不访问真实外网、不执行真实 push，也只在复制的 sandbox workspace 内尝试删除。HTTP query/header 继续脱敏，body 只保存摘要，合成 secret 会在 demo 结束前从 workspace 删除。`dashboard-data`、`replay` 和 `explain` 会展示 `cascade.present`、有序 stages、first harmful event、整体 severity 和 human-readable summary。
+
 ## 运行 bad agent demo
 
 ```powershell
@@ -167,6 +173,7 @@ runs/latest                 # 文本指针，内容是最新 run_id
 | `examples/bad_agent_policy_yaml.py` | YAML policy DSL | 在 sandbox 内加载示例 YAML，触发 `.env`、危险删除和本地脱敏 HTTP 规则。 |
 | `examples/bad_agent_git_push_classification.py` | Git push 分类 | 离线模拟 normal/force/lease/mirror/delete/refspec/all/tags push，不访问远端。 |
 | `examples/bad_agent_domain_policy.py` | 域名策略 | 通过 MockTransport 离线触发 localhost、loopback、denylist、warnlist、unknown external 与 insecure HTTP。 |
+| `examples/bad_agent_cascade_failure.py` | 级联事故 | 离线串联 sensitive read、HTTP exfiltration attempt、config corruption、destructive shell 与 mirror push。 |
 
 分别运行：
 
@@ -193,6 +200,11 @@ python -m traceseal dashboard-data runs/latest
 
 python -m traceseal run -- python examples/bad_agent_http_cassette.py
 python -m traceseal dashboard-data runs/latest
+
+python -m traceseal run -- python examples/bad_agent_cascade_failure.py
+python -m traceseal dashboard-data runs/latest
+python -m traceseal replay runs/latest
+python -m traceseal explain runs/latest
 ```
 
 ## Python 文件读取记录（v0.3.0）
@@ -420,6 +432,7 @@ resources/traceseal-core/traceseal-core.exe dashboard-data ...
 
 - `dangerous_delete`: 标记 `rm -rf` / `rmdir /s /q`
 - `env_write`: 标记写入 `.env` / `.env.*`
+- `cascade_config_corruption`: 标记写坏 `config.json` / `settings.json` / `settings.yaml` / `settings.yml`
 - `git_push`: 普通 push（high）
 - `git_force_push` / `git_mirror_push` / `git_delete_remote_branch` / `git_force_refspec_push`: 高破坏性 push（critical）
 - `git_force_with_lease` / `git_bulk_push`: 可能改写历史或批量发布 refs（high）
@@ -429,6 +442,7 @@ resources/traceseal-core/traceseal-core.exe dashboard-data ...
 - `suspicious_http_post`: 标记可疑 HTTP POST
 - `sensitive_http_request`: 标记并脱敏带敏感 query/header/auth/cookie 的 `httpx` 请求
 - `insecure_http_request`: 标记明文 `http://` 请求
+- `cascade_failure_detected`: 同一 run 内至少 3 类有序风险 stage 形成级联事故
 
 如需把高危操作改为阻断，可设置：
 
@@ -471,7 +485,7 @@ Python 核心案例测试覆盖：
 - `GitPushClassificationTest` 的 push 类型、规则、metadata、YAML、dashboard/explain 和零远端调用测试
 - `DomainPolicyTest` / `DomainPolicyIntegrationTest` 的名单、host 分类、fallback、cassette 脱敏和离线 demo 测试
 
-当前完整基线：Python 71 tests、Renderer 96 tests、Electron 45 tests。
+当前完整基线：Python 90 tests、Renderer 96 tests、Electron 45 tests。
 
 完整 Python 验证：
 
@@ -527,8 +541,8 @@ powershell -ExecutionPolicy Bypass -File scripts\build-windows.ps1
 
 ## 后续方向
 
-- 已补充 `.env` 写入、Git push 分类和 HTTP POST 案例；下一步可补级联测试失败和更多真实项目事故案例。
-- 阶段 3 剩余：级联错误案例。
+- 阶段 3 Core 增强项已全部完成，包括 deterministic cascade failure 检测与离线事故链 demo。
+- 后续可补更多真实项目事故案例，但不纳入本次 v0.3.0 Core 范围。
 - 继续增强 Dashboard：Git/HTTP cassette 可视化、首次错误可视化和 policy 只读/编辑闭环。
 - 升级 sandbox：Docker / overlayfs。
 - 增加签名审计证明 attestation。

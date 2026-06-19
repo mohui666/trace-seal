@@ -110,7 +110,7 @@
 | Git diff / HEAD / staged 记录 | 已完成：run 前后记录 branch、HEAD、status、staged、unstaged、untracked 元数据，并导出 dashboard-data 摘要 |
 | HTTP cassette 脱敏记录 | 已完成：从 HTTP 事件生成脱敏 JSONL，记录 header/query 脱敏、body 摘要、风险与 dashboard-data 摘要 |
 | `policy.yaml` DSL | 已完成：schema/加载/校验/匹配、JSON fallback、policy source 与 explain metadata |
-| force push 与普通 push 细分 | 待做 |
+| force push 与普通 push 细分 | 已完成：normal/force/force-with-lease/mirror/delete/refspec/all/tags 分类与离线模拟 metadata |
 | 域名白名单 / 黑名单 | 待做 |
 | 级联错误案例 | 待做 |
 | GitHub Actions Windows 构建 CI | 已完成 |
@@ -153,5 +153,5 @@
 | v0.1.0 | 2026-06 | Python CLI MVP：run/replay/explain |
 | v0.1.1 | 2026-06 | 补 env/git/http 案例与 dashboard-data JSON |
 | v0.2.0 | 2026-06 | 已发布：Electron 数据运行层、Renderer 真实数据联调、Windows x64 安装包 |
-| v0.3.0 | 进行中 | Core 增强：读取、os.system、httpx、Git 状态、HTTP cassette、policy.yaml DSL 已完成；剩余 push 细分、域名名单、级联错误案例 |
+| v0.3.0 | 进行中 | Core 增强：读取、os.system、httpx、Git 状态、HTTP cassette、policy.yaml DSL、Git push 细分已完成；剩余域名白名单/黑名单、级联错误案例 |
 | v1.0.0 | 远期 | 产品化 Guard + Dashboard |

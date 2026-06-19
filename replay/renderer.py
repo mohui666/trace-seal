@@ -68,6 +68,8 @@ def _translate_reason(reason: str) -> str:
         return "git push 会发布仓库状态"
     if reason == "remote git push requested":
         return "请求远程 git push"
+    if reason == "git push publishes local code or history to a remote repository":
+        return "请求远程 git push；该操作会向远端发布本地代码或历史"
     if reason.startswith("suspicious outbound HTTP POST: "):
         return reason.replace("suspicious outbound HTTP POST: ", "可疑的出站 HTTP POST: ", 1)
     if reason.startswith("outbound HTTP request: "):
@@ -103,6 +105,13 @@ def replay_run(run_dir: str | Path) -> str:
         lines.append(f"[{event.get('id')}] {_event_title(event)}")
         lines.append(f"  时间: {event.get('ts')} cwd: {event.get('cwd')}")
         lines.append(f"  风险: {risk.get('level', 'low')} 规则={risk.get('policy_rule')} 动作={risk.get('action')}")
+        git_operation = (event.get("input") or {}).get("git_operation") or risk.get("git_operation")
+        if isinstance(git_operation, dict):
+            lines.append(
+                "  Git push: "
+                f"类型={git_operation.get('push_type')} remote={git_operation.get('remote')} "
+                f"refs={git_operation.get('refs') or []} protected={git_operation.get('protected_branch')}"
+            )
         if risk.get("reasons"):
             lines.append(f"  原因: {'; '.join(_translate_reason(str(r)) for r in (risk.get('reasons') or []))}")
         status = output.get("status")

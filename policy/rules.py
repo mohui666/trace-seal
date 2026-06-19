@@ -44,8 +44,62 @@ DEFAULT_RULES = {
             "pattern": "git push",
             "risk_level": "high",
             "action": "warn",
-            "reason": "git push publishes code or history outside the local workspace",
+            "reason": "git push publishes local code or history to a remote repository",
             "suggested_policy": 'require_approval git "push"',
+        },
+        {
+            "rule_id": "git_force_push",
+            "event_type": "shell",
+            "pattern": "git push --force or git push -f",
+            "risk_level": "critical",
+            "action": "warn",
+            "reason": "force push can rewrite remote history and disrupt collaborators",
+            "suggested_policy": 'deny git "push --force"',
+        },
+        {
+            "rule_id": "git_force_with_lease",
+            "event_type": "shell",
+            "pattern": "git push --force-with-lease",
+            "risk_level": "high",
+            "action": "warn",
+            "reason": "force-with-lease can still rewrite remote history",
+            "suggested_policy": 'require_approval git "push --force-with-lease"',
+        },
+        {
+            "rule_id": "git_mirror_push",
+            "event_type": "shell",
+            "pattern": "git push --mirror",
+            "risk_level": "critical",
+            "action": "warn",
+            "reason": "mirror push can overwrite remote refs",
+            "suggested_policy": 'deny git "push --mirror"',
+        },
+        {
+            "rule_id": "git_delete_remote_branch",
+            "event_type": "shell",
+            "pattern": "git push --delete or a colon-prefixed delete refspec",
+            "risk_level": "critical",
+            "action": "warn",
+            "reason": "deleting a remote branch can remove shared work",
+            "suggested_policy": 'require_approval git "push --delete"',
+        },
+        {
+            "rule_id": "git_force_refspec_push",
+            "event_type": "shell",
+            "pattern": "git push with a plus-prefixed refspec",
+            "risk_level": "critical",
+            "action": "warn",
+            "reason": "plus-prefixed refspec can force-update remote refs",
+            "suggested_policy": 'deny git "push +<refspec>"',
+        },
+        {
+            "rule_id": "git_bulk_push",
+            "event_type": "shell",
+            "pattern": "git push --all or git push --tags",
+            "risk_level": "high",
+            "action": "warn",
+            "reason": "pushing all branches or tags can publish more refs than intended",
+            "suggested_policy": 'require_approval git "push --all/--tags"',
         },
         {
             "rule_id": "suspicious_http_post",
@@ -212,16 +266,90 @@ def is_git_push(command: str, tokens: list[str] | None = None) -> bool:
     return len(t) >= 2 and t[0] == "git" and t[1] == "push"
 
 
+def _is_protected_ref(ref: str) -> bool:
+    value = str(ref).lstrip("+:")
+    candidates = [part for part in value.split(":") if part]
+    protected = {"main", "master", "trunk", "production", "prod"}
+    for candidate in candidates:
+        normalized = candidate.removeprefix("refs/heads/").strip("/").lower()
+        if normalized in protected or normalized.startswith("release/"):
+            return True
+    return False
+
+
+def classify_git_push(command: str, tokens: list[str] | None = None) -> dict[str, Any] | None:
+    """Classify supported git push forms without contacting a remote."""
+
+    raw = [str(item).strip().strip("\"'") for item in (tokens if tokens is not None else tokenize_command(command))]
+    normalized = [item.lower() for item in raw]
+    if len(normalized) < 2 or normalized[0] != "git" or normalized[1] != "push":
+        return None
+
+    arguments = raw[2:]
+    lowered = normalized[2:]
+    positionals = [item for item in arguments if item and not item.startswith("-")]
+    remote = positionals[0] if positionals else None
+    refs = positionals[1:] if len(positionals) > 1 else []
+
+    has_force_with_lease = any(item == "--force-with-lease" or item.startswith("--force-with-lease=") for item in lowered)
+    has_force = any(item in {"--force", "-f"} for item in lowered)
+    has_mirror = "--mirror" in lowered
+    has_delete = "--delete" in lowered or any(item.startswith(":") and len(item) > 1 for item in refs)
+    has_force_refspec = any(item.startswith("+") and len(item) > 1 for item in refs)
+    has_all = "--all" in lowered
+    has_tags = "--tags" in lowered
+
+    if has_mirror:
+        push_type = "mirror"
+    elif has_force_with_lease:
+        push_type = "force_with_lease"
+    elif has_force:
+        push_type = "force"
+    elif has_delete:
+        push_type = "delete_remote_branch"
+    elif has_force_refspec:
+        push_type = "force_refspec"
+    elif has_all:
+        push_type = "all"
+    elif has_tags:
+        push_type = "tags"
+    else:
+        push_type = "normal"
+
+    return {
+        "kind": "push",
+        "push_type": push_type,
+        "remote": remote,
+        "refs": refs,
+        "protected_branch": any(_is_protected_ref(ref) for ref in refs) if refs else None,
+    }
+
+
 def evaluate_shell_command(command: str, tokens: list[str] | None = None) -> dict[str, Any]:
+    git_operation = classify_git_push(command, tokens)
     if is_rm_rf(command, tokens):
         targets = rm_targets(command, tokens)
         target_text = ", ".join(targets) if targets else "unknown target"
         fallback = risk("critical", [f"recursive force delete requested: {target_text}"], "dangerous_delete", "warn")
-    elif is_git_push(command, tokens):
-        fallback = risk("high", ["remote git push requested"], "git_push", "warn")
+    elif git_operation is not None:
+        push_rules = {
+            "normal": ("high", "git_push", "git push publishes local code or history to a remote repository"),
+            "force": ("critical", "git_force_push", "force push can rewrite remote history and disrupt collaborators"),
+            "force_with_lease": ("high", "git_force_with_lease", "force-with-lease can still rewrite remote history"),
+            "mirror": ("critical", "git_mirror_push", "mirror push can overwrite remote refs"),
+            "delete_remote_branch": ("critical", "git_delete_remote_branch", "deleting a remote branch can remove shared work"),
+            "force_refspec": ("critical", "git_force_refspec_push", "plus-prefixed refspec can force-update remote refs"),
+            "all": ("high", "git_bulk_push", "pushing all branches or tags can publish more refs than intended"),
+            "tags": ("high", "git_bulk_push", "pushing all branches or tags can publish more refs than intended"),
+        }
+        level, rule_id, reason = push_rules.get(str(git_operation["push_type"]), ("high", "git_push", "remote git push requested"))
+        fallback = risk(level, [reason], rule_id, "warn")
     else:
         fallback = risk("low", [], None, "allow")
-    return _yaml_risk({"event_type": "shell", "command": command}, fallback)
+    result = _yaml_risk({"event_type": "shell", "command": command}, fallback)
+    if git_operation is not None:
+        result["git_operation"] = git_operation
+    return result
 
 
 def evaluate_file_write(path: str) -> dict[str, Any]:

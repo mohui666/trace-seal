@@ -60,6 +60,72 @@ rules:
     reason: Plaintext HTTP can expose request metadata
     suggested_policy: 'require_approval http "http://*/**"'
 
+  - id: warn-git-force-with-lease
+    description: Warn before rewriting remote history with lease
+    match:
+      event_type: shell
+      command:
+        contains: "--force-with-lease"
+    risk_level: high
+    action: warn
+    reason: Force-with-lease can still rewrite remote history
+    suggested_policy: 'require_approval git "push --force-with-lease"'
+
+  - id: warn-git-mirror-push
+    description: Warn before mirroring every remote ref
+    match:
+      event_type: shell
+      command:
+        contains: "--mirror"
+    risk_level: critical
+    action: warn
+    reason: Mirror push can overwrite remote refs
+    suggested_policy: 'deny git "push --mirror"'
+
+  - id: warn-git-delete-remote-branch
+    description: Warn before deleting a remote branch
+    match:
+      event_type: shell
+      command:
+        regex: '\bgit\s+push\b.*(?:--delete|\s:[^\s]+)'
+    risk_level: critical
+    action: warn
+    reason: Deleting a remote branch can remove shared work
+    suggested_policy: 'require_approval git "push --delete"'
+
+  - id: warn-git-force-refspec
+    description: Warn before a plus-prefixed forced ref update
+    match:
+      event_type: shell
+      command:
+        regex: '\bgit\s+push\b.*\s\+[^\s]+'
+    risk_level: critical
+    action: warn
+    reason: Plus-prefixed refspec can force-update remote refs
+    suggested_policy: 'deny git "push +<refspec>"'
+
+  - id: warn-git-force-push
+    description: Warn before force-pushing remote history
+    match:
+      event_type: shell
+      command:
+        regex: '(?:^|\s)(?:--force|-f)(?:\s|$)'
+    risk_level: critical
+    action: warn
+    reason: Force push can rewrite remote history and disrupt collaborators
+    suggested_policy: 'deny git "push --force"'
+
+  - id: warn-git-bulk-push
+    description: Warn before publishing all branches or tags
+    match:
+      event_type: shell
+      command:
+        regex: '(?:^|\s)--(?:all|tags)(?:\s|$)'
+    risk_level: high
+    action: warn
+    reason: Pushing all branches or tags can publish more refs than intended
+    suggested_policy: 'require_approval git "push --all/--tags"'
+
   - id: warn-git-push
     description: Warn before publishing repository state
     match:
@@ -68,5 +134,5 @@ rules:
         contains: "git push"
     risk_level: high
     action: warn
-    reason: Git push publishes repository state
+    reason: Git push publishes local code or history to a remote repository
     suggested_policy: 'require_approval git "push"'

@@ -109,9 +109,12 @@ def _event_operation(event: dict[str, Any]) -> str:
 
 
 def _normalize_event(event: dict[str, Any]) -> dict[str, Any]:
-    if "operation" not in event:
+    git_operation = (event.get("input") or {}).get("git_operation") or (event.get("risk") or {}).get("git_operation")
+    if "operation" not in event or (git_operation is not None and "git_operation" not in event):
         event = dict(event)
-        event["operation"] = _event_operation(event)
+        event.setdefault("operation", _event_operation(event))
+        if git_operation is not None:
+            event["git_operation"] = git_operation
     return event
 
 

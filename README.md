@@ -108,6 +108,12 @@ python -m traceseal run -- python examples/bad_agent_policy_yaml.py
 
 `dashboard-data policy` 返回 `policy_source.type/path/error`；run 事件和 explain 保留旧 `policy_rule` 字段，同时增加/展示 `rule_id`、`action`、`reason`、`suggested_policy`。
 
+## Git push 风险细分（v0.3.0）
+
+TraceSeal 会区分普通 `git push`、force push、force-with-lease、mirror push、删除远端分支、plus-prefixed force refspec，以及 `--all` / `--tags` bulk push。force、mirror、delete 和 force-refspec 默认标记为 critical，普通、force-with-lease 和 bulk push 标记为 high。
+
+事件的 `input.git_operation`（以及 dashboard-data 的事件顶层 `git_operation`）包含 `push_type`、`remote`、`refs` 和 `protected_branch`；replay/explain 同步展示分类。所有 Git push 仍由 SDK 离线模拟，demo 和测试不会调用真实 Git 远端。
+
 ## 运行 bad agent demo
 
 ```powershell
@@ -151,6 +157,7 @@ runs/latest                 # 文本指针，内容是最新 run_id
 | `examples/bad_agent_git_state.py` | Git 状态审计 | 在 sandbox 中稳定制造一个 unstaged 修改、一个 staged 新文件和一个 untracked 文件，不 commit、不 push。 |
 | `examples/bad_agent_http_cassette.py` | HTTP cassette 脱敏 | 使用本地 HTTP server 生成 GET/POST cassette，验证 query、header 和 body 摘要脱敏。 |
 | `examples/bad_agent_policy_yaml.py` | YAML policy DSL | 在 sandbox 内加载示例 YAML，触发 `.env`、危险删除和本地脱敏 HTTP 规则。 |
+| `examples/bad_agent_git_push_classification.py` | Git push 分类 | 离线模拟 normal/force/lease/mirror/delete/refspec/all/tags push，不访问远端。 |
 
 分别运行：
 
@@ -404,7 +411,9 @@ resources/traceseal-core/traceseal-core.exe dashboard-data ...
 
 - `dangerous_delete`: 标记 `rm -rf` / `rmdir /s /q`
 - `env_write`: 标记写入 `.env` / `.env.*`
-- `git_push`: 标记 `git push`
+- `git_push`: 普通 push（high）
+- `git_force_push` / `git_mirror_push` / `git_delete_remote_branch` / `git_force_refspec_push`: 高破坏性 push（critical）
+- `git_force_with_lease` / `git_bulk_push`: 可能改写历史或批量发布 refs（high）
 - `suspicious_http_post`: 标记可疑 HTTP POST
 - `sensitive_http_request`: 标记并脱敏带敏感 query/header/auth/cookie 的 `httpx` 请求
 - `insecure_http_request`: 标记明文 `http://` 请求
@@ -447,8 +456,9 @@ Python 核心案例测试覆盖：
 - `test_os_system_replay_and_explain`
 - `FileReadTrackingTest` 的 5 个文件读取/敏感风险/Dashboard/replay/explain 测试
 - `HttpxInterceptionTest` 的 5 个同步/异步 API、脱敏、失败、Dashboard/replay/explain 测试
+- `GitPushClassificationTest` 的 push 类型、规则、metadata、YAML、dashboard/explain 和零远端调用测试
 
-当前完整基线：Python 56 tests、Renderer 96 tests、Electron 45 tests。
+当前完整基线：Python 62 tests、Renderer 96 tests、Electron 45 tests。
 
 完整 Python 验证：
 
@@ -504,8 +514,8 @@ powershell -ExecutionPolicy Bypass -File scripts\build-windows.ps1
 
 ## 后续方向
 
-- 已补充 `.env` 写入、Git push、HTTP POST 案例；下一步可补级联测试失败和更多真实项目事故案例。
-- 继续扩展 policy：force push 与普通 push 细分、域名白名单/黑名单。
+- 已补充 `.env` 写入、Git push 分类和 HTTP POST 案例；下一步可补级联测试失败和更多真实项目事故案例。
+- 继续扩展 policy：域名白名单/黑名单。
 - 继续增强 Dashboard：Git/HTTP cassette 可视化、首次错误可视化和 policy 只读/编辑闭环。
 - 升级 sandbox：Docker / overlayfs。
 - 增加签名审计证明 attestation。

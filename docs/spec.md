@@ -87,12 +87,13 @@ Agent 将敏感 payload POST 到外部 URL。demo 使用 `TRACESEAL_OFFLINE_HTTP
 
 | 模块 | 能力 | 当前状态 |
 |---|---|---|
+| sdk | 文件读取拦截 | `open(r/rb)`、`Path.open/read_text/read_bytes`，只保存路径、模式、API 和大小等元数据 |
 | sdk | 文件写入拦截 | `open(w/a/x/+)`、`Path.write_text/write_bytes` |
 | sdk | 删除拦截 | `shutil.rmtree`、`os.remove/unlink`，并跨平台模拟 `rm -rf` |
-| sdk | Shell 拦截 | `subprocess.run()`，记录命令、返回码、stdout/stderr 摘要 |
+| sdk | Shell 拦截 | `subprocess.run()` 与 `os.system()`，记录命令、返回码、stdout/stderr 摘要 |
 | sdk | Git push 风险 | 离线分类 normal/force/force-with-lease/mirror/delete/refspec/all/tags，不访问真实远端 |
 | policy | HTTP 域名策略 | allow/deny/warn 名单、unknown external 告警与 localhost/loopback/private/external/ip/unknown 分类，不做 DNS 查询 |
-| sdk | HTTP 拦截 | `urllib.request.urlopen`、可选 `requests.Session.request`；demo 支持离线模拟 |
+| sdk | HTTP 拦截 | `urllib.request.urlopen`、可选 `requests.Session.request`、`httpx` 函数/Client/AsyncClient；敏感 query/header 脱敏 |
 | recorder | 事件记录 | `events.jsonl`，包含 cwd、env 摘要、输入/输出、风险、文件变更 |
 | recorder | Run 产物 | `manifest.json`、workspace/Git 快照与 `http_cassette.jsonl` |
 | recorder | Git 状态 | `git_state_before.json`、`git_state_after.json`，只保存路径、状态、branch、HEAD 等元数据 |
@@ -155,3 +156,5 @@ python -m unittest discover -s tests -v
 ## 10. 路线图
 
 详见 [roadmap.md](roadmap.md)。
+
+Stage 3 Core 已完成并通过 2026-06-19 release-prep 验证。v0.3.0 当前仍是未发布、未打 tag 状态；Rust Guard 是阶段 4 远期规划。

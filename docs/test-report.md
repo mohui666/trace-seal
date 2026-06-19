@@ -159,3 +159,53 @@ OK
 - `examples/bad_agent_cascade_failure.py` 使用 `httpx.MockTransport`、sandbox-only 删除与 Git push simulation，不访问真实外网、不执行真实 push。
 - HTTP query/header 保持 `<redacted>`，request/response body 仍仅保存摘要；events、cassette、dashboard、replay、explain 均未发现完整合成 secret。
 - 新增 19 个 cascade 专项测试；Python 全量测试共 90 个。
+
+## 13. 2026-06-19 v0.3.0 release prep 全量验收
+
+### 13.1 基线与结论
+
+- 基线 commit：`520276d42c90d6c528a250cb51ade473c560c08b`
+- 验证分支：`chore/v0.3-release-prep`
+- 结论：**PASS FOR RELEASE CANDIDATE PREP**
+- 发布状态：Stage 3 Core complete；v0.3.0 未创建 tag、未创建 GitHub Release。
+
+### 13.2 自动化与 demo
+
+- Python `compileall`：通过。
+- Python unittest：90/90 通过（39.863 秒）。
+- Renderer：typecheck 通过，96/96 tests 通过，production build 通过。
+- Electron：typecheck 通过，45/45 tests 通过。
+- 以下 7 个 demo 均生成独立 run，且每个 run 的 dashboard-data、replay、explain 均退出码 0：
+  - delete：`run_20260619_215621_305434`
+  - Git state：`run_20260619_215623_868575`
+  - HTTP cassette：`run_20260619_215626_518762`
+  - policy YAML：`run_20260619_215631_132158`
+  - Git push classification：`run_20260619_215634_109263`
+  - domain policy：`run_20260619_215636_714266`
+  - cascade failure：`run_20260619_215639_826813`
+
+### 13.3 隐私与安全
+
+- 对 63 份 run artifact / dashboard-data / replay / explain 输出扫描 12 类完整敏感值，结果为 0 命中。
+- 扫描覆盖 `demo-cascade-secret-123`、`sk-demo-secret`、`demo-token`、Authorization bearer、Cookie 和 HTTP cassette demo 的完整 token/header/body marker。
+- 10 条 cassette entry 均无 `request_body`、`response_body` 或 raw body 字段，仅保留 content type、size、SHA-256 与 redaction metadata。
+- domain/cascade HTTP 使用 MockTransport 或本地 server；Git push 全部模拟；删除只发生在 run 的 sandbox workspace。
+
+### 13.4 Windows 构建与打包
+
+- `scripts/build-windows.ps1 -SkipInstall`：通过。
+- PyInstaller bundled core 构建与 `dashboard-data policy` smoke test：通过。
+- Electron Forge package/make：通过。
+- `TraceSeal-Setup.exe`：已生成，151,891,968 bytes（144.86 MiB）。
+- Installer SHA-256：`fa08a63b2cc8f5062a6e37c73390853d6ccd753ffd18d09cfd27400c0ff48319`，与本地 `SHA256SUMS.txt` 一致。
+- Packaged renderer `index.html` 与 bundled `traceseal-core.exe`：存在且 core smoke test 通过。
+- GitHub Actions Windows build：main baseline `520276d` 的 [run 27829438486](https://github.com/mohui666/trace-seal/actions/runs/27829438486) 成功。
+- `scripts/verify-release.ps1 -Mode Source`：PASS；当前 prep 分支产生预期的 non-standard branch warning。
+
+### 13.5 已知限制
+
+- package version metadata 仍一致地保持为已发布的 0.2.0；升级到 0.3.0 留给明确的 release/tag 步骤。
+- 本次验证完成本地 installer 生成、资源和 hash 校验，但未把该 v0.3.0 release candidate 安装到干净 Windows VM 后重启验证。
+- installer 未代码签名；仅验证 Windows x64。
+- Python monkey-patch、目录复制 sandbox、transcript replay 和 metadata-only cassette 的既有边界保持不变。
+- Rust Guard 不在本次范围。

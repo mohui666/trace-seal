@@ -1,7 +1,7 @@
 """Bad agent demo: attempts a git push without pushing anything real.
 
-The TraceSeal sandbox excludes .git, so this command cannot publish to a real
-remote. It still exercises the git_push policy matcher through subprocess.run.
+TraceSeal's subprocess hook simulates git push, so this command cannot publish
+to a remote. It still exercises the git_push policy matcher.
 """
 
 import subprocess

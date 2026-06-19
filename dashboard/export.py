@@ -9,6 +9,7 @@ from typing import Any
 
 from minimizer.explain import find_first_harmful_event
 from policy.rules import RISK_ORDER, load_policy, suggest_policy_for_event
+from recorder.git_state import summarize_git_states
 from replay.renderer import load_events
 
 RUN_ID_RE = re.compile(r"^run_[A-Za-z0-9_.-]+$")
@@ -113,6 +114,16 @@ def _normalize_event(event: dict[str, Any]) -> dict[str, Any]:
     return event
 
 
+def _git_state_payload(run_dir: Path, manifest: dict[str, Any]) -> dict[str, Any]:
+    manifest_git = manifest.get("git") if isinstance(manifest.get("git"), dict) else {}
+    before = _load_json_file(run_dir / "git_state_before.json", default=manifest_git.get("before") or {})
+    after = _load_json_file(run_dir / "git_state_after.json", default=manifest_git.get("after") or {})
+    summary = manifest_git.get("summary")
+    if not isinstance(summary, dict):
+        summary = summarize_git_states(before, after)
+    return {"before": before, "after": after, "summary": summary}
+
+
 def export_dashboard_data(run_dir: str | Path) -> dict[str, Any]:
     """Return a compact JSON-ready summary for Electron/React dashboard reads."""
 
@@ -135,6 +146,7 @@ def export_dashboard_data(run_dir: str | Path) -> dict[str, Any]:
         "events": events,
         "affected_files": _affected_files(events),
         "suggested_policy": suggest_policy_for_event(first_harmful) if first_harmful else None,
+        "git_state": _git_state_payload(run_dir, manifest),
     }
 
 

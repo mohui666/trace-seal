@@ -11,6 +11,7 @@ from typing import Iterable
 
 from dashboard.export import DashboardDataError, handle_dashboard_cli, json_dumps
 from minimizer.explain import explain_run
+from recorder.git_state import collect_git_state, compact_git_state, summarize_git_states
 from recorder.workspace import snapshot_workspace
 from replay.renderer import replay_run
 from sandbox.workspace import copy_workspace
@@ -73,6 +74,11 @@ def build_child_env(project_root: Path, sandbox_root: Path, run_dir: Path, run_i
     # Prevent tools such as git from walking out of runs/<id>/workspace and
     # discovering the real repository .git directory above runs/.
     env["GIT_CEILING_DIRECTORIES"] = str(run_dir)
+    # Git state operations such as add/status need the copied repository, but
+    # transports are disabled for the Agent process so alternate invocation
+    # paths cannot contact a configured remote.
+    env["GIT_ALLOW_PROTOCOL"] = ""
+    env["GIT_PROTOCOL_FROM_USER"] = "0"
     env.setdefault("PYTHONIOENCODING", "utf-8")
     env.setdefault("PYTHONDONTWRITEBYTECODE", "1")
     return env
@@ -116,6 +122,8 @@ def run_command(args: argparse.Namespace) -> int:
     copy_workspace(project_root, sandbox_root)
 
     write_json(run_dir / "workspace_before.json", snapshot_workspace(sandbox_root))
+    git_state_before = collect_git_state(sandbox_root)
+    write_json(run_dir / "git_state_before.json", git_state_before)
 
     manifest = {
         "schema_version": 1,
@@ -128,6 +136,11 @@ def run_command(args: argparse.Namespace) -> int:
         "events_path": str(events_path),
         "started_at": utc_now(),
         "status": "running",
+        "git": {
+            "before": compact_git_state(git_state_before),
+            "after": None,
+            "summary": None,
+        },
     }
     write_json(run_dir / "manifest.json", manifest)
 
@@ -144,6 +157,13 @@ def run_command(args: argparse.Namespace) -> int:
         print(f"[traceseal] {error}", file=sys.stderr, flush=True)
     finally:
         write_json(run_dir / "workspace_after.json", snapshot_workspace(sandbox_root))
+        git_state_after = collect_git_state(sandbox_root)
+        write_json(run_dir / "git_state_after.json", git_state_after)
+        manifest["git"] = {
+            "before": compact_git_state(git_state_before),
+            "after": compact_git_state(git_state_after),
+            "summary": summarize_git_states(git_state_before, git_state_after),
+        }
         manifest.update(
             {
                 "completed_at": utc_now(),

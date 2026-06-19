@@ -112,6 +112,8 @@ runs/<run_id>/events.jsonl
 runs/<run_id>/manifest.json
 runs/<run_id>/workspace_before.json
 runs/<run_id>/workspace_after.json
+runs/<run_id>/git_state_before.json
+runs/<run_id>/git_state_after.json
 runs/<run_id>/workspace/
 runs/latest                 # 文本指针，内容是最新 run_id
 ```
@@ -129,6 +131,7 @@ runs/latest                 # 文本指针，内容是最新 run_id
 | `examples/bad_agent_os_system.py` | `dangerous_delete` | 用 `os.system()` 尝试删除 sandbox 内含 Unicode/空格的 demo 目录；warn 执行，block/deny 阻断并保留文件。 |
 | `examples/bad_agent_file_read.py` | `sensitive_file_read` | 读取 sandbox 内合成的普通/敏感 demo 文件，只记录路径、API、模式和字节数，不记录文件全文。 |
 | `examples/bad_agent_httpx.py` | `sensitive_http_request` | 向本地临时 HTTP server 发起同步/异步 `httpx` 请求，验证元数据记录与敏感参数脱敏。 |
+| `examples/bad_agent_git_state.py` | Git 状态审计 | 在 sandbox 中稳定制造一个 unstaged 修改、一个 staged 新文件和一个 untracked 文件，不 commit、不 push。 |
 
 分别运行：
 
@@ -149,6 +152,9 @@ python -m traceseal explain runs/latest
 python -m traceseal run -- python examples/bad_agent_file_read.py
 python -m traceseal dashboard-data runs/latest
 python -m traceseal explain runs/latest
+
+python -m traceseal run -- python examples/bad_agent_git_state.py
+python -m traceseal dashboard-data runs/latest
 ```
 
 ## Python 文件读取记录（v0.3.0）
@@ -167,6 +173,17 @@ TraceSeal v0.3.0 支持 `httpx.get/post/put/patch/delete/request`、`httpx.Clien
 python -m traceseal run -- python examples/bad_agent_httpx.py
 python -m traceseal dashboard-data runs/latest
 python -m traceseal explain runs/latest
+```
+
+## Git 状态记录（v0.3.0）
+
+TraceSeal 会在 Agent 运行前后记录 Git branch、HEAD、`git status --short`、staged、unstaged 和 untracked 文件，分别写入 `git_state_before.json` 与 `git_state_after.json`。`manifest.json` 同时保存 before/after 简要信息和计数摘要，`dashboard-data run <run_id>` 通过新增的 `git_state` 字段导出完整元数据。
+
+采集器只执行本地只读 Git 命令，不 fetch、pull、push、remote、clone 或 commit，不访问远端，也不保存完整源码 diff。正常仓库的 `.git` 目录会复制到 sandbox，Agent 的 `git add` 等操作只修改该副本；副本会移除 remote/include 配置与 hooks，并禁用 Agent 进程的 Git transport。若源 workspace 使用 `.git` 指针文件（linked worktree），TraceSeal 会丢弃该指针以避免触及原仓库。Git 未安装、非 Git 目录或命令失败时，错误会写入 `error` metadata，不会让 `traceseal run` 崩溃。
+
+```powershell
+python -m traceseal run -- python examples/bad_agent_git_state.py
+python -m traceseal dashboard-data runs/latest
 ```
 
 ## 查看 replay
@@ -237,6 +254,7 @@ python -m traceseal dashboard-data policy
 - `events`
 - `affected_files`
 - `suggested_policy`
+- `git_state.before` / `git_state.after` / `git_state.summary`
 
 ## Electron 数据运行层
 
@@ -445,7 +463,7 @@ powershell -ExecutionPolicy Bypass -File scripts\build-windows.ps1
 - HTTP 拦截支持 `urllib.request.urlopen` 和已安装 `requests` 时的 `requests.Session.request`。
 - `bad_agent_http.py` 默认启用 `TRACESEAL_OFFLINE_HTTP=1` 离线模拟，避免测试和演示依赖真实外网。
 - sandbox 是 workspace 复制，不是 Docker/overlayfs。
-- Git 操作当前主要通过 shell 命令风险识别，完整 Git diff / HEAD / staged 状态记录仍待扩展。
+- Git 状态采集只保存 branch、HEAD、文件路径和状态等元数据，不保存完整源码 diff；linked worktree 的 `.git` 指针不会带入 sandbox。
 - 文件读取是 Python 层 monkey patch，不保证捕获 C 扩展、外部进程或所有底层读取。
 - `httpx` 记录为 Python 层 monkey patch，不是系统级防火墙，不捕获外部进程或所有 HTTP 客户端。
 - 完整 HTTP cassette、policy 编辑器和 attestation 仍属于后续增强。
@@ -454,6 +472,6 @@ powershell -ExecutionPolicy Bypass -File scripts\build-windows.ps1
 
 - 已补充 `.env` 写入、Git push、HTTP POST 案例；下一步可补级联测试失败和更多真实项目事故案例。
 - 扩展 policy DSL：`allow / warn / deny / require_approval`、路径匹配、命令 pattern 匹配。
-- 继续增强 Dashboard：更完整的文件 diff、HTTP 记录、Git diff、首次错误可视化和 policy 只读/编辑闭环。
+- 继续增强 Dashboard：Git 状态可视化、HTTP cassette、首次错误可视化和 policy 只读/编辑闭环。
 - 升级 sandbox：Docker / overlayfs。
 - 增加签名审计证明 attestation。

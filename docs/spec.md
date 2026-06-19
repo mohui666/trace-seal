@@ -92,15 +92,16 @@ Agent 将敏感 payload POST 到外部 URL。demo 使用 `TRACESEAL_OFFLINE_HTTP
 | sdk | Git push 风险 | 识别并模拟 `git push`，不访问真实远端 |
 | sdk | HTTP 拦截 | `urllib.request.urlopen`、可选 `requests.Session.request`；demo 支持离线模拟 |
 | recorder | 事件记录 | `events.jsonl`，包含 cwd、env 摘要、输入/输出、风险、文件变更 |
-| recorder | Run 产物 | `manifest.json`、`workspace_before.json`、`workspace_after.json` |
+| recorder | Run 产物 | `manifest.json`、workspace/Git 快照与 `http_cassette.jsonl` |
 | recorder | Git 状态 | `git_state_before.json`、`git_state_after.json`，只保存路径、状态、branch、HEAD 等元数据 |
+| recorder | HTTP cassette | `http_cassette.jsonl`，保存脱敏 URL/header、状态码、风险规则及非正文 body 摘要 |
 | sandbox | 最小隔离 | 复制 workspace 到 `runs/<run_id>/workspace` |
 | replay | transcript replay | 重建时间线，不重新执行副作用 |
 | minimizer | explain | 定位首次高风险/有害事件，输出原因和建议规则 |
 | policy | MVP 规则 | `dangerous_delete`、`env_write`、`git_push`、`suspicious_http_post` |
 | cli | 命令行 | `run`、`replay`、`explain`、`dashboard-data` |
 | dashboard | 数据层 | `dashboard/export.py` 输出 Electron 可读 JSON |
-| tests | 自动化测试 | 5 个 unittest 覆盖 delete/env/git/replay/explain |
+| tests | 自动化测试 | 43 个 unittest 覆盖核心 recorder、policy、replay、Git 与 HTTP 链路 |
 
 ## 6. 已落地事故案例
 
@@ -111,6 +112,7 @@ Agent 将敏感 payload POST 到外部 URL。demo 使用 `TRACESEAL_OFFLINE_HTTP
 | `examples/bad_agent_git.py` | `git_push` | 模拟 `git push origin main`，不会真实推送。 |
 | `examples/bad_agent_http.py` | `suspicious_http_post` | 离线模拟向外部 URL POST 敏感数据。 |
 | `examples/bad_agent_git_state.py` | Git 状态审计 | 制造 unstaged、staged、untracked 三类状态，不 commit、不访问远端。 |
+| `examples/bad_agent_http_cassette.py` | HTTP cassette | 使用本地 server 生成 GET/POST 脱敏 cassette，不依赖外网。 |
 
 ## 7. 第一版仍不做什么
 
@@ -118,6 +120,7 @@ Agent 将敏感 payload POST 到外部 URL。demo 使用 `TRACESEAL_OFFLINE_HTTP
 |---|---|
 | 非 Python Agent 支持 | 先聚焦 Python 生态。 |
 | 完整源码 Git diff 内容 | 默认只保存文件路径与状态，避免复制源码内容。 |
+| 完整 HTTP 请求/响应正文 | cassette 默认只保存 size/hash/content-type 摘要，隐私优先。 |
 | 真正确定性副作用重放 | 当前是 transcript replay。 |
 | Docker/overlayfs sandbox | 当前 workspace 复制足够演示。 |
 | `policy.yaml` DSL | 当前使用 JSON + Python matcher，后续升级。 |

@@ -114,6 +114,7 @@ runs/<run_id>/workspace_before.json
 runs/<run_id>/workspace_after.json
 runs/<run_id>/git_state_before.json
 runs/<run_id>/git_state_after.json
+runs/<run_id>/http_cassette.jsonl
 runs/<run_id>/workspace/
 runs/latest                 # 文本指针，内容是最新 run_id
 ```
@@ -132,6 +133,7 @@ runs/latest                 # 文本指针，内容是最新 run_id
 | `examples/bad_agent_file_read.py` | `sensitive_file_read` | 读取 sandbox 内合成的普通/敏感 demo 文件，只记录路径、API、模式和字节数，不记录文件全文。 |
 | `examples/bad_agent_httpx.py` | `sensitive_http_request` | 向本地临时 HTTP server 发起同步/异步 `httpx` 请求，验证元数据记录与敏感参数脱敏。 |
 | `examples/bad_agent_git_state.py` | Git 状态审计 | 在 sandbox 中稳定制造一个 unstaged 修改、一个 staged 新文件和一个 untracked 文件，不 commit、不 push。 |
+| `examples/bad_agent_http_cassette.py` | HTTP cassette 脱敏 | 使用本地 HTTP server 生成 GET/POST cassette，验证 query、header 和 body 摘要脱敏。 |
 
 分别运行：
 
@@ -155,6 +157,9 @@ python -m traceseal explain runs/latest
 
 python -m traceseal run -- python examples/bad_agent_git_state.py
 python -m traceseal dashboard-data runs/latest
+
+python -m traceseal run -- python examples/bad_agent_http_cassette.py
+python -m traceseal dashboard-data runs/latest
 ```
 
 ## Python 文件读取记录（v0.3.0）
@@ -173,6 +178,17 @@ TraceSeal v0.3.0 支持 `httpx.get/post/put/patch/delete/request`、`httpx.Clien
 python -m traceseal run -- python examples/bad_agent_httpx.py
 python -m traceseal dashboard-data runs/latest
 python -m traceseal explain runs/latest
+```
+
+## HTTP cassette 脱敏记录（v0.3.0）
+
+TraceSeal 会基于 HTTP / httpx / requests / urllib 事件生成已脱敏的 `http_cassette.jsonl` artifact。该 artifact 通过 `event_id` 关联原始事件，记录 method、脱敏 URL、host、状态码、耗时、风险规则和请求/响应 body 摘要。默认不保存完整请求体、响应体或敏感 header/query 值，也不会额外发送 HTTP 请求或改变原请求行为。
+
+请求/响应 body 只保存 `present`、`content_type`、`size_bytes`、`sha256` 和固定的 `body_not_stored_by_default` 标记。`Authorization`、Cookie、API key、token、password、credential、session 等 header/query 值统一替换为 `<redacted>`。生成失败只会写入 manifest error metadata，不会导致 `traceseal run` 失败。
+
+```powershell
+python -m traceseal run -- python examples/bad_agent_http_cassette.py
+python -m traceseal dashboard-data runs/latest
 ```
 
 ## Git 状态记录（v0.3.0）
@@ -255,6 +271,7 @@ python -m traceseal dashboard-data policy
 - `affected_files`
 - `suggested_policy`
 - `git_state.before` / `git_state.after` / `git_state.summary`
+- `http_cassette.summary` / `http_cassette.entries`（entries 最多 50 条）
 
 ## Electron 数据运行层
 
@@ -466,12 +483,12 @@ powershell -ExecutionPolicy Bypass -File scripts\build-windows.ps1
 - Git 状态采集只保存 branch、HEAD、文件路径和状态等元数据，不保存完整源码 diff；linked worktree 的 `.git` 指针不会带入 sandbox。
 - 文件读取是 Python 层 monkey patch，不保证捕获 C 扩展、外部进程或所有底层读取。
 - `httpx` 记录为 Python 层 monkey patch，不是系统级防火墙，不捕获外部进程或所有 HTTP 客户端。
-- 完整 HTTP cassette、policy 编辑器和 attestation 仍属于后续增强。
+- HTTP cassette 只保存脱敏元数据与 body 摘要，不是包含完整请求/响应内容的确定性网络重放。
 
 ## 后续方向
 
 - 已补充 `.env` 写入、Git push、HTTP POST 案例；下一步可补级联测试失败和更多真实项目事故案例。
 - 扩展 policy DSL：`allow / warn / deny / require_approval`、路径匹配、命令 pattern 匹配。
-- 继续增强 Dashboard：Git 状态可视化、HTTP cassette、首次错误可视化和 policy 只读/编辑闭环。
+- 继续增强 Dashboard：Git/HTTP cassette 可视化、首次错误可视化和 policy 只读/编辑闭环。
 - 升级 sandbox：Docker / overlayfs。
 - 增加签名审计证明 attestation。

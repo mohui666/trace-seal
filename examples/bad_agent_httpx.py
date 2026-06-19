@@ -82,6 +82,7 @@ def main() -> None:
                     "sig": SECRET_TOKEN,
                     "session": SECRET_TOKEN,
                     "cookie": SECRET_TOKEN,
+                    "credential": SECRET_TOKEN,
                     "safe": "visible-demo-value",
                 },
                 headers={

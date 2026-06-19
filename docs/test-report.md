@@ -112,3 +112,12 @@ OK
 - `dashboard-data run <run_id>` 新增兼容性字段 `git_state`，包含 before、after 和 summary。
 - `examples/bad_agent_git_state.py` 在 sandbox 内制造三类 Git 变更，不 commit、不 push、不访问网络。
 - Python 全量测试：35 个，全部通过。
+
+## 8. 2026-06-19 HTTP cassette 脱敏记录验收
+
+- run 新增 `http_cassette.jsonl`，每条 entry 通过 `event_id` 关联 HTTP / `network.http` 事件。
+- manifest 新增 `http_cassette.present/entry_count/high_risk_count/external_host_count/redacted/path` 摘要与失败 metadata。
+- dashboard-data 新增 `http_cassette.summary` 和最多 50 条脱敏 entries。
+- header/query 敏感字段统一替换为 `<redacted>`；请求/响应 body 仅保存 content type、size 和 SHA-256 摘要。
+- `examples/bad_agent_http_cassette.py` 仅访问本地临时 HTTP server，使用合成假 secret。
+- 新增 8 个 cassette 专项测试；Python 全量测试共 43 个。

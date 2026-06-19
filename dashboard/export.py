@@ -10,6 +10,7 @@ from typing import Any
 from minimizer.explain import find_first_harmful_event
 from policy.rules import RISK_ORDER, load_policy, suggest_policy_for_event
 from recorder.git_state import summarize_git_states
+from recorder.http_cassette import read_http_cassette
 from replay.renderer import load_events
 
 RUN_ID_RE = re.compile(r"^run_[A-Za-z0-9_.-]+$")
@@ -124,6 +125,23 @@ def _git_state_payload(run_dir: Path, manifest: dict[str, Any]) -> dict[str, Any
     return {"before": before, "after": after, "summary": summary}
 
 
+def _http_cassette_payload(run_dir: Path, manifest: dict[str, Any]) -> dict[str, Any]:
+    raw_summary = manifest.get("http_cassette") if isinstance(manifest.get("http_cassette"), dict) else {}
+    summary = {
+        "present": bool(raw_summary.get("present")),
+        "entry_count": int(raw_summary.get("entry_count") or 0),
+        "high_risk_count": int(raw_summary.get("high_risk_count") or 0),
+        "external_host_count": int(raw_summary.get("external_host_count") or 0),
+        "redacted": raw_summary.get("redacted") is not False,
+    }
+    entries, read_error = read_http_cassette(run_dir / "http_cassette.jsonl", limit=50)
+    if read_error:
+        summary["error"] = read_error
+    elif raw_summary.get("error"):
+        summary["error"] = str(raw_summary["error"])
+    return {"summary": summary, "entries": entries}
+
+
 def export_dashboard_data(run_dir: str | Path) -> dict[str, Any]:
     """Return a compact JSON-ready summary for Electron/React dashboard reads."""
 
@@ -147,6 +165,7 @@ def export_dashboard_data(run_dir: str | Path) -> dict[str, Any]:
         "affected_files": _affected_files(events),
         "suggested_policy": suggest_policy_for_event(first_harmful) if first_harmful else None,
         "git_state": _git_state_payload(run_dir, manifest),
+        "http_cassette": _http_cassette_payload(run_dir, manifest),
     }
 
 

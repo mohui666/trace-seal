@@ -12,6 +12,7 @@ from typing import Iterable
 from dashboard.export import DashboardDataError, handle_dashboard_cli, json_dumps
 from minimizer.explain import explain_run
 from recorder.git_state import collect_git_state, compact_git_state, summarize_git_states
+from recorder.http_cassette import failed_summary, generate_http_cassette
 from recorder.workspace import snapshot_workspace
 from replay.renderer import replay_run
 from sandbox.workspace import copy_workspace
@@ -101,6 +102,13 @@ def command_for_display(command: Iterable[str]) -> str:
     return " ".join(str(x) for x in command)
 
 
+def count_lines(path: Path) -> int:
+    if not path.exists():
+        return 0
+    with path.open("r", encoding="utf-8") as source:
+        return sum(1 for _ in source)
+
+
 def run_command(args: argparse.Namespace) -> int:
     command = list(args.command)
     if command[:1] == ["--"]:
@@ -141,6 +149,15 @@ def run_command(args: argparse.Namespace) -> int:
             "after": None,
             "summary": None,
         },
+        "http_cassette": {
+            "present": False,
+            "entry_count": 0,
+            "high_risk_count": 0,
+            "external_host_count": 0,
+            "redacted": True,
+            "path": None,
+            "error": None,
+        },
     }
     write_json(run_dir / "manifest.json", manifest)
 
@@ -164,13 +181,17 @@ def run_command(args: argparse.Namespace) -> int:
             "after": compact_git_state(git_state_after),
             "summary": summarize_git_states(git_state_before, git_state_after),
         }
+        try:
+            manifest["http_cassette"] = generate_http_cassette(events_path, run_dir / "http_cassette.jsonl")
+        except Exception as exc:  # cassette failure must never abort an Agent run
+            manifest["http_cassette"] = failed_summary(f"{type(exc).__name__}: {exc}")
         manifest.update(
             {
                 "completed_at": utc_now(),
                 "status": "completed" if exit_code == 0 else "failed",
                 "exit_code": exit_code,
                 "error": error,
-                "event_count": sum(1 for _ in events_path.open("r", encoding="utf-8")) if events_path.exists() else 0,
+                "event_count": count_lines(events_path),
             }
         )
         write_json(run_dir / "manifest.json", manifest)

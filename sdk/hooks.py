@@ -87,7 +87,10 @@ def _is_read_noise(path: Any) -> bool:
         return True
     try:
         normalized = Path(path).resolve().as_posix().lower()
-        return normalized.endswith("/policy/default_policy.json")
+        if normalized.endswith("/policy/default_policy.json"):
+            return True
+        root = _workspace_root()
+        return Path(path).resolve() in {root / "policy.yaml", root / "policy.yml"}
     except Exception:
         return False
 

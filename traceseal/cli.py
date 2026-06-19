@@ -11,6 +11,7 @@ from typing import Iterable
 
 from dashboard.export import DashboardDataError, handle_dashboard_cli, json_dumps
 from minimizer.explain import explain_run
+from policy.rules import policy_source
 from recorder.git_state import collect_git_state, compact_git_state, summarize_git_states
 from recorder.http_cassette import failed_summary, generate_http_cassette
 from recorder.workspace import snapshot_workspace
@@ -144,6 +145,7 @@ def run_command(args: argparse.Namespace) -> int:
         "events_path": str(events_path),
         "started_at": utc_now(),
         "status": "running",
+        "policy_source": policy_source(project_root),
         "git": {
             "before": compact_git_state(git_state_before),
             "after": None,
@@ -173,6 +175,7 @@ def run_command(args: argparse.Namespace) -> int:
         exit_code = 127
         print(f"[traceseal] {error}", file=sys.stderr, flush=True)
     finally:
+        manifest["policy_source"] = policy_source(sandbox_root)
         write_json(run_dir / "workspace_after.json", snapshot_workspace(sandbox_root))
         git_state_after = collect_git_state(sandbox_root)
         write_json(run_dir / "git_state_after.json", git_state_after)

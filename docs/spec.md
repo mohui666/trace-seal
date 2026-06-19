@@ -12,7 +12,7 @@ AI Agent 自动读写文件、执行 Shell、发 HTTP 请求、操作 Git 时，
 | Agent 做了哪些操作？ | 记录核心副作用事件到 `events.jsonl`。 |
 | 哪次调用第一次造成错误？ | `traceseal explain` 定位首次有害工具调用。 |
 | 能否回放事故？ | `traceseal replay` 做 transcript replay，重建事件时间线。 |
-| 下次如何提前阻断？ | `policy/default_policy.json` + warn/block 模式。 |
+| 下次如何提前阻断？ | 工作区 `policy.yaml` DSL，缺失/无效时回退 `policy/default_policy.json`。 |
 | 桌面端如何展示？ | `traceseal dashboard-data` 导出 JSON，供 Electron 读取。 |
 | Agent 改动了哪些 Git 文件？ | run 前后记录 branch、HEAD、staged、unstaged、untracked 元数据。 |
 
@@ -98,10 +98,10 @@ Agent 将敏感 payload POST 到外部 URL。demo 使用 `TRACESEAL_OFFLINE_HTTP
 | sandbox | 最小隔离 | 复制 workspace 到 `runs/<run_id>/workspace` |
 | replay | transcript replay | 重建时间线，不重新执行副作用 |
 | minimizer | explain | 定位首次高风险/有害事件，输出原因和建议规则 |
-| policy | MVP 规则 | `dangerous_delete`、`env_write`、`git_push`、`suspicious_http_post` |
+| policy | YAML DSL + 默认规则 | 工作区 YAML schema/校验/匹配，支持 allow/warn/deny/require_approval，并兼容默认 JSON matcher |
 | cli | 命令行 | `run`、`replay`、`explain`、`dashboard-data` |
 | dashboard | 数据层 | `dashboard/export.py` 输出 Electron 可读 JSON |
-| tests | 自动化测试 | 43 个 unittest 覆盖核心 recorder、policy、replay、Git 与 HTTP 链路 |
+| tests | 自动化测试 | 56 个 unittest 覆盖 recorder、policy YAML/JSON fallback、replay、Git 与 HTTP 链路 |
 
 ## 6. 已落地事故案例
 
@@ -113,6 +113,7 @@ Agent 将敏感 payload POST 到外部 URL。demo 使用 `TRACESEAL_OFFLINE_HTTP
 | `examples/bad_agent_http.py` | `suspicious_http_post` | 离线模拟向外部 URL POST 敏感数据。 |
 | `examples/bad_agent_git_state.py` | Git 状态审计 | 制造 unstaged、staged、untracked 三类状态，不 commit、不访问远端。 |
 | `examples/bad_agent_http_cassette.py` | HTTP cassette | 使用本地 server 生成 GET/POST 脱敏 cassette，不依赖外网。 |
+| `examples/bad_agent_policy_yaml.py` | policy YAML DSL | 在 sandbox 中安装示例 YAML 并触发文件、Shell 与本地 HTTP 规则。 |
 
 ## 7. 第一版仍不做什么
 
@@ -123,7 +124,7 @@ Agent 将敏感 payload POST 到外部 URL。demo 使用 `TRACESEAL_OFFLINE_HTTP
 | 完整 HTTP 请求/响应正文 | cassette 默认只保存 size/hash/content-type 摘要，隐私优先。 |
 | 真正确定性副作用重放 | 当前是 transcript replay。 |
 | Docker/overlayfs sandbox | 当前 workspace 复制足够演示。 |
-| `policy.yaml` DSL | 当前使用 JSON + Python matcher，后续升级。 |
+| policy UI / 云端 policy | v0.3.0 只实现本地 YAML DSL，不做编辑器、账号或云端同步。 |
 | 完整 Electron UI | 当前先做 `dashboard-data` JSON 数据接口。 |
 
 ## 8. 为什么不是万能 Agent 平台

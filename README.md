@@ -70,7 +70,7 @@ trace-seal/
 ## 文档
 
 - [项目规格说明书](docs/spec.md)（目标规格 + 当前 MVP 状态）
-- [策略规则设计](docs/policy-rules.md)（下一阶段 policy.yaml DSL 草案；当前实现见 `policy/default_policy.json`）
+- [策略规则设计](docs/policy-rules.md)（`policy.yaml` DSL 与默认 JSON fallback）
 - [事故测试案例](docs/incident-examples.md)（delete/env/git/http 案例已落地）
 - [Dashboard 设计](docs/dashboard-design.md)（Renderer 已接入 Electron preload API 和真实 runs 数据）
 - [演示脚本](docs/demo.md)（5 分钟展示讲稿）
@@ -91,6 +91,22 @@ python -m pip install -e .
 ```powershell
 python -m traceseal --help
 ```
+
+## policy.yaml DSL（v0.3.0）
+
+TraceSeal 支持在工作区根目录放置 `policy.yaml`（其次为 `policy.yml`）定义安全规则。当前 DSL 支持 `event_type`、`path`、`command`、`method`、`host`、`url`、`risk_level`、`sensitive` 匹配字段，支持标量 exact 简写以及 `exact`、`contains`、`contains_any`、`glob`、`any_of`、`regex` 操作符，action 支持 `allow`、`warn`、`deny`、`require_approval`。
+
+加载顺序为工作区 `policy.yaml` → `policy.yml` → `policy/default_policy.json`。YAML 缺失时保持旧 JSON 行为；解析或 schema 校验失败时记录 `yaml_error_fallback`、路径和错误信息，再安全回退到默认 JSON，不中断 run。`TRACESEAL_POLICY_MODE` 继续优先于 YAML 顶层 `mode`。
+
+可从示例开始：
+
+```powershell
+Copy-Item examples/policy.yaml policy.yaml
+python -m traceseal dashboard-data policy
+python -m traceseal run -- python examples/bad_agent_policy_yaml.py
+```
+
+`dashboard-data policy` 返回 `policy_source.type/path/error`；run 事件和 explain 保留旧 `policy_rule` 字段，同时增加/展示 `rule_id`、`action`、`reason`、`suggested_policy`。
 
 ## 运行 bad agent demo
 
@@ -134,6 +150,7 @@ runs/latest                 # 文本指针，内容是最新 run_id
 | `examples/bad_agent_httpx.py` | `sensitive_http_request` | 向本地临时 HTTP server 发起同步/异步 `httpx` 请求，验证元数据记录与敏感参数脱敏。 |
 | `examples/bad_agent_git_state.py` | Git 状态审计 | 在 sandbox 中稳定制造一个 unstaged 修改、一个 staged 新文件和一个 untracked 文件，不 commit、不 push。 |
 | `examples/bad_agent_http_cassette.py` | HTTP cassette 脱敏 | 使用本地 HTTP server 生成 GET/POST cassette，验证 query、header 和 body 摘要脱敏。 |
+| `examples/bad_agent_policy_yaml.py` | YAML policy DSL | 在 sandbox 内加载示例 YAML，触发 `.env`、危险删除和本地脱敏 HTTP 规则。 |
 
 分别运行：
 
@@ -431,7 +448,7 @@ Python 核心案例测试覆盖：
 - `FileReadTrackingTest` 的 5 个文件读取/敏感风险/Dashboard/replay/explain 测试
 - `HttpxInterceptionTest` 的 5 个同步/异步 API、脱敏、失败、Dashboard/replay/explain 测试
 
-当前完整基线：Python 27 tests、Renderer 96 tests、Electron 45 tests。
+当前完整基线：Python 56 tests、Renderer 96 tests、Electron 45 tests。
 
 完整 Python 验证：
 
@@ -488,7 +505,7 @@ powershell -ExecutionPolicy Bypass -File scripts\build-windows.ps1
 ## 后续方向
 
 - 已补充 `.env` 写入、Git push、HTTP POST 案例；下一步可补级联测试失败和更多真实项目事故案例。
-- 扩展 policy DSL：`allow / warn / deny / require_approval`、路径匹配、命令 pattern 匹配。
+- 继续扩展 policy：force push 与普通 push 细分、域名白名单/黑名单。
 - 继续增强 Dashboard：Git/HTTP cassette 可视化、首次错误可视化和 policy 只读/编辑闭环。
 - 升级 sandbox：Docker / overlayfs。
 - 增加签名审计证明 attestation。

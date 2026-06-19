@@ -58,6 +58,31 @@ class HttpCassetteTest(unittest.TestCase):
             self.assertEqual(summary["high_risk_count"], 0)
             self.assertEqual(summary["external_host_count"], 0)
 
+            events.write_text(
+                json.dumps(
+                    {
+                        "id": "evt_0002",
+                        "type": "http",
+                        "operation": "synthetic.http",
+                        "input": {
+                            "method": "POST",
+                            "url": "https://example.test/",
+                            "body_summary": {"present": True, "sha256": "secret-instead-of-a-digest"},
+                        },
+                        "output": {"status": "exception", "exception": "token=secret-in-error"},
+                        "risk": {"level": "low"},
+                    }
+                )
+                + "\n",
+                encoding="utf-8",
+            )
+            generate_http_cassette(events, root / "http_cassette.jsonl")
+            artifact = (root / "http_cassette.jsonl").read_text(encoding="utf-8")
+            entry = json.loads(artifact)
+            self.assertIsNone(entry["request_body_summary"]["sha256"])
+            self.assertEqual(entry["error"], "http_request_error")
+            self.assertNotIn("secret-in", artifact)
+
     def test_httpx_get_generates_linked_entry(self) -> None:
         entry = self._entry("GET")
         self.assertEqual(entry["source_api"], "httpx.get")

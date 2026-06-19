@@ -3,6 +3,7 @@ from __future__ import annotations
 import hashlib
 import ipaddress
 import json
+import re
 from pathlib import Path
 from typing import Any, Iterable
 from urllib.parse import parse_qsl, quote, urlencode, urlsplit, urlunsplit
@@ -41,6 +42,8 @@ SENSITIVE_QUERY_NAMES = {
     "cookie",
 }
 RISK_ORDER = {"low": 0, "medium": 1, "high": 2, "critical": 3}
+SHA256_RE = re.compile(r"^[0-9a-fA-F]{64}$")
+SAFE_ERROR_RE = re.compile(r"^[A-Za-z][A-Za-z0-9_.:-]{0,127}$")
 
 
 def body_summary(
@@ -89,12 +92,20 @@ def normalize_body_summary(value: Any) -> dict[str, Any]:
     if not isinstance(value, dict):
         return body_summary()
     size = value.get("size_bytes")
+    digest = str(value.get("sha256") or "")
     return body_summary(
         present=bool(value.get("present")),
         content_type=str(value["content_type"]) if value.get("content_type") else None,
         size_bytes=size if isinstance(size, int) and size >= 0 else None,
-        sha256=str(value["sha256"]) if value.get("sha256") else None,
+        sha256=digest.lower() if SHA256_RE.fullmatch(digest) else None,
     )
+
+
+def sanitize_error(value: Any) -> str | None:
+    if not value:
+        return None
+    text = str(value)
+    return text if SAFE_ERROR_RE.fullmatch(text) else "http_request_error"
 
 
 def is_sensitive_header(name: str) -> bool:
@@ -165,7 +176,7 @@ def cassette_entry_from_event(event: dict[str, Any], index: int) -> dict[str, An
     risk = event.get("risk") if isinstance(event.get("risk"), dict) else {}
     url_data = redact_url(inp.get("url"))
     status_code = out.get("status_code", out.get("code"))
-    error = out.get("error") or out.get("exception") or out.get("exception_type")
+    error = out.get("exception_type") or out.get("error_type") or out.get("error") or out.get("exception")
     return {
         "cassette_id": f"cassette_{index:04d}",
         "event_id": event.get("id"),
@@ -179,7 +190,7 @@ def cassette_entry_from_event(event: dict[str, Any], index: int) -> dict[str, An
         "response_headers_redacted": redact_headers(out.get("headers") or out.get("response_headers")),
         "response_body_summary": normalize_body_summary(out.get("body_summary") or out.get("response_body_summary")),
         "duration_ms": event.get("duration_ms", out.get("duration_ms")),
-        "error": str(error) if error else None,
+        "error": sanitize_error(error),
         "risk_level": str(risk.get("level", "low")),
         "matched_rules": _matched_rules(risk),
     }

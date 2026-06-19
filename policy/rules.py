@@ -5,8 +5,10 @@ import re
 import shlex
 from pathlib import Path
 from typing import Any
+from urllib.parse import urlsplit
 
 from .dsl import first_matching_rule
+from .domain import evaluate_domain_policy
 from .yaml_loader import load_policy_with_source
 
 DEFAULT_RULES = {
@@ -102,6 +104,51 @@ DEFAULT_RULES = {
             "suggested_policy": 'require_approval git "push --all/--tags"',
         },
         {
+            "rule_id": "domain_denylist_match",
+            "event_type": "network.http",
+            "pattern": "host matches domain_policy.deny_domains",
+            "risk_level": "critical",
+            "action": "warn",
+            "reason": "HTTP request targets a denylisted domain",
+            "suggested_policy": 'deny http host "<domain>"',
+        },
+        {
+            "rule_id": "domain_warnlist_match",
+            "event_type": "network.http",
+            "pattern": "host matches domain_policy.warn_domains",
+            "risk_level": "high",
+            "action": "warn",
+            "reason": "HTTP request targets a warnlisted domain",
+            "suggested_policy": 'require_approval http host "<domain>"',
+        },
+        {
+            "rule_id": "domain_unknown_external",
+            "event_type": "network.http",
+            "pattern": "external host is absent from the allowlist",
+            "risk_level": "medium",
+            "action": "warn",
+            "reason": "HTTP request targets an external domain not present in the allowlist",
+            "suggested_policy": "add host to allow_domains or require approval",
+        },
+        {
+            "rule_id": "domain_allowlist_match",
+            "event_type": "network.http",
+            "pattern": "host matches domain_policy.allow_domains",
+            "risk_level": "low",
+            "action": "allow",
+            "reason": "HTTP request target is present in the domain allowlist",
+            "suggested_policy": 'allow http host "<domain>"',
+        },
+        {
+            "rule_id": "domain_localhost_allowed",
+            "event_type": "network.http",
+            "pattern": "localhost or loopback host",
+            "risk_level": "low",
+            "action": "allow",
+            "reason": "Localhost traffic is allowed for local test servers",
+            "suggested_policy": "allow http host localhost",
+        },
+        {
             "rule_id": "suspicious_http_post",
             "event_type": "http",
             "pattern": "POST request to non-local URL or request carrying secret-like fields",
@@ -128,7 +175,16 @@ DEFAULT_RULES = {
             "reason": "plaintext HTTP can expose request metadata in transit",
             "suggested_policy": 'require_approval httpx "http://*/**"',
         },
-    ]
+    ],
+    "domain_policy": {
+        "allow_domains": ["localhost", "127.0.0.1", "::1", "*.trusted.test"],
+        "deny_domains": ["*.malware.test", "evil.example.com"],
+        "warn_domains": ["*.unknown.test"],
+        "allow_localhost": True,
+        "allow_private_networks": False,
+        "warn_on_unknown_external": True,
+        "block_on_deny": False,
+    },
 }
 
 RISK_ORDER = {"low": 0, "medium": 1, "high": 2, "critical": 3}
@@ -207,6 +263,85 @@ def _yaml_risk(event: dict[str, Any], fallback: dict[str, Any]) -> dict[str, Any
         "action": action,
         "suggested_policy": matched.get("suggested_policy") or None,
     }
+
+
+def _domain_risk(fallback: dict[str, Any], domain: dict[str, Any]) -> dict[str, Any]:
+    rule_id = domain.get("matched_domain_rule")
+    if not rule_id:
+        result = dict(fallback)
+    else:
+        host = domain.get("normalized_host") or "<unknown-host>"
+        specs = {
+            "domain_denylist_match": (
+                "critical",
+                "deny" if domain.get("block_on_deny") else "warn",
+                "HTTP request targets a denylisted domain",
+                f'deny http host "{host}"',
+            ),
+            "domain_warnlist_match": (
+                "high",
+                "warn",
+                "HTTP request targets a warnlisted domain",
+                f'require_approval http host "{host}"',
+            ),
+            "domain_unknown_external": (
+                "medium",
+                "warn",
+                "HTTP request targets an external domain not present in the allowlist",
+                "add host to allow_domains or require approval",
+            ),
+            "domain_allowlist_match": (
+                "low",
+                "allow",
+                "HTTP request target is present in the domain allowlist",
+                f'allow http host "{host}"',
+            ),
+            "domain_localhost_allowed": (
+                "low",
+                "allow",
+                "Localhost traffic is allowed for local test servers",
+                "allow http host localhost",
+            ),
+        }
+        level, action, reason, suggestion = specs[str(rule_id)]
+        candidate = risk(level, [reason], str(rule_id), action)
+        candidate["suggested_policy"] = suggestion
+        current_rule = fallback.get("policy_rule")
+        should_replace = str(rule_id) in {"domain_denylist_match", "domain_warnlist_match"}
+        should_replace = should_replace or (
+            str(rule_id) in {"domain_unknown_external", "domain_allowlist_match", "domain_localhost_allowed"}
+            and current_rule in {None, "http_request"}
+        )
+        result = candidate if should_replace else dict(fallback)
+
+    matched_rules: list[str] = []
+    for item in [result.get("policy_rule"), fallback.get("policy_rule"), rule_id]:
+        if item and str(item) not in matched_rules:
+            matched_rules.append(str(item))
+    result["matched_rules"] = matched_rules
+    result["domain_policy"] = domain
+    return result
+
+
+def _url_host(url: str) -> tuple[str, str]:
+    try:
+        parsed = urlsplit(str(url))
+        return parsed.hostname or "", parsed.scheme or ""
+    except Exception:
+        return "", ""
+
+
+def _merged_rule_ids(result: dict[str, Any], yaml_result: dict[str, Any]) -> list[str]:
+    values = [*(result.get("matched_rules") or []), yaml_result.get("policy_rule")]
+    return list(dict.fromkeys(str(item) for item in values if item))
+
+
+def _finalize_domain_result(result: dict[str, Any], domain: dict[str, Any], matched_rules: list[str]) -> dict[str, Any]:
+    result["domain_policy"] = domain
+    result["matched_rules"] = matched_rules
+    if domain.get("domain_decision") == "deny" and domain.get("block_on_deny"):
+        result["action"] = "deny"
+    return result
 
 
 def tokenize_command(command: str) -> list[str]:
@@ -394,8 +529,23 @@ def evaluate_http_request(method: str, url: str) -> dict[str, Any]:
         fallback = risk("medium", [f"outbound HTTP request: {method_upper} {url}"], "http_request", "warn")
     else:
         fallback = risk("low", [], None, "allow")
-    host = url.split("://", 1)[-1].split("/", 1)[0].split(":", 1)[0]
-    return _yaml_risk({"event_type": "http", "method": method_upper, "url": url, "host": host, "sensitive": False}, fallback)
+    host, _scheme = _url_host(url)
+    domain = evaluate_domain_policy(host, load_policy().get("domain_policy"))
+    result = _domain_risk(fallback, domain)
+    yaml_result = _yaml_risk(
+        {
+            "event_type": "http",
+            "method": method_upper,
+            "url": url,
+            "host": domain.get("normalized_host") or "",
+            "host_class": domain.get("host_class"),
+            "host_allowed": domain.get("allowlisted"),
+            "risk_level": result.get("level"),
+            "sensitive": False,
+        },
+        result,
+    )
+    return _finalize_domain_result(yaml_result, domain, _merged_rule_ids(result, yaml_result))
 
 
 def evaluate_httpx_request(
@@ -424,16 +574,22 @@ def evaluate_httpx_request(
         fallback = risk("medium", [f"outbound HTTP request: {method_upper} {url}"], "http_request", "warn")
     else:
         fallback = risk("low", [], None, "allow")
-    return _yaml_risk(
+    domain = evaluate_domain_policy(host, load_policy().get("domain_policy"))
+    result = _domain_risk(fallback, domain)
+    yaml_result = _yaml_risk(
         {
             "event_type": "network.http",
             "method": method_upper,
             "url": url,
-            "host": host,
+            "host": domain.get("normalized_host") or host,
+            "host_class": domain.get("host_class"),
+            "host_allowed": domain.get("allowlisted"),
+            "risk_level": result.get("level"),
             "sensitive": sensitive_query or sensitive_headers or has_userinfo,
         },
-        fallback,
+        result,
     )
+    return _finalize_domain_result(yaml_result, domain, _merged_rule_ids(result, yaml_result))
 
 
 def suggest_policy_for_event(event: dict[str, Any]) -> str:

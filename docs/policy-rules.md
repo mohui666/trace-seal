@@ -17,6 +17,11 @@
 | `git_delete_remote_branch` | `shell` | `--delete` / `:branch` refspec | critical | warn | `bad_agent_git_push_classification.py` |
 | `git_force_refspec_push` | `shell` | `+ref` / `+src:dst` | critical | warn | `bad_agent_git_push_classification.py` |
 | `git_bulk_push` | `shell` | `git push --all` / `--tags` | high | warn | `bad_agent_git_push_classification.py` |
+| `domain_denylist_match` | `network.http` | host 命中 deny_domains | critical | warn | `bad_agent_domain_policy.py` |
+| `domain_warnlist_match` | `network.http` | host 命中 warn_domains | high | warn | `bad_agent_domain_policy.py` |
+| `domain_unknown_external` | `network.http` | external/ip host 未命中 allowlist | medium | warn | `bad_agent_domain_policy.py` |
+| `domain_allowlist_match` | `network.http` | host 命中 allow_domains | low | allow | `bad_agent_domain_policy.py` |
+| `domain_localhost_allowed` | `network.http` | localhost/loopback 且允许本地流量 | low | allow | `bad_agent_domain_policy.py` |
 | `suspicious_http_post` | `http` | HTTP `POST` 到外部 URL 或携带敏感字段 | high | warn | `bad_agent_http.py` |
 | `sensitive_http_request` | `network.http` | `httpx` 请求含敏感 query/header/cookie/auth | high | warn | `bad_agent_httpx.py` |
 | `insecure_http_request` | `network.http` | 明文 `http://` 请求 | medium | warn | `bad_agent_httpx.py` |
@@ -195,6 +200,25 @@ deny http "POST https://exfil.example.invalid/collect"
 
 明文 `http://` 请求标记为 medium/warn；本地 HTTP demo 也保留该标记，敏感 query/header 规则优先级更高。该能力是 Python-level instrumentation，不是系统级网络防火墙或完整 DLP/WAF。
 
+### 3.8 HTTP 域名策略
+
+`policy.yaml` 可选顶层配置：
+
+```yaml
+domain_policy:
+  allow_domains: ["api.example.com", "*.trusted.test", "localhost"]
+  deny_domains: ["*.malware.test", "evil.example.com"]
+  warn_domains: ["*.unknown.test"]
+  allow_localhost: true
+  allow_private_networks: false
+  warn_on_unknown_external: true
+  block_on_deny: false
+```
+
+现有 host `glob` 即域名通配匹配：`*.example.com` 匹配其子域名；无需额外 `domain_glob` 运算符。域名策略与普通 rules 共用 `rule_id/risk_level/action/reason/suggested_policy`，并遵守 `TRACESEAL_POLICY_MODE`。`block_on_deny=false` 保持默认 warn 兼容，设为 true 时复用现有 HTTP deny enforcement。
+
+事件 metadata 输出 normalized host、host class、matched domain rule、decision 及 allow/deny/warnlist flags。HTTP cassette 只复制这组非敏感 metadata，URL query、header 和 body 仍沿用原脱敏/摘要边界。分类仅使用字符串和 `ipaddress`，不进行 DNS 查询。
+
 ## 4. 规则验证命令
 
 ```powershell
@@ -250,4 +274,4 @@ rules:
 
 字段：`version/mode/rules`；rule 支持 `id/description/match/risk_level/action/reason/suggested_policy`。match 字段支持 `event_type/path/command/method/host/url/risk_level/sensitive`，操作符支持 exact 标量简写、`exact/contains/contains_any/glob/any_of/regex`。无效 regex 在加载期报错并安全 fallback。
 
-action 支持 `allow/warn/deny/require_approval`。第一版 `require_approval` 只记录 metadata；`deny` 仅在现有 Shell/HTTP enforcement 路径生效，不引入审批 UI。后续增强为域名白名单/黑名单和级联错误案例。
+action 支持 `allow/warn/deny/require_approval`。第一版 `require_approval` 只记录 metadata；`deny` 仅在现有 Shell/HTTP enforcement 路径生效，不引入审批 UI。阶段 3 后续增强只剩级联错误案例。

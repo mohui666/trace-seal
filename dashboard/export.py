@@ -110,11 +110,14 @@ def _event_operation(event: dict[str, Any]) -> str:
 
 def _normalize_event(event: dict[str, Any]) -> dict[str, Any]:
     git_operation = (event.get("input") or {}).get("git_operation") or (event.get("risk") or {}).get("git_operation")
-    if "operation" not in event or (git_operation is not None and "git_operation" not in event):
+    domain_policy = (event.get("input") or {}).get("domain_policy") or (event.get("risk") or {}).get("domain_policy")
+    if "operation" not in event or (git_operation is not None and "git_operation" not in event) or (domain_policy is not None and "domain_policy" not in event):
         event = dict(event)
         event.setdefault("operation", _event_operation(event))
         if git_operation is not None:
             event["git_operation"] = git_operation
+        if domain_policy is not None:
+            event["domain_policy"] = domain_policy
     return event
 
 
@@ -325,7 +328,13 @@ def handle_dashboard_cli(argv: list[str], repo_root: str | Path | None = None) -
     if command == "policy":
         if len(argv) != 1:
             raise DashboardDataError("INVALID_RUN_ID", "policy does not accept extra arguments", ERROR_EXIT_CODES["INVALID_RUN_ID"])
-        return {"schema_version": 1, "policy_source": policy_source(repo_root), "rules": export_policy_rules(repo_root)}
+        selected_policy = load_policy(repo_root)
+        return {
+            "schema_version": 1,
+            "policy_source": policy_source(repo_root),
+            "domain_policy": selected_policy.get("domain_policy"),
+            "rules": export_policy_rules(repo_root),
+        }
     if command == "run":
         if len(argv) != 2:
             raise DashboardDataError("INVALID_RUN_ID", "usage: dashboard-data run <run_id>", ERROR_EXIT_CODES["INVALID_RUN_ID"])

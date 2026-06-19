@@ -62,6 +62,17 @@ def _offline_http_enabled() -> bool:
     return os.environ.get("TRACESEAL_OFFLINE_HTTP", "").lower() in {"1", "true", "yes", "on"}
 
 
+def _http_event_input(method: str, url: str, risk: dict[str, Any], **extra: Any) -> dict[str, Any]:
+    domain = risk.get("domain_policy") if isinstance(risk.get("domain_policy"), dict) else None
+    return {
+        "method": method,
+        "url": url,
+        "host": (domain or {}).get("normalized_host"),
+        "domain_policy": domain,
+        **extra,
+    }
+
+
 def _is_trace_internal(path: Any) -> bool:
     run_dir = _run_dir()
     if run_dir is None or path is None:
@@ -846,7 +857,7 @@ def traced_urlopen(url: Any, *args: Any, **kwargs: Any) -> Any:
                 "type": "http",
                 "operation": "urllib.request.urlopen",
                 "duration_ms": int((time.time() - start) * 1000),
-                "input": {"method": method, "url": str(display_url)},
+                "input": _http_event_input(method, str(display_url), risk),
                 "output": {"status": "blocked", "exception": "TraceSeal policy denied HTTP request"},
                 "risk": risk,
                 "file_changes": [],
@@ -860,7 +871,7 @@ def traced_urlopen(url: Any, *args: Any, **kwargs: Any) -> Any:
                 "type": "http",
                 "operation": "urllib.request.urlopen",
                 "duration_ms": int((time.time() - start) * 1000),
-                "input": {"method": method, "url": str(display_url), "offline_simulated": True},
+                "input": _http_event_input(method, str(display_url), risk, offline_simulated=True),
                 "output": {"status": "simulated", "code": response.status},
                 "risk": risk,
                 "file_changes": [],
@@ -874,7 +885,7 @@ def traced_urlopen(url: Any, *args: Any, **kwargs: Any) -> Any:
                 "type": "http",
                 "operation": "urllib.request.urlopen",
                 "duration_ms": int((time.time() - start) * 1000),
-                "input": {"method": method, "url": str(display_url)},
+                "input": _http_event_input(method, str(display_url), risk),
                 "output": {"status": "ok", "code": getattr(response, "status", None)},
                 "risk": risk,
                 "file_changes": [],
@@ -887,7 +898,7 @@ def traced_urlopen(url: Any, *args: Any, **kwargs: Any) -> Any:
                 "type": "http",
                 "operation": "urllib.request.urlopen",
                 "duration_ms": int((time.time() - start) * 1000),
-                "input": {"method": method, "url": str(display_url)},
+                "input": _http_event_input(method, str(display_url), risk),
                 "output": {"status": "exception", "exception": repr(exc)},
                 "risk": risk,
                 "file_changes": [],
@@ -905,7 +916,7 @@ def traced_requests_request(self: Any, method: str, url: str, **kwargs: Any) -> 
                 "type": "http",
                 "operation": "requests.Session.request",
                 "duration_ms": int((time.time() - start) * 1000),
-                "input": {"method": method, "url": url},
+                "input": _http_event_input(method, url, risk),
                 "output": {"status": "blocked", "exception": "TraceSeal policy denied HTTP request"},
                 "risk": risk,
                 "file_changes": [],
@@ -922,7 +933,7 @@ def traced_requests_request(self: Any, method: str, url: str, **kwargs: Any) -> 
                 "type": "http",
                 "operation": "requests.Session.request",
                 "duration_ms": int((time.time() - start) * 1000),
-                "input": {"method": method, "url": url, "offline_simulated": True},
+                "input": _http_event_input(method, url, risk, offline_simulated=True),
                 "output": {"status": "simulated", "status_code": 0},
                 "risk": risk,
                 "file_changes": [],
@@ -936,7 +947,7 @@ def traced_requests_request(self: Any, method: str, url: str, **kwargs: Any) -> 
                 "type": "http",
                 "operation": "requests.Session.request",
                 "duration_ms": int((time.time() - start) * 1000),
-                "input": {"method": method, "url": url},
+                "input": _http_event_input(method, url, risk),
                 "output": {"status": "ok", "status_code": getattr(response, "status_code", None)},
                 "risk": risk,
                 "file_changes": [],
@@ -949,7 +960,7 @@ def traced_requests_request(self: Any, method: str, url: str, **kwargs: Any) -> 
                 "type": "http",
                 "operation": "requests.Session.request",
                 "duration_ms": int((time.time() - start) * 1000),
-                "input": {"method": method, "url": url},
+                "input": _http_event_input(method, url, risk),
                 "output": {"status": "exception", "exception": repr(exc)},
                 "risk": risk,
                 "file_changes": [],

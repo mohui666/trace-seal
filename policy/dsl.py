@@ -4,9 +4,11 @@ import fnmatch
 import re
 from typing import Any
 
+from .domain import normalized_domain_config
+
 ALLOWED_ACTIONS = {"allow", "warn", "deny", "require_approval"}
 ALLOWED_RISK_LEVELS = {"low", "medium", "high", "critical"}
-ALLOWED_MATCH_FIELDS = {"event_type", "path", "command", "method", "host", "url", "risk_level", "sensitive"}
+ALLOWED_MATCH_FIELDS = {"event_type", "path", "command", "method", "host", "url", "risk_level", "sensitive", "host_class", "host_allowed"}
 ALLOWED_OPERATORS = {"exact", "contains", "contains_any", "glob", "any_of", "regex"}
 ALLOWED_MODES = {"warn", "block", "deny", "enforce"}
 
@@ -63,7 +65,29 @@ def validate_policy(data: Any) -> dict[str, Any]:
                 "suggested_policy": str(raw_rule.get("suggested_policy", "")),
             }
         )
-    return {"version": 1, "mode": mode, "rules": normalized}
+    result = {"version": 1, "mode": mode, "rules": normalized}
+    if "domain_policy" in data:
+        if not isinstance(data["domain_policy"], dict):
+            raise PolicyValidationError("domain_policy must be a mapping")
+        unknown_domain_fields = set(data["domain_policy"]) - {
+            "allow_domains",
+            "deny_domains",
+            "warn_domains",
+            "allow_localhost",
+            "allow_private_networks",
+            "warn_on_unknown_external",
+            "block_on_deny",
+        }
+        if unknown_domain_fields:
+            raise PolicyValidationError(f"unsupported domain_policy fields: {', '.join(sorted(unknown_domain_fields))}")
+        for key in ("allow_domains", "deny_domains", "warn_domains"):
+            if key in data["domain_policy"] and not isinstance(data["domain_policy"][key], list):
+                raise PolicyValidationError(f"domain_policy.{key} must be a list")
+        for key in ("allow_localhost", "allow_private_networks", "warn_on_unknown_external", "block_on_deny"):
+            if key in data["domain_policy"] and not isinstance(data["domain_policy"][key], bool):
+                raise PolicyValidationError(f"domain_policy.{key} must be a boolean")
+        result["domain_policy"] = normalized_domain_config(data["domain_policy"])
+    return result
 
 
 def _validate_condition(rule_id: str, field: str, condition: Any) -> None:

@@ -112,6 +112,13 @@ def replay_run(run_dir: str | Path) -> str:
                 f"类型={git_operation.get('push_type')} remote={git_operation.get('remote')} "
                 f"refs={git_operation.get('refs') or []} protected={git_operation.get('protected_branch')}"
             )
+        domain_policy = (event.get("input") or {}).get("domain_policy") or risk.get("domain_policy")
+        if isinstance(domain_policy, dict):
+            lines.append(
+                "  域名策略: "
+                f"host={domain_policy.get('normalized_host')} class={domain_policy.get('host_class')} "
+                f"decision={domain_policy.get('domain_decision')} rule={domain_policy.get('matched_domain_rule')}"
+            )
         if risk.get("reasons"):
             lines.append(f"  原因: {'; '.join(_translate_reason(str(r)) for r in (risk.get('reasons') or []))}")
         status = output.get("status")

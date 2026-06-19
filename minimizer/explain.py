@@ -133,6 +133,14 @@ def explain_run(run_dir: str | Path) -> str:
         lines.append(f"- remote: {git_operation.get('remote')}")
         lines.append(f"- refs: {git_operation.get('refs') or []}")
         lines.append(f"- protected_branch: {git_operation.get('protected_branch')}")
+    domain_policy = (event.get("input") or {}).get("domain_policy") or (event.get("risk") or {}).get("domain_policy")
+    if isinstance(domain_policy, dict):
+        lines.append("")
+        lines.append("域名策略:")
+        lines.append(f"- host: {domain_policy.get('normalized_host')}")
+        lines.append(f"- host_class: {domain_policy.get('host_class')}")
+        lines.append(f"- domain_decision: {domain_policy.get('domain_decision')}")
+        lines.append(f"- matched_domain_rule: {domain_policy.get('matched_domain_rule')}")
     lines.append("")
     lines.append("原因:")
     for reason in _reasons(event, manifest):

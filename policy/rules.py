@@ -32,6 +32,15 @@ DEFAULT_RULES = {
             "suggested_policy": 'deny file_write ".env*"',
         },
         {
+            "rule_id": "cascade_config_corruption",
+            "event_type": "file.write",
+            "pattern": "config.json, settings.json, settings.yaml, or settings.yml",
+            "risk_level": "high",
+            "action": "warn",
+            "reason": "writing protected configuration can corrupt subsequent agent behavior",
+            "suggested_policy": 'require_approval file_write "<protected-config>"',
+        },
+        {
             "rule_id": "sensitive_file_read",
             "event_type": "file.read",
             "pattern": ".env, SSH keys, PEM/key files, or credential/secret/token/password paths",
@@ -174,6 +183,15 @@ DEFAULT_RULES = {
             "action": "warn",
             "reason": "plaintext HTTP can expose request metadata in transit",
             "suggested_policy": 'require_approval httpx "http://*/**"',
+        },
+        {
+            "rule_id": "cascade_failure_detected",
+            "event_type": "run.cascade",
+            "pattern": "three or more ordered risk stage categories in one run",
+            "risk_level": "high",
+            "action": "require_approval",
+            "reason": "multiple independent risk events form a cascading incident",
+            "suggested_policy": 'require_approval cascade "3+ ordered risk stages"',
         },
     ],
     "domain_policy": {
@@ -492,6 +510,8 @@ def evaluate_file_write(path: str) -> dict[str, Any]:
     normalized = path.replace("\\", "/")
     if name == ".env" or name.startswith(".env.") or normalized.endswith("/.env"):
         fallback = risk("high", [f"sensitive environment file modified: {path}"], "env_write", "warn")
+    elif name.lower() in {"config.json", "settings.json", "settings.yaml", "settings.yml"}:
+        fallback = risk("high", [f"protected configuration file modified: {path}"], "cascade_config_corruption", "warn")
     else:
         fallback = risk("low", [], None, "allow")
     return _yaml_risk({"event_type": "file.write", "path": normalized}, fallback)

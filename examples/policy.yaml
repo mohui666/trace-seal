@@ -33,6 +33,17 @@ rules:
     reason: Writing environment files can corrupt secrets or config
     suggested_policy: 'deny file_write ".env*"'
 
+  - id: cascade_config_corruption
+    description: Warn when protected configuration is modified
+    match:
+      event_type: file.write
+      path:
+        regex: '(?:^|/)(?:config\.json|settings\.json|settings\.ya?ml)$'
+    risk_level: high
+    action: warn
+    reason: Writing protected configuration can corrupt subsequent agent behavior
+    suggested_policy: 'require_approval file_write "<protected-config>"'
+
   - id: require-sensitive-read-approval
     description: Sensitive file reads need approval
     match:
@@ -205,3 +216,12 @@ rules:
     action: warn
     reason: Git push publishes local code or history to a remote repository
     suggested_policy: 'require_approval git "push"'
+
+  - id: cascade_failure_detected
+    description: Require review for three or more ordered risk stages in one run
+    match:
+      event_type: run.cascade
+    risk_level: high
+    action: require_approval
+    reason: Multiple independent risk events form a cascading incident
+    suggested_policy: 'require_approval cascade "3+ ordered risk stages"'

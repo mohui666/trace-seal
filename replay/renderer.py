@@ -4,6 +4,8 @@ import json
 from pathlib import Path
 from typing import Any
 
+from traceseal.cascade import detect_cascade, render_cascade_lines
+
 
 def load_events(run_dir: str | Path) -> list[dict[str, Any]]:
     events_path = Path(run_dir) / "events.jsonl"
@@ -97,6 +99,7 @@ def replay_run(run_dir: str | Path) -> str:
     lines.append(f"执行命令: {manifest.get('command_display', manifest.get('command'))}")
     lines.append(f"运行状态: {_translate_status(manifest.get('status', 'unknown'))} exit_code={manifest.get('exit_code', 'unknown')}")
     lines.append(f"事件数量: {len(events)}")
+    lines.extend(render_cascade_lines(detect_cascade(events)))
     lines.append("")
     for event in events:
         risk = event.get("risk") or {}

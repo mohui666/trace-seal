@@ -4,30 +4,9 @@ import json
 from pathlib import Path
 from typing import Any
 
-from policy.rules import RISK_ORDER, suggest_policy_for_event
+from policy.rules import suggest_policy_for_event
 from replay.renderer import load_events
-
-
-def _risk_score(event: dict[str, Any]) -> int:
-    risk = event.get("risk") or {}
-    score = RISK_ORDER.get(risk.get("level", "low"), 0)
-    rule = risk.get("policy_rule")
-    if rule in {"dangerous_delete", "env_write", "sensitive_file_read", "git_push", "suspicious_http_post"}:
-        score = max(score, 2)
-    for change in event.get("file_changes") or []:
-        path = str(change.get("path", "")).replace("\\", "/")
-        if change.get("change_type") == "deleted" and (path == "data" or path.startswith("data/")):
-            score = max(score, 3)
-        if path == ".env" or path.startswith(".env."):
-            score = max(score, 2)
-    return score
-
-
-def find_first_harmful_event(events: list[dict[str, Any]]) -> dict[str, Any] | None:
-    for event in events:
-        if _risk_score(event) >= 2:
-            return event
-    return None
+from traceseal.cascade import detect_cascade, find_first_harmful_event, render_cascade_lines
 
 
 def _event_headline(event: dict[str, Any]) -> str:
@@ -118,11 +97,14 @@ def explain_run(run_dir: str | Path) -> str:
     manifest_path = run_dir / "manifest.json"
     manifest = json.loads(manifest_path.read_text(encoding="utf-8")) if manifest_path.exists() else {}
     events = load_events(run_dir)
+    cascade = detect_cascade(events)
     event = find_first_harmful_event(events)
     if event is None:
-        return "未发现有害工具调用。\n"
+        return "\n".join([*render_cascade_lines(cascade), "", "未发现有害工具调用。"]) + "\n"
 
     lines: list[str] = []
+    lines.extend(render_cascade_lines(cascade))
+    lines.append("")
     lines.append("首次有害工具调用:")
     lines.append(f"[{event.get('id')}] {_event_headline(event)}")
     git_operation = (event.get("input") or {}).get("git_operation") or (event.get("risk") or {}).get("git_operation")

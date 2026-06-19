@@ -12,6 +12,7 @@ from policy.rules import RISK_ORDER, load_policy, policy_source, suggest_policy_
 from recorder.git_state import summarize_git_states
 from recorder.http_cassette import read_http_cassette
 from replay.renderer import load_events
+from traceseal.cascade import detect_cascade
 
 RUN_ID_RE = re.compile(r"^run_[A-Za-z0-9_.-]+$")
 
@@ -167,6 +168,7 @@ def export_dashboard_data(run_dir: str | Path) -> dict[str, Any]:
         "event_count": len(events),
         "high_risk_count": sum(1 for event in events if _risk_score(event) >= RISK_ORDER["high"]),
         "first_harmful_event": first_harmful,
+        "cascade": detect_cascade(events),
         "events": events,
         "affected_files": _affected_files(events),
         "suggested_policy": suggest_policy_for_event(first_harmful) if first_harmful else None,

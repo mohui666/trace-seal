@@ -9,6 +9,7 @@
 |---|---|---|---|---|---|
 | `dangerous_delete` | `shell` | `rm -rf` / `rmdir /s /q` | critical | warn | `bad_agent_delete.py` |
 | `env_write` | `file.write` | 写入 `.env` / `.env.*` | high | warn | `bad_agent_env.py` |
+| `cascade_config_corruption` | `file.write` | 写入 config/settings JSON/YAML | high | warn | `bad_agent_cascade_failure.py` |
 | `sensitive_file_read` | `file.read` | 读取 `.env`、SSH key、PEM/key 或 credential/secret/token/password 路径 | high | warn | `bad_agent_file_read.py` |
 | `git_push` | `shell` | `git push ...` | high | warn | `bad_agent_git.py` |
 | `git_force_push` | `shell` | `git push --force` / `-f` | critical | warn | `bad_agent_git_push_classification.py` |
@@ -25,6 +26,7 @@
 | `suspicious_http_post` | `http` | HTTP `POST` 到外部 URL 或携带敏感字段 | high | warn | `bad_agent_http.py` |
 | `sensitive_http_request` | `network.http` | `httpx` 请求含敏感 query/header/cookie/auth | high | warn | `bad_agent_httpx.py` |
 | `insecure_http_request` | `network.http` | 明文 `http://` 请求 | medium | warn | `bad_agent_httpx.py` |
+| `cascade_failure_detected` | `run.cascade` | 同一 run 至少 3 类有序风险 stage | high/critical | require_approval | `bad_agent_cascade_failure.py` |
 
 每条规则至少包含：
 
@@ -219,6 +221,20 @@ domain_policy:
 
 事件 metadata 输出 normalized host、host class、matched domain rule、decision 及 allow/deny/warnlist flags。HTTP cassette 只复制这组非敏感 metadata，URL query、header 和 body 仍沿用原脱敏/摘要边界。分类仅使用字符串和 `ipaddress`，不进行 DNS 查询。
 
+### 3.9 cascade_failure_detected
+
+`traceseal.cascade.detect_cascade()` 不做 AI 推理，只对一个 run 内的事件做确定性分类和排序：
+
+- `sensitive_read`
+- `http_exfiltration_attempt`
+- `configuration_corruption`
+- `destructive_shell`
+- `dangerous_git_push`
+
+同一类只取时间顺序上的首个事件；至少 3 类为 high，4 类或更多为 critical。summary 保留原始 event id / rule id / 非敏感 reason，并复用首次 high/critical 风险事件作为 `first_harmful_event_id`。单个 HTTP、Git push 或 `.env` write 均不会单独触发 cascade。
+
+detector 不复制文件内容、HTTP body 或认证信息。cascade demo 的 HTTP 使用 MockTransport，Git push 由 SDK simulation 处理，删除目标仅限 sandbox 内的 `data/`。
+
 ## 4. 规则验证命令
 
 ```powershell
@@ -274,4 +290,4 @@ rules:
 
 字段：`version/mode/rules`；rule 支持 `id/description/match/risk_level/action/reason/suggested_policy`。match 字段支持 `event_type/path/command/method/host/url/risk_level/sensitive`，操作符支持 exact 标量简写、`exact/contains/contains_any/glob/any_of/regex`。无效 regex 在加载期报错并安全 fallback。
 
-action 支持 `allow/warn/deny/require_approval`。第一版 `require_approval` 只记录 metadata；`deny` 仅在现有 Shell/HTTP enforcement 路径生效，不引入审批 UI。阶段 3 后续增强只剩级联错误案例。
+action 支持 `allow/warn/deny/require_approval`。第一版 `require_approval` 只记录 metadata；`deny` 仅在现有 Shell/HTTP enforcement 路径生效，不引入审批 UI。阶段 3 Core 增强项已全部完成。

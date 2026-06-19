@@ -1,7 +1,7 @@
 # TraceSeal 项目规格说明书
 
 > 最后更新：2026-06-19
-> 当前版本：v0.3.0 Core 增强进行中 + Desktop Dashboard 数据层
+> 当前版本：v0.3.0 Core 增强已完成（未发布）+ Desktop Dashboard 数据层
 
 ## 1. TraceSeal 解决的问题
 
@@ -15,6 +15,7 @@ AI Agent 自动读写文件、执行 Shell、发 HTTP 请求、操作 Git 时，
 | 下次如何提前阻断？ | 工作区 `policy.yaml` DSL，缺失/无效时回退 `policy/default_policy.json`。 |
 | 桌面端如何展示？ | `traceseal dashboard-data` 导出 JSON，供 Electron 读取。 |
 | Agent 改动了哪些 Git 文件？ | run 前后记录 branch、HEAD、staged、unstaged、untracked 元数据。 |
+| 多个风险是否形成事故链？ | deterministic cascade detector 按顺序聚合 stage、severity 和 first harmful event。 |
 
 一句话：TraceSeal 是 AI Agent 的操作黑匣子 + 执行前安全防火墙 + 失败回放系统。
 
@@ -99,10 +100,11 @@ Agent 将敏感 payload POST 到外部 URL。demo 使用 `TRACESEAL_OFFLINE_HTTP
 | sandbox | 最小隔离 | 复制 workspace 到 `runs/<run_id>/workspace` |
 | replay | transcript replay | 重建时间线，不重新执行副作用 |
 | minimizer | explain | 定位首次高风险/有害事件，输出原因和建议规则 |
+| core | cascade analysis | 同一 run 的 3 类有序风险标记 high cascade，4 类或更多标记 critical |
 | policy | YAML DSL + 默认规则 | 工作区 YAML schema/校验/匹配，支持 allow/warn/deny/require_approval，并兼容默认 JSON matcher |
 | cli | 命令行 | `run`、`replay`、`explain`、`dashboard-data` |
 | dashboard | 数据层 | `dashboard/export.py` 输出 Electron 可读 JSON |
-| tests | 自动化测试 | 71 个 unittest 覆盖 recorder、policy YAML/JSON fallback、Git push/域名策略、replay、Git 与 HTTP 链路 |
+| tests | 自动化测试 | 90 个 unittest 覆盖 recorder、cascade、policy YAML/JSON fallback、Git push/域名策略、replay、Git 与 HTTP 链路 |
 
 ## 6. 已落地事故案例
 
@@ -117,6 +119,7 @@ Agent 将敏感 payload POST 到外部 URL。demo 使用 `TRACESEAL_OFFLINE_HTTP
 | `examples/bad_agent_policy_yaml.py` | policy YAML DSL | 在 sandbox 中安装示例 YAML 并触发文件、Shell 与本地 HTTP 规则。 |
 | `examples/bad_agent_git_push_classification.py` | Git push 分类 | 离线触发 normal/force/lease/mirror/delete/refspec/all/tags，不连接远端。 |
 | `examples/bad_agent_domain_policy.py` | HTTP 域名策略 | 通过 MockTransport 离线触发 local、deny/warn/unknown/insecure 类别，不访问外网。 |
+| `examples/bad_agent_cascade_failure.py` | `cascade_failure_detected` | 串联敏感读取、脱敏 HTTP、配置破坏、危险删除和离线 mirror push，输出有序 cascade summary。 |
 
 ## 7. 第一版仍不做什么
 

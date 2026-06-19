@@ -149,3 +149,13 @@ OK
 - HTTP event、cassette、dashboard-data、replay、explain 均展示 domain decision 与 matched domain rule。
 - `examples/bad_agent_domain_policy.py` 使用 `httpx.MockTransport`，不会访问真实外网；敏感 query/header 继续脱敏，body 仍只记录摘要。
 - 新增 9 个域名策略专项测试；Python 全量测试共 71 个，全部通过。
+
+## 12. 2026-06-19 级联错误案例验收
+
+- 新增 `traceseal/cascade.py`，按 event `seq`、timestamp 或输入 index 排序，并从同一 run 中提取 sensitive read、HTTP exfiltration attempt、configuration corruption、destructive shell、dangerous Git push 五类 stage。
+- 3 类 stage 标记 high cascade，4 类或更多标记 critical；1-2 类事件只保留普通风险说明，不产生 cascade。
+- `dashboard-data` 新增 `cascade` object；replay / explain 展示是否命中、severity、有序 stages、first harmful event 和 human-readable summary。
+- 新增 `cascade_config_corruption` 与 `cascade_failure_detected` policy metadata，不改变 YAML 缺失/无效时的 JSON fallback。
+- `examples/bad_agent_cascade_failure.py` 使用 `httpx.MockTransport`、sandbox-only 删除与 Git push simulation，不访问真实外网、不执行真实 push。
+- HTTP query/header 保持 `<redacted>`，request/response body 仍仅保存摘要；events、cassette、dashboard、replay、explain 均未发现完整合成 secret。
+- 新增 19 个 cascade 专项测试；Python 全量测试共 90 个。

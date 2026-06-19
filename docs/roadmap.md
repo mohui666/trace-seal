@@ -98,7 +98,7 @@
 
 ---
 
-## 阶段 3：Core 增强 — 计划中
+## 阶段 3：Core 增强 — 已完成
 
 目标：补齐当前 Python Core 的工程缺口。
 
@@ -112,7 +112,7 @@
 | `policy.yaml` DSL | 已完成：schema/加载/校验/匹配、JSON fallback、policy source 与 explain metadata |
 | force push 与普通 push 细分 | 已完成：normal/force/force-with-lease/mirror/delete/refspec/all/tags 分类与离线模拟 metadata |
 | 域名白名单 / 黑名单 | 已完成：allow/deny/warn/unknown external、localhost/loopback/private 分类及 HTTP/cassette metadata |
-| 级联错误案例 | 待做 |
+| 级联错误案例 | 已完成：5 类 deterministic stage 检测、high/critical 聚合、离线 demo 与 dashboard-data/replay/explain summary |
 | GitHub Actions Windows 构建 CI | 已完成 |
 
 ---
@@ -153,5 +153,5 @@
 | v0.1.0 | 2026-06 | Python CLI MVP：run/replay/explain |
 | v0.1.1 | 2026-06 | 补 env/git/http 案例与 dashboard-data JSON |
 | v0.2.0 | 2026-06 | 已发布：Electron 数据运行层、Renderer 真实数据联调、Windows x64 安装包 |
-| v0.3.0 | 进行中 | Core 增强：读取、os.system、httpx、Git 状态、HTTP cassette、policy.yaml DSL、Git push 细分、域名策略已完成；剩余级联错误案例 |
+| v0.3.0 | Core 已完成，未发布 | 文件读取、os.system、httpx、Git 状态、HTTP cassette、policy.yaml DSL、Git push 细分、域名策略与级联事故检测均已完成 |
 | v1.0.0 | 远期 | 产品化 Guard + Dashboard |

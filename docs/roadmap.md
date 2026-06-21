@@ -25,7 +25,7 @@
 
 - 规则数：7 条
 - Demo 数：9 个
-- 自动测试：Python 43 个、Renderer 96 个、Electron 45 个
+- 自动测试：Python 90 个、Renderer 96 个、Electron 45 个
 - Dashboard 数据接口：1 个 JSON export
 - 默认安全模式：warn；可通过 `TRACESEAL_POLICY_MODE=block` 切换阻断
 
@@ -101,6 +101,8 @@
 ## 阶段 3：Core 增强 — 已完成
 
 目标：补齐当前 Python Core 的工程缺口。
+
+**发布状态**：Stage 3 Core 已全部完成，并于 2026-06-19 通过 release-prep 回归；v0.3.0 尚未创建 tag，也尚未发布 GitHub Release。Rust Guard 属于阶段 4 远期规划，不在本次 release-prep 范围。
 
 | 能力 | 状态 |
 |---|---|

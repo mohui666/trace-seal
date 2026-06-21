@@ -121,7 +121,7 @@
 
 ## 阶段 4：Rust Guard 产品化 — 远期规划 / design phase
 
-当前阶段明确不做 Rust 重构。Rust Guard 作为远期产品化方向，**不替代**当前 Python MVP，而是做更底层的安全增强。当前状态仅为设计，尚未实现；详见 [`stage4-rust-guard-design.md`](stage4-rust-guard-design.md)。
+当前阶段明确不做 Rust 重构。Rust Guard 作为远期产品化方向，**不替代**当前 Python MVP，而是做更底层的安全增强。当前状态为 RFC / design phase，尚未实现；高层方向见 [`stage4-rust-guard-design.md`](stage4-rust-guard-design.md)，评审拆解见 [`stage4-rust-guard-rfc.md`](stage4-rust-guard-rfc.md)。
 
 | 方面 | Python MVP（阶段 1-3） | Rust Guard（阶段 4） |
 |---|---|---|
@@ -138,6 +138,20 @@
 - 防篡改审计日志
 - 更强 sandbox / policy enforcement
 - 企业级 Dashboard
+
+### Stage 4 RFC 子项
+
+| 子项 | 状态 |
+|---|---|
+| RFC review | Draft，待评审 |
+| Event schema contract | 设计中，未实现 |
+| Rust prototype `guard.health` | 计划中，未实现 |
+| `process.spawn` dry-run | 计划中，未实现 |
+| Python bridge | 计划中，未实现 |
+| Dashboard bridge | 计划中，未实现 |
+| Policy dry-run | 计划中，未实现 |
+| Windows smoke validation | 计划中，未验证 |
+| Enforcement experiment RFC | 后续独立 RFC，不在 MVP 中实现 |
 
 ```text
 阶段 1：Python Agent → Python hooks

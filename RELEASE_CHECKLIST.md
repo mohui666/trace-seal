@@ -1,6 +1,6 @@
 # TraceSeal v0.3.0 Release Checklist
 
-> Status: **Core complete / release-prep validated / not released / not tagged**
+> Status: **Core complete / release-prep validated / release finalization in progress**
 >
 > Validation date: 2026-06-19 (Asia/Shanghai)
 >
@@ -50,7 +50,7 @@
 - [x] Spec and test report match the validated behavior and test counts.
 - [x] `artifacts/v0.3-release-prep-report.md` records reproducible evidence.
 - [x] `scripts/verify-release.ps1 -Mode Source` returns PASS; the prep branch produces the expected non-standard-branch warning.
-- [ ] Update Python, Renderer and Electron release version metadata from 0.2.0 to 0.3.0 in the explicit release step.
+- [x] Update Python, Renderer and Electron release version metadata from 0.2.0 to 0.3.0 in the explicit release step.
 - [ ] Run Artifacts-mode verification from `main` or the final `v0.3.0` tag.
 
 ## Phase 6: Publication (intentionally not done in this PR)

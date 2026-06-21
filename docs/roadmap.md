@@ -102,7 +102,7 @@
 
 目标：补齐当前 Python Core 的工程缺口。
 
-**发布状态**：Stage 3 Core 已全部完成，并于 2026-06-19 通过 release-prep 回归；v0.3.0 尚未创建 tag，也尚未发布 GitHub Release。Rust Guard 属于阶段 4 远期规划，不在本次 release-prep 范围。
+**发布状态**：Stage 3 Core 已全部完成，并于 2026-06-19 通过 release-prep 回归；v0.3.0 于 2026-06-21 进入正式发布。Rust Guard 属于阶段 4 远期规划，不在本次 release 范围。
 
 | 能力 | 状态 |
 |---|---|
@@ -155,5 +155,5 @@
 | v0.1.0 | 2026-06 | Python CLI MVP：run/replay/explain |
 | v0.1.1 | 2026-06 | 补 env/git/http 案例与 dashboard-data JSON |
 | v0.2.0 | 2026-06 | 已发布：Electron 数据运行层、Renderer 真实数据联调、Windows x64 安装包 |
-| v0.3.0 | Core 已完成，未发布 | 文件读取、os.system、httpx、Git 状态、HTTP cassette、policy.yaml DSL、Git push 细分、域名策略与级联事故检测均已完成 |
+| v0.3.0 | 2026-06-21 | 已发布：文件读取、os.system、httpx、Git 状态、HTTP cassette、policy.yaml DSL、Git push 细分、域名策略与级联事故检测 |
 | v1.0.0 | 远期 | 产品化 Guard + Dashboard |

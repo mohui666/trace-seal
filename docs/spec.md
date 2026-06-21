@@ -1,7 +1,7 @@
 # TraceSeal 项目规格说明书
 
-> 最后更新：2026-06-19
-> 当前版本：v0.3.0 Core 增强已完成（未发布）+ Desktop Dashboard 数据层
+> 最后更新：2026-06-21
+> 当前版本：v0.3.0 Stage 3 Core + Desktop Dashboard 数据层
 
 ## 1. TraceSeal 解决的问题
 
@@ -157,4 +157,4 @@ python -m unittest discover -s tests -v
 
 详见 [roadmap.md](roadmap.md)。
 
-Stage 3 Core 已完成并通过 2026-06-19 release-prep 验证。v0.3.0 当前仍是未发布、未打 tag 状态；Rust Guard 是阶段 4 远期规划。
+Stage 3 Core 已完成并通过 2026-06-19 release-prep 验证，v0.3.0 于 2026-06-21 正式发布；Rust Guard 是阶段 4 远期规划。

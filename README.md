@@ -1,10 +1,10 @@
 # TraceSeal
 
-**Latest release: [v0.2.0](https://github.com/mohui666/trace-seal/releases/tag/v0.2.0)**
+**Latest release: [v0.3.0](https://github.com/mohui666/trace-seal/releases/tag/v0.3.0)**
 
 Windows x64 installer is available on GitHub Releases.
 
-> **v0.3.0 status:** Stage 3 Core is complete and has passed release-prep validation, but v0.3.0 has **not** been tagged or released. The latest published release remains v0.2.0.
+> **v0.3.0:** Stage 3 Core complete. This release adds Git state tracking, redacted HTTP cassette artifacts, local policy YAML, Git push classification, domain policy, and deterministic cascade analysis.
 
 TraceSeal 是 AI Agent 的操作黑匣子 + 执行前安全防火墙 + 失败回放系统。
 

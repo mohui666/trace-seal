@@ -2,6 +2,30 @@
 
 All notable changes to TraceSeal will be documented in this file.
 
+## [v0.3.0] - 2026-06-21
+
+### Added
+
+- Git branch, HEAD, dirty, staged, unstaged, and untracked state captured before and after Agent runs.
+- Privacy-preserving `http_cassette.jsonl` artifacts with redacted headers/query values and body summaries.
+- Workspace `policy.yaml` / `policy.yml` DSL with safe default-JSON fallback.
+- Git push classification for normal, force, force-with-lease, mirror, delete, force-refspec, branches, and tags.
+- Domain allow/deny/warn policy without DNS resolution.
+- Deterministic cascade detection across sensitive reads, HTTP exfiltration attempts, configuration corruption, destructive shell commands, and dangerous Git pushes.
+
+### Changed
+
+- dashboard-data, replay, and explain now expose Stage 3 Git, HTTP cassette, policy, domain, and cascade evidence.
+- Python regression baseline increased to 90 tests; Renderer remains 96 tests and Electron 45 tests.
+
+### Safety and packaging
+
+- Release demos use loopback or mocked HTTP and simulated Git push; they do not access real external targets.
+- HTTP request/response bodies and sensitive header/query values are not stored in full.
+- Windows x64 remains the primary validated desktop target.
+- The Windows installer is unsigned; macOS and Linux desktop packages are not release-validated.
+- Rust Guard remains future productization work and is not part of v0.3.0.
+
 ## [v0.2.0] - 2026-06 (Release Candidate)
 
 ### Added

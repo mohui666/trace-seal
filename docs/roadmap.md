@@ -102,7 +102,7 @@
 
 目标：补齐当前 Python Core 的工程缺口。
 
-**发布状态**：Stage 3 Core 已全部完成，并于 2026-06-19 通过 release-prep 回归；v0.3.0 于 2026-06-21 进入正式发布。Rust Guard 属于阶段 4 远期规划，不在本次 release 范围。
+**发布状态**：Stage 3 Core 已全部完成，并于 2026-06-19 通过 release-prep 回归；v0.3.0 已于 2026-06-21 正式发布。Rust Guard 属于阶段 4 远期规划，目前仅处于 design phase，不在 v0.3.0 范围。
 
 | 能力 | 状态 |
 |---|---|
@@ -119,9 +119,9 @@
 
 ---
 
-## 阶段 4：Rust Guard 产品化 — 远期规划
+## 阶段 4：Rust Guard 产品化 — 远期规划 / design phase
 
-当前阶段明确不做 Rust 重构。Rust Guard 作为远期产品化方向，**不替代**当前 Python MVP，而是做更底层的安全增强。
+当前阶段明确不做 Rust 重构。Rust Guard 作为远期产品化方向，**不替代**当前 Python MVP，而是做更底层的安全增强。当前状态仅为设计，尚未实现；详见 [`stage4-rust-guard-design.md`](stage4-rust-guard-design.md)。
 
 | 方面 | Python MVP（阶段 1-3） | Rust Guard（阶段 4） |
 |---|---|---|

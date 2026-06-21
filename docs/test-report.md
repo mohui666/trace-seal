@@ -209,3 +209,31 @@ OK
 - installer 未代码签名；仅验证 Windows x64。
 - Python monkey-patch、目录复制 sandbox、transcript replay 和 metadata-only cassette 的既有边界保持不变。
 - Rust Guard 不在本次范围。
+
+## 14. 2026-06-21 v0.3.0 最终发布验证
+
+### 14.1 发布状态
+
+- Release：**TraceSeal v0.3.0 — RELEASED**
+- Tag：`v0.3.0`
+- Tag commit：`59ae99d6db495276963e2f4b47b137f4de846d35`
+- GitHub Release：<https://github.com/mohui666/trace-seal/releases/tag/v0.3.0>
+- Release workflow：[run 27901748342](https://github.com/mohui666/trace-seal/actions/runs/27901748342) — **success**
+
+### 14.2 最终验证证据
+
+- Python unittest：90/90 通过。
+- 7 个核心 demo：全部通过，且 dashboard-data、replay、explain 验证成功。
+- Renderer：96/96 tests 通过。
+- Electron：45/45 tests 通过。
+- Windows x64 installer build：通过。
+- SHA-256 三重核验：本地 installer、`SHA256SUMS.txt` 与发布资产 digest 一致。
+- 发布 installer SHA-256：`9a5e11083377c96b5d41b97fef81875120a66debce731ff23e4ed76ca08eefac`。
+- Privacy scan：63 份输出、12 类敏感值、0 泄露。
+
+### 14.3 发布边界
+
+- Windows x64 是主要且已验证的桌面安装目标；installer 未代码签名。
+- macOS/Linux desktop packaging 未做本次 release 验证。
+- Rust Guard 不包含在 v0.3.0 中，Stage 4 当前仅为设计阶段。
+- 完整发布证据见 [`artifacts/v0.3-release-report.md`](../artifacts/v0.3-release-report.md)。

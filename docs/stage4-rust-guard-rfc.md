@@ -12,6 +12,78 @@ Stage 4 does not immediately replace the Python Core. This RFC defines reviewabl
 
 Related planning is tracked in [issue #28](https://github.com/mohui666/trace-seal/issues/28).
 
+## RFC Review Notes
+
+These notes record the M1 review outcome tracked by [issue #31](https://github.com/mohui666/trace-seal/issues/31). They clarify the design boundary; they do not approve or include implementation.
+
+### MVP boundary
+
+- Stage 4 remains **design-first**. The MVP starts with the M2 schema contract and an observation-only, dry-run event flow.
+- Python Core remains the reference implementation and continues to own run lifecycle, policy semantics, manifest output, replay, explain, and `dashboard-data`.
+- The recommended MVP process model is an explicit, user-mode, workspace-scoped sidecar started by the CLI. It is not a kernel driver, system service, or privileged always-on daemon.
+- The first prototype event is `guard.health`; `process.spawn` follows only as a dry-run observation event after the health/lifecycle contract is validated.
+- MVP policy integration records decisions with `enforced: false`. It does not block processes, files, network operations, or Git operations.
+- Enforcement is out of scope until a separate enforcement experiment RFC is reviewed and approved.
+- No Rust prototype may start before the versioned Guard event schema contract has been reviewed and approved.
+
+### Accepted assumptions
+
+- Guard metadata is additive, optional, versioned, and redacted; a Guard is never required to open an existing run.
+- v0.3.0 run artifacts must remain readable. Existing required fields and their types are not changed by Stage 4 work.
+- Backward compatibility for `dashboard-data`, replay, and explain is mandatory, including runs with no Guard metadata and runs with unknown optional Guard fields.
+- Python Core must remain independently runnable when the Guard is disabled, missing, incompatible, or degraded.
+- The MVP is offline-first, user-mode, least-privilege, observation-only, dry-run, and fail-open.
+- Windows is the first validation target, but no Windows observation API is accepted as part of this review.
+- Electron continues to consume the Python `dashboard-data` boundary and does not communicate directly with platform observation APIs.
+- The current `policy.yaml` DSL and `policy/default_policy.json` remain the user-facing policy sources; Stage 4 does not introduce a second policy language.
+
+### Deferred decisions
+
+The following choices remain deliberately deferred to M2 or later milestones:
+
+- Canonical schema representation, schema identifier format, and serialization rules.
+- Guard-to-Core transport (artifact import versus authenticated local IPC) and lifecycle recovery.
+- Windows process/file/network observation APIs and capability detection.
+- Exact workspace identity and symlink/junction/nested-repository handling.
+- Event deduplication between Python hooks and Guard observations.
+- Audit-chain canonicalization, crash recovery, rotation, signing, and trusted checkpoint ownership.
+- Code signing, packaging, upgrade, and service installation strategy.
+- macOS/Linux implementation and parity targets.
+- Any warn/enforce behavior, privilege escalation, or fail-closed policy.
+
+Deferral means these decisions are not silently assumed by prototype code. The owning milestone must document and review them before depending on them.
+
+### Risks to revisit before implementation
+
+- A user-mode sidecar can be terminated, suspended, bypassed, or denied visibility.
+- PID reuse, spoofed process metadata, and reordered observations can corrupt attribution without stronger correlation fields.
+- Duplicate Python/Guard signals could inflate risk counts or cascade detection if deduplication is unspecified.
+- Command lines, paths, URLs, workspace identifiers, and targets could leak sensitive data unless redaction precedes persistence.
+- Dropped events, backpressure, clock skew, and crash recovery could create misleadingly complete timelines.
+- Windows permissions and API availability may invalidate the non-admin MVP assumption for some event classes.
+- Integrity hashes provide tamper evidence only when canonicalization and a trusted checkpoint are defined.
+- Optional fields can still break downstream consumers if readers do not tolerate unknown or missing values.
+- Performance overhead and false positives must be measured before expanding beyond health/process dry-run events.
+
+These risks block capability claims; they do not justify expanding M1 into implementation.
+
+### M2 schema contract prerequisites
+
+M2 may begin schema design after these M1 notes merge. M3 (`guard.health`) and M4 (`process.spawn`) remain blocked until the M2 contract is reviewed and approved.
+
+Before M2 can be accepted, it must provide:
+
+1. An inventory mapping proposed Guard fields to existing v0.3.0 event, `manifest.json`, and `dashboard-data` semantics.
+2. A versioned envelope with required/optional types, event-source identity, run/workspace correlation, and deterministic ordering rules.
+3. Normative redaction rules for command lines, paths, URLs, targets, and error metadata.
+4. Unknown-field, missing-field, unsupported-version, malformed-event, and partial-write behavior.
+5. Compatibility fixtures containing unchanged v0.3.0 runs, runs with optional Guard metadata, and invalid/unsupported Guard records.
+6. Contract tests proving `dashboard-data`, replay, and explain preserve old-run behavior and fail safely on unsupported Guard data.
+7. A decision on artifact-versus-IPC boundaries sufficient to define the event producer/consumer contract, without implementing the transport.
+8. An explicit review sign-off that the schema does not require Rust, Guard availability, administrator privileges, a cloud service, or a run migration.
+
+M2 approval defines a contract only. It does not authorize enforcement, a daemon/service, a kernel component, or changes to the v0.3.0 release.
+
 ## 1. Summary
 
 Stage 4 proposes extending TraceSeal from the Python Core SDK/hook model toward a lower-level, local Rust Guard sidecar. The Guard would provide a common observation surface for Agents written in Python and other languages, with stronger visibility into process, file, network, and Git operations.

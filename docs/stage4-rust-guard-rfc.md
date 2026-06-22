@@ -192,6 +192,8 @@ The Dashboard may later request startup through a narrow Python Core command, bu
 
 ### 6.1 Compatibility principles
 
+The detailed M2 draft contract is [`guard-event-schema-contract.md`](guard-event-schema-contract.md). Until that contract is reviewed and merged, the fields below remain candidate-level RFC context and M3 is blocked.
+
 - Reuse v0.3.0 event, manifest, and `dashboard-data` fields when semantics match.
 - Add Guard data under optional, versioned fields.
 - Do not rename or change the type of existing required fields.
@@ -391,7 +393,7 @@ Performance tests should measure event loss, end-to-end latency, CPU, memory, an
 | Milestone | Deliverable | Exit criteria |
 |---|---|---|
 | M1: RFC review | Approved design boundaries and recorded decisions | Review checklist resolved; no implementation implied |
-| M2: Event schema contract | Versioned envelope, fixtures, compatibility rules | Golden v0.3.0 runs remain readable |
+| M2: Event schema contract | [Draft `guard.event.v1` contract](guard-event-schema-contract.md), fixtures, compatibility rules | Golden v0.3.0 runs remain readable; M3 remains blocked pending approval |
 | M3: `guard.health` prototype | Rust prototype emits health only | Local, user-mode, offline lifecycle validated |
 | M4: `process.spawn` dry-run | Prototype emits redacted observation events | No blocking; capability and drop reporting tested |
 | M5: Python Core import | Core imports versioned Guard fixtures/events | Python-only mode remains unchanged |

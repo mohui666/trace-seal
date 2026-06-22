@@ -24,7 +24,7 @@ This document converts the approved Stage 4 RFC structure into reviewable work i
 | Milestone | Issue draft | Depends on | Planning state |
 |---|---|---|---|
 | M1 | [Stage 4 RFC review](https://github.com/mohui666/trace-seal/issues/31) | Merged RFC | Review notes documented; closes on merge |
-| M2 | [Define Guard event schema contract](https://github.com/mohui666/trace-seal/issues/32) | M1 | Ready for schema design after M1 merges |
+| M2 | [Define Guard event schema contract](https://github.com/mohui666/trace-seal/issues/32) | M1 | [Draft contract added](guard-event-schema-contract.md); pending review/merge |
 | M3 | [Prototype Rust `guard.health` event emitter](https://github.com/mohui666/trace-seal/issues/33) | M2 | Blocked by M2 |
 | M4 | [Emit `process.spawn` dry-run events](https://github.com/mohui666/trace-seal/issues/34) | M2, M3 | Blocked by M2/M3 |
 | M5 | [Import Guard events into Python Core](https://github.com/mohui666/trace-seal/issues/35) | M2; fixtures from M3/M4 | Blocked by schema contract |
@@ -109,6 +109,8 @@ Define Guard event schema contract
 ### Goal
 
 Define a versioned event schema contract for future Rust Guard events while preserving compatibility with v0.3.0 run artifacts.
+
+Draft contract: [`guard-event-schema-contract.md`](guard-event-schema-contract.md). The draft does not complete M2 until reviewed and merged, and it does not unblock M3 before approval.
 
 ### Scope
 

@@ -121,7 +121,7 @@
 
 ## 阶段 4：Rust Guard 产品化 — 远期规划 / design phase
 
-当前阶段明确不做 Rust 重构。Rust Guard 作为远期产品化方向，**不替代**当前 Python MVP，而是做更底层的安全增强。当前状态为 RFC / design phase，尚未实现；高层方向见 [`stage4-rust-guard-design.md`](stage4-rust-guard-design.md)，评审拆解见 [`stage4-rust-guard-rfc.md`](stage4-rust-guard-rfc.md)。
+当前阶段明确不做 Rust 重构。Rust Guard 作为远期产品化方向，**不替代**当前 Python MVP，而是做更底层的安全增强。当前状态为 RFC / design phase，尚未实现；高层方向见 [`stage4-rust-guard-design.md`](stage4-rust-guard-design.md)，评审拆解见 [`stage4-rust-guard-rfc.md`](stage4-rust-guard-rfc.md)，项目管理拆分见 [`stage4-issue-breakdown.md`](stage4-issue-breakdown.md)。
 
 | 方面 | Python MVP（阶段 1-3） | Rust Guard（阶段 4） |
 |---|---|---|
@@ -141,17 +141,17 @@
 
 ### Stage 4 RFC 子项
 
-| 子项 | 状态 |
-|---|---|
-| RFC review | Draft，待评审 |
-| Event schema contract | 设计中，未实现 |
-| Rust prototype `guard.health` | 计划中，未实现 |
-| `process.spawn` dry-run | 计划中，未实现 |
-| Python bridge | 计划中，未实现 |
-| Dashboard bridge | 计划中，未实现 |
-| Policy dry-run | 计划中，未实现 |
-| Windows smoke validation | 计划中，未验证 |
-| Enforcement experiment RFC | 后续独立 RFC，不在 MVP 中实现 |
+| Milestone | 子项 | 状态 |
+|---|---|---|
+| M1 | [RFC review](https://github.com/mohui666/trace-seal/issues/31) | 规划中，未实现 |
+| M2 | [Event schema contract](https://github.com/mohui666/trace-seal/issues/32) | 规划中，未实现 |
+| M3 | [Rust prototype `guard.health`](https://github.com/mohui666/trace-seal/issues/33) | 规划中，未实现 |
+| M4 | [`process.spawn` dry-run](https://github.com/mohui666/trace-seal/issues/34) | 规划中，未实现 |
+| M5 | [Python bridge](https://github.com/mohui666/trace-seal/issues/35) | 规划中，未实现 |
+| M6 | [Dashboard bridge](https://github.com/mohui666/trace-seal/issues/36) | 规划中，未实现 |
+| M7 | [Policy dry-run](https://github.com/mohui666/trace-seal/issues/37) | 规划中，未实现 |
+| M8 | [Windows smoke validation](https://github.com/mohui666/trace-seal/issues/38) | 规划中，未验证 |
+| M9 | [Enforcement experiment RFC](https://github.com/mohui666/trace-seal/issues/39) | 后续独立 RFC，不在 MVP 中实现 |
 
 ```text
 阶段 1：Python Agent → Python hooks

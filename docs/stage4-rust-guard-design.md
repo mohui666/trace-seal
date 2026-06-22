@@ -6,6 +6,8 @@ Design phase only. Not implemented in v0.3.0. This document is an RFC-level prod
 
 The reviewable breakdown, contracts, milestones, and open decisions are tracked in [`stage4-rust-guard-rfc.md`](stage4-rust-guard-rfc.md).
 
+The M1 review disposition is recorded in the RFC's **RFC Review Notes**: schema and dry-run flow come first, while Rust prototypes and enforcement remain blocked by their required reviews.
+
 ## Background
 
 TraceSeal v0.3.0 completed the Python Core and Desktop evidence pipeline. Stage 4 explores a Rust Guard for lower-level monitoring and stronger enforcement while preserving the existing Python Core contracts.

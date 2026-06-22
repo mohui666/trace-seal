@@ -23,8 +23,8 @@ This document converts the approved Stage 4 RFC structure into reviewable work i
 
 | Milestone | Issue draft | Depends on | Planning state |
 |---|---|---|---|
-| M1 | [Stage 4 RFC review](https://github.com/mohui666/trace-seal/issues/31) | Merged RFC | Planned |
-| M2 | [Define Guard event schema contract](https://github.com/mohui666/trace-seal/issues/32) | M1 | Blocked by M1 |
+| M1 | [Stage 4 RFC review](https://github.com/mohui666/trace-seal/issues/31) | Merged RFC | Review notes documented; closes on merge |
+| M2 | [Define Guard event schema contract](https://github.com/mohui666/trace-seal/issues/32) | M1 | Ready for schema design after M1 merges |
 | M3 | [Prototype Rust `guard.health` event emitter](https://github.com/mohui666/trace-seal/issues/33) | M2 | Blocked by M2 |
 | M4 | [Emit `process.spawn` dry-run events](https://github.com/mohui666/trace-seal/issues/34) | M2, M3 | Blocked by M2/M3 |
 | M5 | [Import Guard events into Python Core](https://github.com/mohui666/trace-seal/issues/35) | M2; fixtures from M3/M4 | Blocked by schema contract |
@@ -32,6 +32,20 @@ This document converts the approved Stage 4 RFC structure into reviewable work i
 | M7 | [Integrate policy dry-run decisions for Guard events](https://github.com/mohui666/trace-seal/issues/37) | M2, M5 | Blocked by schema/import |
 | M8 | [Windows VM smoke validation for Guard prototype](https://github.com/mohui666/trace-seal/issues/38) | M3–M7 | Blocked by MVP integration |
 | M9 | [Draft enforcement experiment RFC](https://github.com/mohui666/trace-seal/issues/39) | M1, M7, M8 | Blocked until observe/dry-run evidence exists |
+
+## M1 review disposition
+
+The M1 document review resolves the initial boundary questions as follows:
+
+- The MVP is user-mode, workspace-scoped, observation-only, dry-run, fail-open, and offline-first.
+- Python Core remains the reference implementation and remains usable without a Guard.
+- M2 is the next milestone and defines the versioned schema contract plus compatibility fixtures.
+- M3 and M4 cannot begin before M2 is reviewed and approved.
+- v0.3.0 runs, `dashboard-data`, replay, and explain must remain backward compatible.
+- Enforcement remains blocked until a separate RFC is approved after observe/dry-run validation.
+- Windows API selection, IPC transport, signing, service packaging, other platforms, and enforcement details remain deferred to their owning milestones.
+
+Full accepted assumptions, deferred decisions, risks, and M2 prerequisites are recorded in the RFC's [`RFC Review Notes`](stage4-rust-guard-rfc.md#rfc-review-notes). This disposition is a documentation decision, not an implementation milestone.
 
 ---
 

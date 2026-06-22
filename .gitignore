@@ -21,3 +21,4 @@ packaging/*.spec
 *.tsbuildinfo
 .trae/
 out/
+target/

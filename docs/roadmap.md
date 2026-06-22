@@ -145,7 +145,7 @@
 |---|---|---|
 | M1 | [RFC review](https://github.com/mohui666/trace-seal/issues/31) | 文档审查结论已记录，待合并；无实现 |
 | M2 | [Event schema contract](https://github.com/mohui666/trace-seal/issues/32) | [`guard.event.v1` Draft contract](guard-event-schema-contract.md) 已提出，待评审/合并；无实现 |
-| M3 | [Rust prototype `guard.health`](https://github.com/mohui666/trace-seal/issues/33) | 规划中，未实现 |
+| M3 | [Rust prototype `guard.health`](https://github.com/mohui666/trace-seal/issues/33) | 最小 local-only prototype 已提出，待 Draft PR 评审/合并；仅 health event |
 | M4 | [`process.spawn` dry-run](https://github.com/mohui666/trace-seal/issues/34) | 规划中，未实现 |
 | M5 | [Python bridge](https://github.com/mohui666/trace-seal/issues/35) | 规划中，未实现 |
 | M6 | [Dashboard bridge](https://github.com/mohui666/trace-seal/issues/36) | 规划中，未实现 |

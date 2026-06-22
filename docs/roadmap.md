@@ -144,7 +144,7 @@
 | Milestone | 子项 | 状态 |
 |---|---|---|
 | M1 | [RFC review](https://github.com/mohui666/trace-seal/issues/31) | 文档审查结论已记录，待合并；无实现 |
-| M2 | [Event schema contract](https://github.com/mohui666/trace-seal/issues/32) | M1 合并后进入 schema 设计；未实现 |
+| M2 | [Event schema contract](https://github.com/mohui666/trace-seal/issues/32) | [`guard.event.v1` Draft contract](guard-event-schema-contract.md) 已提出，待评审/合并；无实现 |
 | M3 | [Rust prototype `guard.health`](https://github.com/mohui666/trace-seal/issues/33) | 规划中，未实现 |
 | M4 | [`process.spawn` dry-run](https://github.com/mohui666/trace-seal/issues/34) | 规划中，未实现 |
 | M5 | [Python bridge](https://github.com/mohui666/trace-seal/issues/35) | 规划中，未实现 |

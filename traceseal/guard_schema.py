@@ -166,6 +166,91 @@ def validate_guard_health_event(event: Mapping[str, Any]) -> Mapping[str, Any]:
     return event
 
 
+def validate_guard_process_spawn_event(event: Mapping[str, Any]) -> Mapping[str, Any]:
+    """Validate the local-only, observe-only process.spawn dry-run contract."""
+
+    event = validate_guard_event(event)
+    if event["event_type"] != "process.spawn":
+        raise GuardEventValidationError(
+            f"event_type must be 'process.spawn', got {event['event_type']!r}"
+        )
+    if event["source"] != "rust_guard":
+        raise GuardEventValidationError("process.spawn source must be 'rust_guard'")
+    if event["risk_level"] != "info":
+        raise GuardEventValidationError("process.spawn risk_level must be 'info'")
+    if event["policy"]["decision"] != "observe":
+        raise GuardEventValidationError(
+            "process.spawn policy.decision must be 'observe'"
+        )
+
+    process_data = _mapping(event.get("process"), "process")
+    missing_process_fields = sorted(
+        {"pid", "parent_pid", "process_name", "command_line", "cwd"}.difference(
+            process_data
+        )
+    )
+    if missing_process_fields:
+        raise GuardEventValidationError(
+            "process.spawn missing process field(s): "
+            + ", ".join(missing_process_fields)
+        )
+
+    process_name = _non_empty_string(
+        process_data.get("process_name"), "process.process_name"
+    )
+    _non_empty_string(process_data.get("cwd"), "process.cwd")
+    command_line = process_data.get("command_line")
+    if (
+        not isinstance(command_line, list)
+        or not command_line
+        or any(not isinstance(item, str) or not item for item in command_line)
+    ):
+        raise GuardEventValidationError(
+            "process.command_line must be a non-empty array of non-empty strings"
+        )
+    if command_line[0] != process_name:
+        raise GuardEventValidationError(
+            "process.command_line[0] must match process.process_name"
+        )
+
+    redaction = event["redaction"]
+    if redaction["status"] not in {"not_applicable", "redacted"}:
+        raise GuardEventValidationError(
+            "process.spawn redaction.status must be 'not_applicable' or 'redacted'"
+        )
+    if redaction["status"] == "not_applicable" and redaction["fields"]:
+        raise GuardEventValidationError(
+            "process.spawn not_applicable redaction must have no fields"
+        )
+    if redaction["status"] == "redacted" and not redaction["fields"]:
+        raise GuardEventValidationError(
+            "process.spawn redacted status must identify redacted fields"
+        )
+    for field in redaction["fields"]:
+        if not field.startswith("process.command_line["):
+            raise GuardEventValidationError(
+                "process.spawn redaction fields must reference process.command_line"
+            )
+
+    guard = event["guard"]
+    if guard["status"] != "ok":
+        raise GuardEventValidationError("process.spawn guard.status must be 'ok'")
+    _non_empty_string(guard.get("guard_version"), "guard.guard_version")
+    _non_empty_string(guard.get("platform"), "guard.platform")
+    if "name" in guard and guard["name"] != "traceseal-guard":
+        raise GuardEventValidationError(
+            "guard.name must be 'traceseal-guard' when present"
+        )
+
+    metadata = event["metadata"]
+    if metadata.get("dry_run") is not True:
+        raise GuardEventValidationError("process.spawn metadata.dry_run must be true")
+    if metadata.get("executed") is not False:
+        raise GuardEventValidationError("process.spawn metadata.executed must be false")
+    _non_empty_string(metadata.get("message"), "metadata.message")
+    return event
+
+
 def load_guard_events(path: str | Path) -> list[dict[str, Any]]:
     """Load JSON objects from a Guard JSONL artifact; a missing artifact means no Guard events."""
 

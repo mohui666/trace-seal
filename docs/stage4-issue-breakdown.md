@@ -4,7 +4,7 @@
 
 - **Status:** Planning / reviewed prototype tracking
 - **Scope:** Project management plus milestone acceptance status
-- **Implementation:** M3/M4 emitters plus optional M5 Python import; no productized Guard
+- **Implementation:** M3/M4 emitters, optional M5 import, and M6 dashboard metadata; no productized Guard
 - **Stage:** Stage 4 remains design-first
 - **Latest released version:** v0.3.0
 
@@ -28,8 +28,8 @@ This document converts the approved Stage 4 RFC structure into reviewable work i
 | M3 | [Prototype Rust `guard.health` event emitter](https://github.com/mohui666/trace-seal/issues/33) | M2 | Completed and merged; local-only health emitter only |
 | M4 | [Emit `process.spawn` dry-run events](https://github.com/mohui666/trace-seal/issues/34) | M2, M3 | [Local-only intent prototype implemented](guard-process-spawn-dry-run.md); no target execution or OS monitoring |
 | M5 | [Import Guard events into Python Core](https://github.com/mohui666/trace-seal/issues/35) | M2; fixtures from M3/M4 | [Optional local import implemented](guard-event-import.md); Python timeline remains separate |
-| M6 | [Expose Guard metadata in `dashboard-data`](https://github.com/mohui666/trace-seal/issues/36) | M2, M5 | Blocked by Python import |
-| M7 | [Integrate policy dry-run decisions for Guard events](https://github.com/mohui666/trace-seal/issues/37) | M2, M5 | Blocked by schema/import |
+| M6 | [Expose Guard metadata in `dashboard-data`](https://github.com/mohui666/trace-seal/issues/36) | M2, M5 | [Additive Guard data contract implemented](dashboard-guard-metadata.md); no UI change |
+| M7 | [Integrate policy dry-run decisions for Guard events](https://github.com/mohui666/trace-seal/issues/37) | M2, M5 | Planned; not started |
 | M8 | [Windows VM smoke validation for Guard prototype](https://github.com/mohui666/trace-seal/issues/38) | M3–M7 | Blocked by MVP integration |
 | M9 | [Draft enforcement experiment RFC](https://github.com/mohui666/trace-seal/issues/39) | M1, M7, M8 | Blocked until observe/dry-run evidence exists |
 
@@ -318,6 +318,8 @@ Allow Python Core to import future Rust Guard event artifacts without breaking e
 
 ## M6 — Expose Guard metadata in dashboard-data
 
+**Implementation status:** Run-level `dashboard-data` exposes an additive, compact Guard summary for Issue #36. Renderer/Electron UI remains unchanged. See [`dashboard-guard-metadata.md`](dashboard-guard-metadata.md).
+
 ### Title
 
 Expose Guard metadata in dashboard-data
@@ -328,7 +330,7 @@ Expose optional Guard metadata in `dashboard-data` while keeping existing dashbo
 
 ### Scope
 
-- Include an optional Guard summary.
+- Include an additive Guard summary object.
 - Include Guard event count and health status.
 - Preserve all existing `dashboard-data` required fields and types.
 - Document behavior when Guard metadata is absent, invalid, degraded, or unsupported.
@@ -343,15 +345,15 @@ Expose optional Guard metadata in `dashboard-data` while keeping existing dashbo
 
 ### Acceptance criteria
 
-- [ ] `dashboard-data` works with unchanged v0.3.0 runs.
-- [ ] `dashboard-data` works with valid optional Guard metadata.
-- [ ] Missing Guard metadata is represented as unavailable/absent without error.
-- [ ] Existing consumers can ignore new optional fields.
-- [ ] Renderer and Electron contract tests remain green.
+- [x] `dashboard-data` works with unchanged v0.3.0 runs.
+- [x] `dashboard-data` works with valid optional Guard metadata.
+- [x] Missing Guard metadata is represented as unavailable without error.
+- [x] Existing consumers can ignore the new additive field.
+- [x] Renderer and Electron contract tests remain green without UI changes.
 
 ### Validation
 
-- Run dashboard-data tests over old, Guard-enabled, malformed, and degraded fixtures.
+- Run dashboard-data tests over old, Guard-enabled, malformed, and degraded events.
 - Run Renderer and Electron contract/type tests without adding a UI redesign.
 - Verify optional-field serialization and backwards-compatible defaults.
 - Confirm no sensitive command/path content bypasses redaction.

@@ -10,7 +10,7 @@
 - **Timeline behavior:** existing Python `events.jsonl` is unchanged
 - **Release status:** prototype integration only; Stage 4 is not released
 
-The importer attaches a validated Guard JSONL artifact to an existing TraceSeal run. It does not start the Rust Guard, execute a recorded `process.spawn` command, merge Guard records into the Python event timeline, evaluate policy, or expose Guard data in `dashboard-data`.
+The importer attaches a validated Guard JSONL artifact to an existing TraceSeal run. It does not start the Rust Guard, execute a recorded `process.spawn` command, merge Guard records into the Python event timeline, or evaluate policy. Issue #36 can now expose a compact read-only summary through `dashboard-data`.
 
 ## Python API
 
@@ -74,7 +74,7 @@ Source-order preservation is the M5 ordering rule. Cross-source correlation and 
 
 Replay and explain continue reading only the existing Python `events.jsonl`. They tolerate the optional manifest metadata and a Guard-enabled run without changing their output format. Invalid or unknown optional Guard metadata is ignored by these existing readers.
 
-`dashboard-data` also retains its existing response shape. It does not expose a Guard count, health status, event list, or summary in this milestone. That work remains Issue #36.
+Issue #36 adds one optional top-level `guard` object to run-level `dashboard-data` while preserving every existing field and the Python timeline. See [`dashboard-guard-metadata.md`](dashboard-guard-metadata.md). No Electron UI consumes or displays the object in this milestone.
 
 Policy evaluation is not run during import. Guard policy dry-run decisions remain Issue #37.
 
@@ -83,6 +83,6 @@ Policy evaluation is not run during import. Guard policy dry-run decisions remai
 - Import is local file parsing and atomic local artifact persistence only.
 - A `process.spawn` record is data; its target command is never executed.
 - No OS-wide process observation or new file/network/Git monitoring.
-- No dashboard-data Guard visualization or Electron UI change.
+- Read-only dashboard-data metadata only; no Electron UI visualization or redesign.
 - No policy dry-run, blocking, enforcement, fail-closed behavior, daemon, or service.
 - No installer, release workflow, tag, or GitHub Release change.

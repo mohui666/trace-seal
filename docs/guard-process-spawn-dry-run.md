@@ -7,7 +7,7 @@
 - **Schema:** `guard.event.v1`
 - **Mode:** `observe` / dry-run only
 - **Target execution:** Never
-- **Python Core import:** Not included; Issue #35 remains separate
+- **Python Core import:** Available through the explicit optional [M5 import path](guard-event-import.md)
 
 This prototype extends the one-shot Rust Guard CLI with a `process-spawn` command. It records an intent to start a program as one JSON Lines event, but it never invokes the program or observes operating-system process activity.
 
@@ -65,6 +65,8 @@ for event in events:
 
 `validate_guard_process_spawn_event` verifies the common envelope, required process fields, observe-only policy, redaction shape, and the explicit dry-run/non-execution metadata. Missing Guard artifacts remain valid for old Python-only runs.
 
+The optional importer described in [`guard-event-import.md`](guard-event-import.md) can attach the validated JSONL artifact to an existing run without executing the target or merging it into the Python timeline.
+
 ## Limitations and non-goals
 
 - No target command execution or child-process launch.
@@ -72,5 +74,5 @@ for event in events:
 - No file, network, or Git monitoring.
 - No daemon, service, administrator privilege, injection, or kernel driver.
 - No policy enforcement or blocking.
-- No recorder, replay, explain, dashboard-data, Electron, installer, or release integration.
+- Optional Python artifact import only; no recorder timeline, replay/explain output, dashboard-data, Electron, installer, or release integration.
 - No Stage 4 release; this remains a local prototype.

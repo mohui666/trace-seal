@@ -5,14 +5,14 @@
 - **Status:** Draft contract
 - **Scope:** Stage 4 schema design
 - **Prototype coverage:** `guard.health` (Issue #33) and local-only `process.spawn` dry-run emission (Issue #34)
-- **Core behavior:** Validation helpers only; no run import or Core behavior change
+- **Core behavior:** Optional local run import is available; existing Python timeline behavior is unchanged
 - **Compatibility baseline:** TraceSeal v0.3.0
 - **Initial schema version:** `guard.event.v1`
-- **Next integration milestone:** [Issue #35 — Python Core import](https://github.com/mohui666/trace-seal/issues/35), not started here
+- **Next integration milestone:** [Issue #36 — optional dashboard-data metadata](https://github.com/mohui666/trace-seal/issues/36), not started here
 
 Issue #33 implements the first local-only emitter against this contract; see [`guard-health-prototype.md`](guard-health-prototype.md). Issue #34 adds the next explicitly reviewed event as a non-executing dry-run intent; see [`guard-process-spawn-dry-run.md`](guard-process-spawn-dry-run.md). The contract remains additive and does not authorize OS-wide monitoring or enforcement.
 
-This document defines the producer/consumer contract for Guard prototype events. The separately reviewed prototypes serialize and validate a narrow subset; they do not create a Python run importer, dashboard integration, enforcement path, productized Guard, or release artifact.
+This document defines the producer/consumer contract for Guard prototype events. The separately reviewed prototypes serialize, validate, and optionally attach a narrow subset to a Python run; they do not create dashboard integration, policy decisions, an enforcement path, a productized Guard, or a release artifact.
 
 The contract is additive. It does not replace the v0.3.0 `events.jsonl` schema, change existing run artifacts, or require a Guard to read an old run.
 
@@ -167,7 +167,7 @@ A future validator should distinguish these outcomes:
 | schema validation error | Required field is missing or known field type/enum is invalid | Reject/isolate this Guard record; do not fail the entire run |
 | redaction failure | Sensitive data cannot be safely represented | Omit sensitive value, record safe failure metadata, and do not persist raw content |
 
-The local Python helper applies these validation rules to the supported prototype events. Import into Python Core and existing runs remains Issue #35 and is not implemented here.
+The local Python helper applies these validation rules to the supported prototype events. Issue #35 adds an optional importer that rejects invalid records before modifying the run and keeps the existing Python timeline unchanged.
 
 ## 5. Compatibility rules
 
@@ -181,7 +181,7 @@ The local Python helper applies these validation rules to the supported prototyp
 8. Unsupported Guard schema versions are isolated/reported; they do not make old v0.3.0 artifacts unreadable.
 9. Readers must ignore unknown fields for forward compatibility and must not silently reinterpret them.
 10. Python Core remains the reference implementation and remains usable with no Guard artifact.
-11. A future importer must preserve deterministic run ordering and document how it correlates/deduplicates Python and Guard events.
+11. The M5 importer preserves Guard source order, rejects duplicate Guard `event_id` values, and keeps Guard/Python timelines separate; cross-source correlation remains deferred.
 
 ## 6. Event type registry
 
@@ -290,10 +290,10 @@ Contract requirements:
 - Partial/truncated lines are validation errors isolated from previously complete lines.
 - Artifact absence means the run has no Guard events and is not an error.
 - Each non-null `run_id` must match the containing run.
-- A future manifest may contain an optional Guard summary/checksum, but this PR does not define required v0.3.0 manifest changes.
+- An imported run may contain an optional `guard` manifest object with artifact path, count, event types, schema version, and import timestamp. Old manifests require no migration.
 - Per-event hashes, chained hashes, checkpoints, rotation, and signing remain future audit-integrity work and are not implemented here.
 
-For a pre-run `guard.health` event with `run_id: null`, the future producer/importer milestone must define whether the event is attached to a newly created run or retained as session-scoped transient evidence. This contract does not invent a persistence location outside the proposed run artifact.
+The M5 importer allows a pre-run event with `run_id: null` to be explicitly attached to a user-selected existing run. A non-null event `run_id` must match that target run. The importer does not attach events automatically or invent a persistence location outside the selected run.
 
 ## 12. Minimum guard.health contract
 
@@ -398,26 +398,42 @@ The Issue #34 boundary is:
 
 See [`guard-process-spawn-dry-run.md`](guard-process-spawn-dry-run.md) for the CLI and validation path.
 
-## 14. dashboard-data, replay, and explain compatibility
+## 14. Python Core import contract
+
+Issue #35 implements the optional import path documented in [`guard-event-import.md`](guard-event-import.md):
+
+- the canonical imported artifact is `guard_events.jsonl` in the selected run directory;
+- the source artifact is fully parsed and validated before the run is modified;
+- known prototype types use their strict validators and unknown types use the common v1 envelope validator;
+- Guard source order is preserved; duplicate `event_id` values are rejected;
+- non-null event `run_id` values must match the target run;
+- the existing `events.jsonl` timeline is not changed, sorted, merged, or deduplicated against Guard events;
+- manifest metadata is an optional `guard` object and old manifests need no migration;
+- artifact absence returns an empty Guard event list and is not an error;
+- an existing imported artifact is not silently overwritten.
+
+The importer performs no target execution, policy evaluation, dashboard export, enforcement, monitoring, or network access.
+
+## 15. dashboard-data, replay, and explain compatibility
 
 Future integration may add an optional `guard` summary to `dashboard-data`, including schema version, health state, event count, and validation/degraded metadata. Existing fields and types must remain unchanged, and old consumers must be able to ignore the new object.
 
-Replay may display normalized Guard events in timestamp/sequence order. A run without `guard_events.jsonl` behaves exactly as before.
+Replay may display normalized Guard events in a future milestone. M5 continues to read only `events.jsonl`; a run with or without `guard_events.jsonl` otherwise behaves exactly as before.
 
-Explain may cite a Guard event or dry-run policy decision when valid Guard metadata exists. Without Guard metadata, it emits no Guard-specific output and retains v0.3.0 behavior.
+Explain may cite a Guard event or dry-run policy decision in a future milestone. M5 emits no Guard-specific explanation and retains v0.3.0 behavior.
 
-Unknown Guard fields/types are displayed generically or omitted safely; they do not crash the command. Invalid Guard records produce isolated compatibility/validation metadata rather than aborting old run processing.
+Unknown optional Guard manifest metadata is ignored by existing replay/explain/dashboard readers. Import API validation errors are isolated before run modification and do not corrupt old run data.
 
-These remain compatibility expectations. The M4 prototype does not modify Python Core import behavior, `dashboard-data`, replay, explain, Electron, or existing run artifacts.
+Dashboard Guard output remains Issue #36 and policy dry-run remains Issue #37. M5 does not modify `dashboard-data`, replay/explain output formats, Electron, or existing Python event artifacts.
 
-## 15. Contract review checklist
+## 16. Contract review checklist
 
 - [ ] Required, optional, and nullable fields are unambiguous.
 - [ ] `guard.event.v1` versioning and validation outcomes are accepted.
 - [x] `guard.health` is the first supported local prototype event.
 - [x] `process.spawn` is limited to a separately reviewed, non-executing dry-run intent.
 - [ ] Risk, policy decision, and redaction enums preserve existing TraceSeal semantics.
-- [ ] Old v0.3.0 runs remain readable without migration.
-- [ ] Unknown fields/event types and malformed Guard records have safe fallback behavior.
-- [ ] JSONL artifact absence is a normal Python-only run state.
-- [x] Prototype support does not add Python Core run import, Electron, installer, enforcement, tag, or release behavior.
+- [x] Old v0.3.0 runs remain readable without migration.
+- [x] Unknown event types are retained and malformed Guard records fail import before run modification.
+- [x] JSONL artifact absence is a normal Python-only run state.
+- [x] Optional Python Core import does not add dashboard, policy, Electron, installer, enforcement, tag, or release behavior.

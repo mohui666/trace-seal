@@ -52,7 +52,7 @@ print("guard.health validation ok", len(events))
 - `validate_guard_event(event)`: validates the common `guard.event.v1` envelope and enums;
 - `validate_guard_health_event(event)`: validates the stricter `guard.health` prototype contract.
 
-These helpers do not import Guard events into recorder, replay, explain, `dashboard-data`, or existing runs.
+The optional [`guard-event-import.md`](guard-event-import.md) path can now attach validated events to an existing run. It does not merge them into recorder events or change replay, explain, or `dashboard-data` output.
 
 ## Validation
 
@@ -70,7 +70,7 @@ The repository-wide Python suite remains the regression gate.
 - No file, network, HTTP, or Git monitoring.
 - No policy enforcement, blocking, warn flow, or fail-closed behavior.
 - No daemon, service, kernel driver, persistence, or administrator privilege.
-- No automatic Guard artifact import into Python Core.
+- No automatic Guard artifact import; the M5 import API/CLI is explicit and optional.
 - No Electron UI or installer/release integration.
 - No audit hash chain or signing.
 - No macOS/Linux parity claim beyond portable CLI serialization.

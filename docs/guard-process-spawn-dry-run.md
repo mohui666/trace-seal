@@ -74,5 +74,5 @@ The optional importer described in [`guard-event-import.md`](guard-event-import.
 - No file, network, or Git monitoring.
 - No daemon, service, administrator privilege, injection, or kernel driver.
 - No policy enforcement or blocking.
-- Optional Python artifact import only; no recorder timeline, replay/explain output, dashboard-data, Electron, installer, or release integration.
+- Optional Python artifact import and read-only dashboard-data summary only; no recorder timeline, replay/explain output, Electron UI, installer, or release integration.
 - No Stage 4 release; this remains a local prototype.

@@ -122,13 +122,16 @@ class GuardEventImportTest(unittest.TestCase):
         self.assertIn("未发现有害工具调用", explain_run(self.run_dir))
         dashboard = export_dashboard_data(self.run_dir)
         self.assertEqual(dashboard["event_count"], 0)
-        self.assertNotIn("guard", dashboard)
+        self.assertIs(dashboard["guard"]["available"], False)
+        self.assertEqual(dashboard["guard"]["event_count"], 0)
 
-    def test_replay_explain_and_dashboard_ignore_optional_guard_metadata(self) -> None:
+    def test_replay_explain_remain_unchanged_while_dashboard_exposes_guard(self) -> None:
         import_guard_events(self.run_dir, self.fixtures / "guard_mixed_events.jsonl")
         self.assertIn("事件数量: 0", replay_run(self.run_dir))
         self.assertIn("未发现有害工具调用", explain_run(self.run_dir))
-        self.assertNotIn("guard", export_dashboard_data(self.run_dir))
+        dashboard_guard = export_dashboard_data(self.run_dir)["guard"]
+        self.assertIs(dashboard_guard["available"], True)
+        self.assertEqual(dashboard_guard["event_count"], 2)
 
         manifest = json.loads((self.run_dir / "manifest.json").read_text("utf-8"))
         manifest["guard"] = {"guard_events_path": "../outside.jsonl", "invalid": True}
@@ -143,7 +146,11 @@ class GuardEventImportTest(unittest.TestCase):
         self._write_manifest(manifest)
         self.assertIn("TraceSeal 执行时间线回放", replay_run(self.run_dir))
         self.assertIn("未发现有害工具调用", explain_run(self.run_dir))
-        self.assertNotIn("guard", export_dashboard_data(self.run_dir))
+        dashboard_guard = export_dashboard_data(self.run_dir)["guard"]
+        self.assertIs(dashboard_guard["available"], False)
+        self.assertEqual(
+            dashboard_guard["error"]["code"], "INVALID_GUARD_EVENTS"
+        )
 
     def test_invalid_schema_and_missing_required_field_are_rejected_atomically(self) -> None:
         cases = []

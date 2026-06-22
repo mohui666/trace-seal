@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import re
+from collections import Counter
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
@@ -13,6 +14,12 @@ from recorder.git_state import summarize_git_states
 from recorder.http_cassette import read_http_cassette
 from replay.renderer import load_events
 from traceseal.cascade import detect_cascade
+from traceseal.guard_import import (
+    GuardImportError,
+    get_guard_event_summary,
+    load_imported_guard_events,
+    maybe_find_guard_events,
+)
 
 RUN_ID_RE = re.compile(r"^run_[A-Za-z0-9_.-]+$")
 
@@ -149,6 +156,136 @@ def _http_cassette_payload(run_dir: Path, manifest: dict[str, Any]) -> dict[str,
     return {"summary": summary, "entries": entries}
 
 
+_GUARD_SENSITIVE_ARGUMENT_KEYS = frozenset(
+    {
+        "token",
+        "password",
+        "secret",
+        "authorization",
+        "cookie",
+        "api_key",
+        "apikey",
+        "access_token",
+        "client_secret",
+    }
+)
+
+
+def _is_guard_sensitive_argument_key(value: str) -> bool:
+    normalized = value.lstrip("-").rstrip(":").replace("-", "_").lower()
+    return normalized in _GUARD_SENSITIVE_ARGUMENT_KEYS
+
+
+def _safe_guard_arguments(values: list[str]) -> list[str]:
+    safe: list[str] = []
+    redact_next = False
+    for value in values:
+        if redact_next:
+            safe.append("<redacted>")
+            redact_next = False
+            continue
+        key, separator, _raw_value = value.partition("=")
+        if separator and _is_guard_sensitive_argument_key(key):
+            safe.append(f"{key}=<redacted>")
+            continue
+        if _is_guard_sensitive_argument_key(value):
+            redact_next = True
+        safe.append(value)
+    return safe
+
+
+def _compact_guard_event(event: dict[str, Any]) -> dict[str, Any]:
+    policy = event.get("policy") if isinstance(event.get("policy"), dict) else {}
+    redaction = event.get("redaction") if isinstance(event.get("redaction"), dict) else {}
+    metadata = event.get("metadata") if isinstance(event.get("metadata"), dict) else {}
+    guard = event.get("guard") if isinstance(event.get("guard"), dict) else {}
+    compact: dict[str, Any] = {
+        "event_id": event.get("event_id"),
+        "timestamp": event.get("timestamp"),
+        "event_type": event.get("event_type"),
+        "risk_level": event.get("risk_level"),
+        "decision": policy.get("decision"),
+        "redaction_status": redaction.get("status"),
+        "guard_status": guard.get("status"),
+        "message": metadata.get("message"),
+    }
+    if event.get("event_type") == "process.spawn":
+        process = event.get("process") if isinstance(event.get("process"), dict) else {}
+        command_line = process.get("command_line")
+        args = command_line[1:] if isinstance(command_line, list) else []
+        compact["process"] = {
+            "program": process.get("process_name"),
+            "args": _safe_guard_arguments([str(value) for value in args]),
+            "cwd": process.get("cwd"),
+            "pid": process.get("pid"),
+            "parent_pid": process.get("parent_pid"),
+            "dry_run": metadata.get("dry_run") is True,
+            "executed": metadata.get("executed") is True,
+        }
+    return compact
+
+
+def build_guard_dashboard_data(run_dir: str | Path) -> dict[str, Any]:
+    """Build an additive Guard summary without changing the Python event timeline."""
+
+    run_path = Path(run_dir)
+    payload: dict[str, Any] = {
+        "available": False,
+        "schema_version": None,
+        "artifact_path": None,
+        "imported_at": None,
+        "event_count": 0,
+        "event_types": [],
+        "risk_levels": {},
+        "decisions": {},
+        "redaction_statuses": {},
+        "health_status": None,
+        "events": [],
+        "error": None,
+    }
+    artifact = maybe_find_guard_events(run_path)
+    if artifact is None:
+        return payload
+
+    try:
+        events = load_imported_guard_events(run_path)
+        summary = get_guard_event_summary(run_path)
+    except GuardImportError as error:
+        payload["artifact_path"] = artifact.name
+        payload["error"] = {
+            "code": "INVALID_GUARD_EVENTS",
+            "message": str(error),
+        }
+        return payload
+
+    compact_events = [_compact_guard_event(event) for event in events]
+    health_events = [
+        event for event in compact_events if event.get("event_type") == "guard.health"
+    ]
+    payload.update(
+        {
+            "available": True,
+            "schema_version": summary.get("guard_schema_version"),
+            "artifact_path": summary.get("guard_events_path"),
+            "imported_at": summary.get("guard_imported_at"),
+            "event_count": len(events),
+            "event_types": summary.get("guard_event_types") or [],
+            "risk_levels": dict(Counter(str(event.get("risk_level")) for event in events)),
+            "decisions": dict(
+                Counter(str((event.get("policy") or {}).get("decision")) for event in events)
+            ),
+            "redaction_statuses": dict(
+                Counter(str((event.get("redaction") or {}).get("status")) for event in events)
+            ),
+            "health_status": health_events[-1].get("guard_status")
+            if health_events
+            else None,
+            "events": compact_events,
+        }
+    )
+    return payload
+
+
 def export_dashboard_data(run_dir: str | Path) -> dict[str, Any]:
     """Return a compact JSON-ready summary for Electron/React dashboard reads."""
 
@@ -175,6 +312,7 @@ def export_dashboard_data(run_dir: str | Path) -> dict[str, Any]:
         "git_state": _git_state_payload(run_dir, manifest),
         "http_cassette": _http_cassette_payload(run_dir, manifest),
         "policy_source": manifest.get("policy_source"),
+        "guard": build_guard_dashboard_data(run_dir),
     }
 
 

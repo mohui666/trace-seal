@@ -416,15 +416,15 @@ The importer performs no target execution, policy evaluation, dashboard export, 
 
 ## 15. dashboard-data, replay, and explain compatibility
 
-Future integration may add an optional `guard` summary to `dashboard-data`, including schema version, health state, event count, and validation/degraded metadata. Existing fields and types must remain unchanged, and old consumers must be able to ignore the new object.
+Issue #36 adds an additive `guard` object to run-level `dashboard-data`, including availability, schema version, artifact/import metadata, event count/types, risk/decision/redaction aggregates, health status, compact events, and an isolated error field. Existing fields and types remain unchanged, and old consumers can ignore the new object.
 
 Replay may display normalized Guard events in a future milestone. M5 continues to read only `events.jsonl`; a run with or without `guard_events.jsonl` otherwise behaves exactly as before.
 
 Explain may cite a Guard event or dry-run policy decision in a future milestone. M5 emits no Guard-specific explanation and retains v0.3.0 behavior.
 
-Unknown optional Guard manifest metadata is ignored by existing replay/explain/dashboard readers. Import API validation errors are isolated before run modification and do not corrupt old run data.
+Unknown optional Guard manifest metadata is ignored safely. Missing artifacts yield `guard.available: false`; malformed or invalid artifacts keep the run payload readable and report `INVALID_GUARD_EVENTS` inside the Guard object.
 
-Dashboard Guard output remains Issue #36 and policy dry-run remains Issue #37. M5 does not modify `dashboard-data`, replay/explain output formats, Electron, or existing Python event artifacts.
+The data contract is documented in [`dashboard-guard-metadata.md`](dashboard-guard-metadata.md). Replay/explain formats and Electron UI remain unchanged. Policy dry-run remains Issue #37.
 
 ## 16. Contract review checklist
 
@@ -436,4 +436,4 @@ Dashboard Guard output remains Issue #36 and policy dry-run remains Issue #37. M
 - [x] Old v0.3.0 runs remain readable without migration.
 - [x] Unknown event types are retained and malformed Guard records fail import before run modification.
 - [x] JSONL artifact absence is a normal Python-only run state.
-- [x] Optional Python Core import does not add dashboard, policy, Electron, installer, enforcement, tag, or release behavior.
+- [x] Optional dashboard metadata does not add policy decisions, Electron UI, installer, enforcement, tag, or release behavior.

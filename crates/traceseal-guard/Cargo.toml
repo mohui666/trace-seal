@@ -1,0 +1,8 @@
+[package]
+name = "traceseal-guard"
+version = "0.1.0-prototype"
+edition = "2021"
+publish = false
+
+[dependencies]
+serde_json = "1.0"

@@ -10,6 +10,8 @@
 - **Initial schema version:** `guard.event.v1`
 - **Intended next milestone:** [Issue #33 — `guard.health` prototype](https://github.com/mohui666/trace-seal/issues/33)
 
+Issue #33 implements the first local-only emitter against this contract; see [`guard-health-prototype.md`](guard-health-prototype.md). The contract remains additive and does not authorize later event types or enforcement.
+
 This document defines the proposed producer/consumer contract for future Guard events. It does not create an executable JSON Schema, Rust crate, Guard emitter, Python importer, dashboard integration, enforcement path, or release artifact.
 
 The contract is additive. It does not replace the v0.3.0 `events.jsonl` schema, change existing run artifacts, or require a Guard to read an old run.
@@ -139,6 +141,7 @@ If redaction fails for a sensitive field, the raw sensitive value must not be pe
 | Field | Type | Required | Nullable | Meaning |
 |---|---|---|---|---|
 | `guard_version` | string or null | No | Yes | Producer version, for example `0.0.0-dev`. |
+| `name` | string or null | No | Yes | Optional producer name. The Issue #33 prototype emits `traceseal-guard`. |
 | `mode` | string | Yes | No | Runtime mode. The only approved MVP value is `observe`. |
 | `platform` | string or null | No | Yes | Normalized platform label such as `windows`; null when unknown. |
 | `status` | string | Yes | No | Producer/event health state. Initial health values may include `ok`, `degraded`, `error`, or `unknown`. |
@@ -314,13 +317,14 @@ Issue #33 may implement only the following minimal event class after this contra
     "fields": []
   },
   "guard": {
+    "name": "traceseal-guard",
     "guard_version": "0.0.0-dev",
     "mode": "observe",
     "platform": "windows",
     "status": "ok"
   },
   "metadata": {
-    "message": "guard alive"
+    "message": "guard health check ok"
   }
 }
 ```
@@ -334,7 +338,7 @@ The Issue #33 prototype boundary is:
 - prove only that a future Rust Guard can serialize the agreed event shape;
 - allow Python Core to import or validate the event only in a later separately reviewed milestone.
 
-The contract does not implement or test this emitter.
+The schema contract itself does not perform emission. Issue #33 provides the separately tested one-shot emitter described in [`guard-health-prototype.md`](guard-health-prototype.md).
 
 ## 13. dashboard-data, replay, and explain compatibility
 

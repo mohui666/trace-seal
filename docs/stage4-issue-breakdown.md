@@ -25,7 +25,7 @@ This document converts the approved Stage 4 RFC structure into reviewable work i
 |---|---|---|---|
 | M1 | [Stage 4 RFC review](https://github.com/mohui666/trace-seal/issues/31) | Merged RFC | Review notes documented; closes on merge |
 | M2 | [Define Guard event schema contract](https://github.com/mohui666/trace-seal/issues/32) | M1 | [Draft contract added](guard-event-schema-contract.md); pending review/merge |
-| M3 | [Prototype Rust `guard.health` event emitter](https://github.com/mohui666/trace-seal/issues/33) | M2 | Blocked by M2 |
+| M3 | [Prototype Rust `guard.health` event emitter](https://github.com/mohui666/trace-seal/issues/33) | M2 | Prototype proposed in Draft PR; local-only health emitter only |
 | M4 | [Emit `process.spawn` dry-run events](https://github.com/mohui666/trace-seal/issues/34) | M2, M3 | Blocked by M2/M3 |
 | M5 | [Import Guard events into Python Core](https://github.com/mohui666/trace-seal/issues/35) | M2; fixtures from M3/M4 | Blocked by schema contract |
 | M6 | [Expose Guard metadata in `dashboard-data`](https://github.com/mohui666/trace-seal/issues/36) | M2, M5 | Blocked by Python import |
@@ -162,6 +162,8 @@ Prototype Rust guard.health event emitter
 ### Goal
 
 Create the first minimal Rust Guard prototype that emits `guard.health` events only.
+
+Prototype documentation: [`guard-health-prototype.md`](guard-health-prototype.md). This milestone does not start M4 or authorize any process/file/network/Git observation.
 
 ### Scope
 

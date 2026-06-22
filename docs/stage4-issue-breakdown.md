@@ -4,7 +4,7 @@
 
 - **Status:** Planning / reviewed prototype tracking
 - **Scope:** Project management plus milestone acceptance status
-- **Implementation:** M3 health and M4 non-executing dry-run prototypes only; no productized Guard
+- **Implementation:** M3/M4 emitters plus optional M5 Python import; no productized Guard
 - **Stage:** Stage 4 remains design-first
 - **Latest released version:** v0.3.0
 
@@ -27,7 +27,7 @@ This document converts the approved Stage 4 RFC structure into reviewable work i
 | M2 | [Define Guard event schema contract](https://github.com/mohui666/trace-seal/issues/32) | M1 | [Draft contract](guard-event-schema-contract.md) completed and merged |
 | M3 | [Prototype Rust `guard.health` event emitter](https://github.com/mohui666/trace-seal/issues/33) | M2 | Completed and merged; local-only health emitter only |
 | M4 | [Emit `process.spawn` dry-run events](https://github.com/mohui666/trace-seal/issues/34) | M2, M3 | [Local-only intent prototype implemented](guard-process-spawn-dry-run.md); no target execution or OS monitoring |
-| M5 | [Import Guard events into Python Core](https://github.com/mohui666/trace-seal/issues/35) | M2; fixtures from M3/M4 | Planned; not started |
+| M5 | [Import Guard events into Python Core](https://github.com/mohui666/trace-seal/issues/35) | M2; fixtures from M3/M4 | [Optional local import implemented](guard-event-import.md); Python timeline remains separate |
 | M6 | [Expose Guard metadata in `dashboard-data`](https://github.com/mohui666/trace-seal/issues/36) | M2, M5 | Blocked by Python import |
 | M7 | [Integrate policy dry-run decisions for Guard events](https://github.com/mohui666/trace-seal/issues/37) | M2, M5 | Blocked by schema/import |
 | M8 | [Windows VM smoke validation for Guard prototype](https://github.com/mohui666/trace-seal/issues/38) | M3–M7 | Blocked by MVP integration |
@@ -264,6 +264,8 @@ Extend the Rust Guard prototype to emit `process.spawn` dry-run events without e
 
 ## M5 — Import Guard events into Python Core
 
+**Implementation status:** Optional local artifact import is implemented for Issue #35. Dashboard output and policy decisions remain separate milestones. See [`guard-event-import.md`](guard-event-import.md).
+
 ### Title
 
 Import Guard events into Python Core
@@ -274,11 +276,11 @@ Allow Python Core to import future Rust Guard event artifacts without breaking e
 
 ### Scope
 
-- Define the local artifact or IPC import path.
+- Define the local `guard_events.jsonl` artifact import path.
 - Validate schema version and required fields.
 - Handle absent Guard metadata as a normal Python-only run.
-- Merge accepted Guard events into the run timeline with deterministic ordering.
-- Define duplicate/correlation behavior between Python hooks and Guard events.
+- Preserve Guard source order in a separate artifact; do not merge it into `events.jsonl`.
+- Reject duplicate Guard event IDs; defer Python/Guard cross-source correlation.
 - Report invalid or unsupported events safely without corrupting the run.
 
 ### Non-goals
@@ -290,18 +292,18 @@ Allow Python Core to import future Rust Guard event artifacts without breaking e
 
 ### Acceptance criteria
 
-- [ ] Python Core can load valid Guard events when present.
-- [ ] Old runs without Guard events continue to work unchanged.
-- [ ] Replay and explain do not crash with absent, valid, invalid, or unsupported Guard metadata.
-- [ ] Schema validation errors are isolated and reported safely.
-- [ ] Event ordering and deduplication rules are covered by contract tests.
+- [x] Python Core can load valid Guard events when present.
+- [x] Old runs without Guard events continue to work unchanged.
+- [x] Replay and explain do not crash with absent, valid, invalid, or unsupported optional Guard metadata.
+- [x] Schema validation errors are isolated before run modification and reported safely.
+- [x] Source-order preservation and duplicate-ID rejection are covered by contract tests.
 
 ### Validation
 
-- Run Python unit and contract tests against M2 golden fixtures.
-- Run replay, explain, and `dashboard-data` over old and Guard-enabled fixture runs.
-- Test truncated, malformed, unsupported-version, duplicate, and out-of-order inputs.
-- Confirm no real Rust process or external service is required for fixture tests.
+- Run Python unit and contract tests against M2/M3/M4 fixtures.
+- Run replay, explain, and unchanged `dashboard-data` over old and Guard-enabled fixture runs.
+- Test malformed, unsupported-version, duplicate, out-of-order, mismatched-run, and unknown-type inputs.
+- Confirm fixture tests execute no recorded target and require no Rust process or external service.
 
 ### Dependencies
 

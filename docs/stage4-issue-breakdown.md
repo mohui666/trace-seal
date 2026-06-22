@@ -2,9 +2,9 @@
 
 ## Status
 
-- **Status:** Planning / issue breakdown
-- **Scope:** Project management only
-- **Implementation:** No Rust implementation in this PR
+- **Status:** Planning / reviewed prototype tracking
+- **Scope:** Project management plus milestone acceptance status
+- **Implementation:** M3 health and M4 non-executing dry-run prototypes only; no productized Guard
 - **Stage:** Stage 4 remains design-first
 - **Latest released version:** v0.3.0
 
@@ -23,11 +23,11 @@ This document converts the approved Stage 4 RFC structure into reviewable work i
 
 | Milestone | Issue draft | Depends on | Planning state |
 |---|---|---|---|
-| M1 | [Stage 4 RFC review](https://github.com/mohui666/trace-seal/issues/31) | Merged RFC | Review notes documented; closes on merge |
-| M2 | [Define Guard event schema contract](https://github.com/mohui666/trace-seal/issues/32) | M1 | [Draft contract added](guard-event-schema-contract.md); pending review/merge |
-| M3 | [Prototype Rust `guard.health` event emitter](https://github.com/mohui666/trace-seal/issues/33) | M2 | Prototype proposed in Draft PR; local-only health emitter only |
-| M4 | [Emit `process.spawn` dry-run events](https://github.com/mohui666/trace-seal/issues/34) | M2, M3 | Blocked by M2/M3 |
-| M5 | [Import Guard events into Python Core](https://github.com/mohui666/trace-seal/issues/35) | M2; fixtures from M3/M4 | Blocked by schema contract |
+| M1 | [Stage 4 RFC review](https://github.com/mohui666/trace-seal/issues/31) | Merged RFC | Completed and merged |
+| M2 | [Define Guard event schema contract](https://github.com/mohui666/trace-seal/issues/32) | M1 | [Draft contract](guard-event-schema-contract.md) completed and merged |
+| M3 | [Prototype Rust `guard.health` event emitter](https://github.com/mohui666/trace-seal/issues/33) | M2 | Completed and merged; local-only health emitter only |
+| M4 | [Emit `process.spawn` dry-run events](https://github.com/mohui666/trace-seal/issues/34) | M2, M3 | [Local-only intent prototype implemented](guard-process-spawn-dry-run.md); no target execution or OS monitoring |
+| M5 | [Import Guard events into Python Core](https://github.com/mohui666/trace-seal/issues/35) | M2; fixtures from M3/M4 | Planned; not started |
 | M6 | [Expose Guard metadata in `dashboard-data`](https://github.com/mohui666/trace-seal/issues/36) | M2, M5 | Blocked by Python import |
 | M7 | [Integrate policy dry-run decisions for Guard events](https://github.com/mohui666/trace-seal/issues/37) | M2, M5 | Blocked by schema/import |
 | M8 | [Windows VM smoke validation for Guard prototype](https://github.com/mohui666/trace-seal/issues/38) | M3–M7 | Blocked by MVP integration |
@@ -40,7 +40,7 @@ The M1 document review resolves the initial boundary questions as follows:
 - The MVP is user-mode, workspace-scoped, observation-only, dry-run, fail-open, and offline-first.
 - Python Core remains the reference implementation and remains usable without a Guard.
 - M2 is the next milestone and defines the versioned schema contract plus compatibility fixtures.
-- M3 and M4 cannot begin before M2 is reviewed and approved.
+- M3 and M4 required M2 review and approval before implementation; that prerequisite was satisfied before their prototype work.
 - v0.3.0 runs, `dashboard-data`, replay, and explain must remain backward compatible.
 - Enforcement remains blocked until a separate RFC is approved after observe/dry-run validation.
 - Windows API selection, IPC transport, signing, service packaging, other platforms, and enforcement details remain deferred to their owning milestones.
@@ -209,6 +209,8 @@ Prototype documentation: [`guard-health-prototype.md`](guard-health-prototype.md
 
 ## M4 — Emit process.spawn dry-run events
 
+**Prototype status:** Implemented as a local-only, non-executing intent emitter for Issue #34. This is not OS-level observation. See [`guard-process-spawn-dry-run.md`](guard-process-spawn-dry-run.md).
+
 ### Title
 
 Emit process.spawn dry-run events
@@ -219,11 +221,11 @@ Extend the Rust Guard prototype to emit `process.spawn` dry-run events without e
 
 ### Scope
 
-- Observe supported process command metadata.
-- Include PID and parent PID where the platform source provides them.
+- Record caller-supplied target process command metadata without launching it.
+- Emit null PID and parent PID because the dry-run creates no target process.
 - Include redacted working directory and command-line metadata.
 - Emit structured, versioned events with Guard/session correlation.
-- Report capability gaps and dropped events explicitly.
+- Mark the event explicitly as `dry_run: true` and `executed: false`.
 - Keep observation in dry-run mode only.
 
 ### Non-goals
@@ -236,17 +238,17 @@ Extend the Rust Guard prototype to emit `process.spawn` dry-run events without e
 
 ### Acceptance criteria
 
-- [ ] `process.spawn` event shape matches the M2 schema.
-- [ ] Events can be imported into the Python Core contract-test flow.
-- [ ] Command and path redaction behavior is tested.
-- [ ] Unsafe commands are observed but not blocked.
-- [ ] Tests run offline and do not launch destructive commands.
+- [x] `process.spawn` event shape matches the M2 schema.
+- [x] Events can be loaded and validated by the Python contract-test helper without run import.
+- [x] Command and path field behavior plus sensitive argument redaction are tested.
+- [x] Unsafe target intent is recorded but never executed or blocked.
+- [x] Tests run offline and do not launch target or destructive commands.
 
 ### Validation
 
-- Use harmless local child processes with deterministic arguments.
-- Verify PID/parent PID, cwd, ordering, redaction, and session correlation where available.
-- Verify degraded capability/error metadata when observation is unavailable.
+- Use deterministic command intent strings; do not launch a child process.
+- Verify null PID/parent PID, cwd, argument ordering, redaction, and explicit non-execution metadata.
+- Verify the emitter makes no OS observation or complete-coverage claim.
 - Confirm no external network, real Git push, or destructive system action occurs.
 
 ### Dependencies

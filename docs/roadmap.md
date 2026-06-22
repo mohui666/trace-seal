@@ -119,9 +119,9 @@
 
 ---
 
-## 阶段 4：Rust Guard 产品化 — 远期规划 / design phase
+## 阶段 4：Rust Guard 产品化 — 原型 / design-first（未发布）
 
-当前阶段明确不做 Rust 重构。Rust Guard 作为远期产品化方向，**不替代**当前 Python MVP，而是做更底层的安全增强。当前状态为 RFC / design phase，尚未实现；高层方向见 [`stage4-rust-guard-design.md`](stage4-rust-guard-design.md)，评审拆解见 [`stage4-rust-guard-rfc.md`](stage4-rust-guard-rfc.md)，项目管理拆分见 [`stage4-issue-breakdown.md`](stage4-issue-breakdown.md)。
+当前阶段明确不做 Rust 重构。Rust Guard 作为远期产品化方向，**不替代**当前 Python MVP，而是做更底层的安全增强。当前只有 `guard.health` 与非执行型 `process.spawn` local-only 原型，仍处于 RFC / design-first 阶段，不代表 OS 级监控、enforcement 或正式发布；高层方向见 [`stage4-rust-guard-design.md`](stage4-rust-guard-design.md)，评审拆解见 [`stage4-rust-guard-rfc.md`](stage4-rust-guard-rfc.md)，项目管理拆分见 [`stage4-issue-breakdown.md`](stage4-issue-breakdown.md)。
 
 | 方面 | Python MVP（阶段 1-3） | Rust Guard（阶段 4） |
 |---|---|---|
@@ -143,10 +143,10 @@
 
 | Milestone | 子项 | 状态 |
 |---|---|---|
-| M1 | [RFC review](https://github.com/mohui666/trace-seal/issues/31) | 文档审查结论已记录，待合并；无实现 |
-| M2 | [Event schema contract](https://github.com/mohui666/trace-seal/issues/32) | [`guard.event.v1` Draft contract](guard-event-schema-contract.md) 已提出，待评审/合并；无实现 |
-| M3 | [Rust prototype `guard.health`](https://github.com/mohui666/trace-seal/issues/33) | 最小 local-only prototype 已提出，待 Draft PR 评审/合并；仅 health event |
-| M4 | [`process.spawn` dry-run](https://github.com/mohui666/trace-seal/issues/34) | 规划中，未实现 |
+| M1 | [RFC review](https://github.com/mohui666/trace-seal/issues/31) | 已完成并合并；Stage 4 保持 design-first |
+| M2 | [Event schema contract](https://github.com/mohui666/trace-seal/issues/32) | [`guard.event.v1` Draft contract](guard-event-schema-contract.md) 已完成并合并 |
+| M3 | [Rust prototype `guard.health`](https://github.com/mohui666/trace-seal/issues/33) | 最小 local-only prototype 已完成并合并；仅 health event |
+| M4 | [`process.spawn` dry-run](https://github.com/mohui666/trace-seal/issues/34) | [最小 local-only dry-run prototype](guard-process-spawn-dry-run.md) 已实现；不执行目标、不做 OS 监控 |
 | M5 | [Python bridge](https://github.com/mohui666/trace-seal/issues/35) | 规划中，未实现 |
 | M6 | [Dashboard bridge](https://github.com/mohui666/trace-seal/issues/36) | 规划中，未实现 |
 | M7 | [Policy dry-run](https://github.com/mohui666/trace-seal/issues/37) | 规划中，未实现 |

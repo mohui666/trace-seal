@@ -4,15 +4,15 @@
 
 - **Status:** Draft contract
 - **Scope:** Stage 4 schema design
-- **Implementation:** No Rust implementation in this PR
-- **Core behavior:** No Core behavior change in this PR
+- **Prototype coverage:** `guard.health` (Issue #33) and local-only `process.spawn` dry-run emission (Issue #34)
+- **Core behavior:** Validation helpers only; no run import or Core behavior change
 - **Compatibility baseline:** TraceSeal v0.3.0
 - **Initial schema version:** `guard.event.v1`
-- **Intended next milestone:** [Issue #33 — `guard.health` prototype](https://github.com/mohui666/trace-seal/issues/33)
+- **Next integration milestone:** [Issue #35 — Python Core import](https://github.com/mohui666/trace-seal/issues/35), not started here
 
-Issue #33 implements the first local-only emitter against this contract; see [`guard-health-prototype.md`](guard-health-prototype.md). The contract remains additive and does not authorize later event types or enforcement.
+Issue #33 implements the first local-only emitter against this contract; see [`guard-health-prototype.md`](guard-health-prototype.md). Issue #34 adds the next explicitly reviewed event as a non-executing dry-run intent; see [`guard-process-spawn-dry-run.md`](guard-process-spawn-dry-run.md). The contract remains additive and does not authorize OS-wide monitoring or enforcement.
 
-This document defines the proposed producer/consumer contract for future Guard events. It does not create an executable JSON Schema, Rust crate, Guard emitter, Python importer, dashboard integration, enforcement path, or release artifact.
+This document defines the producer/consumer contract for Guard prototype events. The separately reviewed prototypes serialize and validate a narrow subset; they do not create a Python run importer, dashboard integration, enforcement path, productized Guard, or release artifact.
 
 The contract is additive. It does not replace the v0.3.0 `events.jsonl` schema, change existing run artifacts, or require a Guard to read an old run.
 
@@ -25,7 +25,7 @@ The contract must:
 - preserve v0.3.0 run, `dashboard-data`, replay, and explain behavior;
 - make optional/nullable data and redaction state explicit;
 - support unknown future fields and event types safely;
-- start with `guard.health` only, followed by `process.spawn` dry-run work;
+- start with `guard.health`, followed by the separately reviewed `process.spawn` non-executing dry-run intent;
 - avoid implying that observation or policy decisions are enforced.
 
 ## 2. Canonical event envelope
@@ -167,7 +167,7 @@ A future validator should distinguish these outcomes:
 | schema validation error | Required field is missing or known field type/enum is invalid | Reject/isolate this Guard record; do not fail the entire run |
 | redaction failure | Sensitive data cannot be safely represented | Omit sensitive value, record safe failure metadata, and do not persist raw content |
 
-This table defines behavior only. No validator or importer is implemented in this PR.
+The local Python helper applies these validation rules to the supported prototype events. Import into Python Core and existing runs remains Issue #35 and is not implemented here.
 
 ## 5. Compatibility rules
 
@@ -189,8 +189,8 @@ The event type registry separates contract reservation from implementation. List
 
 | `event_type` | Contract status | Intended milestone | Minimum contract meaning |
 |---|---|---|---|
-| `guard.health` | **First supported event / MVP target** | Issue #33 (M3) | Guard lifecycle/health heartbeat only; no OS activity observation |
-| `process.spawn` | Next dry-run candidate | Issue #34 (M4) | Observation of a supported child/process start with redacted metadata |
+| `guard.health` | **Supported local prototype** | Issue #33 (M3) | Guard lifecycle/health heartbeat only; no OS activity observation |
+| `process.spawn` | **Supported local dry-run prototype** | Issue #34 (M4) | Non-executing spawn intent with redacted command metadata; no OS observation |
 | `process.exit` | Future | Later design | Observed process termination/exit status when available |
 | `file.read` | Future | Later design | Metadata-only read observation; no file body/content |
 | `file.write` | Future | Later design | Metadata-only write observation; no file body/content |
@@ -202,7 +202,7 @@ The event type registry separates contract reservation from implementation. List
 | `policy.decision` | Future dry-run | Issue #37 (M7) | Links a non-enforced policy decision to a subject event |
 | `guard.error` | Future MVP-supporting event | Later M3/M4 review | Safe Guard error/degraded metadata without secrets |
 
-Only `guard.health` is the implementation target immediately following approval of this contract. `process.spawn` is the next candidate, remains dry-run, and depends on the health/lifecycle prototype. All other types require their own design/implementation review.
+Only `guard.health` and the separately reviewed `process.spawn` dry-run intent are supported by the current prototype. `process.spawn` remains observe-only and does not execute or monitor a process. All other types require their own design/implementation review.
 
 Enforcement is not implemented by this schema PR. Event registration does not authorize blocking, injection, kernel hooks, a service, administrator privileges, or fail-closed behavior.
 
@@ -297,7 +297,7 @@ For a pre-run `guard.health` event with `run_id: null`, the future producer/impo
 
 ## 12. Minimum guard.health contract
 
-Issue #33 may implement only the following minimal event class after this contract is reviewed. The fixture intentionally omits optional `run_id`, `workspace`, `process`, and `target` fields.
+Issue #33 implements the following minimal event class. The contract example intentionally omits optional `run_id`, `workspace`, `process`, and `target` fields.
 
 ```json
 {
@@ -329,7 +329,7 @@ Issue #33 may implement only the following minimal event class after this contra
 }
 ```
 
-The Issue #33 prototype boundary is:
+The Issue #33 prototype boundary remains:
 
 - output one or more locally generated schema-conforming `guard.health` records;
 - make no network request and require no cloud service;
@@ -338,9 +338,67 @@ The Issue #33 prototype boundary is:
 - prove only that a future Rust Guard can serialize the agreed event shape;
 - allow Python Core to import or validate the event only in a later separately reviewed milestone.
 
-The schema contract itself does not perform emission. Issue #33 provides the separately tested one-shot emitter described in [`guard-health-prototype.md`](guard-health-prototype.md).
+Issue #33 provides the separately tested one-shot emitter described in [`guard-health-prototype.md`](guard-health-prototype.md).
 
-## 13. dashboard-data, replay, and explain compatibility
+## 13. Minimum process.spawn dry-run contract
+
+Issue #34 adds a second one-shot CLI path. It records target command intent but does not invoke the target or observe an OS process:
+
+```json
+{
+  "schema_version": "guard.event.v1",
+  "event_id": "guard_evt_000002",
+  "timestamp": "2026-06-22T00:00:01.000000Z",
+  "source": "rust_guard",
+  "event_type": "process.spawn",
+  "run_id": null,
+  "workspace": ".",
+  "process": {
+    "pid": null,
+    "parent_pid": null,
+    "process_name": "python",
+    "command_line": ["python", "example.py", "token=<redacted>"],
+    "cwd": "."
+  },
+  "target": null,
+  "risk_level": "info",
+  "policy": {
+    "decision": "observe",
+    "rule_id": null,
+    "reason": "process spawn dry-run event"
+  },
+  "redaction": {
+    "status": "redacted",
+    "fields": ["process.command_line[2]"]
+  },
+  "guard": {
+    "name": "traceseal-guard",
+    "guard_version": "0.1.0-prototype",
+    "mode": "observe",
+    "platform": "windows",
+    "status": "ok"
+  },
+  "metadata": {
+    "message": "process.spawn dry-run event emitted",
+    "dry_run": true,
+    "executed": false
+  }
+}
+```
+
+The Issue #34 boundary is:
+
+- `process.pid` and `process.parent_pid` are null because no target is launched;
+- `process.command_line` is an array whose first item matches `process_name`;
+- common token/password/secret/authorization/cookie/credential argument forms are redacted before persistence;
+- `redaction.status` is `redacted` with command-line field paths when values are removed, otherwise `not_applicable` with an empty list;
+- `metadata.dry_run` is true and `metadata.executed` is false;
+- the event is local-only, observe-only, and does not imply successful process observation;
+- no environment, file content, network payload, Git credential, or unrelated workspace data is captured.
+
+See [`guard-process-spawn-dry-run.md`](guard-process-spawn-dry-run.md) for the CLI and validation path.
+
+## 14. dashboard-data, replay, and explain compatibility
 
 Future integration may add an optional `guard` summary to `dashboard-data`, including schema version, health state, event count, and validation/degraded metadata. Existing fields and types must remain unchanged, and old consumers must be able to ignore the new object.
 
@@ -350,16 +408,16 @@ Explain may cite a Guard event or dry-run policy decision when valid Guard metad
 
 Unknown Guard fields/types are displayed generically or omitted safely; they do not crash the command. Invalid Guard records produce isolated compatibility/validation metadata rather than aborting old run processing.
 
-This PR defines expectations only. It does not modify Python Core, `dashboard-data`, replay, explain, Electron, or run artifacts.
+These remain compatibility expectations. The M4 prototype does not modify Python Core import behavior, `dashboard-data`, replay, explain, Electron, or existing run artifacts.
 
-## 14. Contract review checklist
+## 15. Contract review checklist
 
 - [ ] Required, optional, and nullable fields are unambiguous.
 - [ ] `guard.event.v1` versioning and validation outcomes are accepted.
-- [ ] `guard.health` is the only immediate implementation target.
-- [ ] `process.spawn` remains the next dry-run candidate and is not implemented here.
+- [x] `guard.health` is the first supported local prototype event.
+- [x] `process.spawn` is limited to a separately reviewed, non-executing dry-run intent.
 - [ ] Risk, policy decision, and redaction enums preserve existing TraceSeal semantics.
 - [ ] Old v0.3.0 runs remain readable without migration.
 - [ ] Unknown fields/event types and malformed Guard records have safe fallback behavior.
 - [ ] JSONL artifact absence is a normal Python-only run state.
-- [ ] No Rust, Python Core, Electron, installer, enforcement, tag, or release implementation is included.
+- [x] Prototype support does not add Python Core run import, Electron, installer, enforcement, tag, or release behavior.

@@ -31,7 +31,7 @@ This document converts the approved Stage 4 RFC structure into reviewable work i
 | M6 | [Expose Guard metadata in `dashboard-data`](https://github.com/mohui666/trace-seal/issues/36) | M2, M5 | [Additive Guard data contract implemented](dashboard-guard-metadata.md); no UI change |
 | M7 | [Integrate policy dry-run decisions for Guard events](https://github.com/mohui666/trace-seal/issues/37) | M2, M5 | [Dry-run sidecar implemented](guard-policy-dry-run.md); no enforcement |
 | M8 | [Windows VM smoke validation for Guard prototype](https://github.com/mohui666/trace-seal/issues/38) | M3–M7 | Windows smoke script and validation doc implemented; no enforcement |
-| M9 | [Draft enforcement experiment RFC](https://github.com/mohui666/trace-seal/issues/39) | M1, M7, M8 | Open and not started; separate RFC only |
+| M9 | [Draft enforcement experiment RFC](https://github.com/mohui666/trace-seal/issues/39) | M1, M7, M8 | [Draft enforcement experiment RFC](stage4-enforcement-experiment-rfc.md) added; documentation only |
 
 ## M1 review disposition
 
@@ -489,6 +489,8 @@ Validate the minimal Guard prototype in a clean Windows VM without requiring adm
 
 ## M9 — Draft enforcement experiment RFC
 
+**Documentation status:** The separate [`Stage 4 Enforcement Experiment RFC`](stage4-enforcement-experiment-rfc.md) defines the future opt-in experiment model, gates, kill switch, audit, rollback, user consent, risks, validation plan, and safety boundaries. It is documentation only and does not implement enforcement, block `process.spawn`, execute target commands, add daemon/service behavior, add OS-wide/file/network/Git monitoring, change Rust Guard behavior, change Python policy behavior, change Electron UI, change installer/release workflows, create a tag, or publish a release.
+
 ### Title
 
 Draft enforcement experiment RFC
@@ -505,21 +507,29 @@ Design a separate RFC for future enforcement modes after observe/dry-run mode is
 - Define platform privilege and capability requirements.
 - Define decision/audit evidence and attempted-versus-effective enforcement reporting.
 - Define rollback, disable, crash recovery, and safe experiment plans.
+- Define kill switch, explicit user consent, and local-only experiment gates.
 
 ### Non-goals
 
 - No enforcement implementation.
 - No blocking behavior in the current milestone.
+- No `process.spawn` target command execution.
+- No daemon/service implementation.
+- No OS-wide process monitoring.
+- No file, network, or Git monitoring.
+- No Rust Guard behavior change.
+- No Python policy behavior change.
+- No Electron UI, installer, release workflow, tag, or release change.
 - No kernel driver commitment.
 - No default fail-closed mode.
 
 ### Acceptance criteria
 
-- [ ] A separate enforcement experiment RFC exists.
-- [ ] Risks, bypasses, races, and unsupported operations are documented.
-- [ ] Failure modes and operation-specific fail-open/fail-closed choices are explicit.
-- [ ] User recovery and rollback plans are reviewable.
-- [ ] Implementation remains blocked until RFC approval.
+- [x] A separate enforcement experiment RFC exists.
+- [x] Risks, bypasses, races, and unsupported operations are documented.
+- [x] Failure modes and operation-specific fail-open/fail-closed choices are explicit.
+- [x] User recovery, rollback, kill switch, and consent plans are reviewable.
+- [x] Implementation remains blocked until a future implementation RFC/PR satisfies the documented gates.
 
 ### Validation
 
@@ -527,6 +537,7 @@ Design a separate RFC for future enforcement modes after observe/dry-run mode is
 - Threat-model termination, privilege failure, IPC failure, event loss, and partial enforcement.
 - Verify proposed experiments are reversible, sandboxed, and do not target real user/system data.
 - Confirm no enforcement source code is included with the RFC.
+- Run documentation static checks for the RFC non-goals.
 
 ### Dependencies
 

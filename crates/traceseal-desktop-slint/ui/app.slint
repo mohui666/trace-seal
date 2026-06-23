@@ -1,0 +1,135 @@
+import { Button, HorizontalBox, VerticalBox } from "std-widgets.slint";
+
+component MetricTile inherits Rectangle {
+    in property <string> label-text;
+    in property <string> value-text;
+
+    width: 260px;
+    height: 92px;
+    background: #16202e;
+    border-width: 1px;
+    border-color: #2a3443;
+    border-radius: 8px;
+
+    VerticalBox {
+        padding: 14px;
+        spacing: 8px;
+
+        Text {
+            text: root.label-text;
+            color: #8fb1c9;
+            font-size: 14px;
+        }
+
+        Text {
+            text: root.value-text;
+            color: #f4f7fb;
+            font-size: 24px;
+            font-weight: 700;
+        }
+    }
+}
+
+export component AppWindow inherits Window {
+    in property <string> title-text: "TraceSeal Slint Spike";
+    in property <string> subtitle-text: "Experimental only / 仅实验用途";
+    in property <string> latest-run-label: "Latest run";
+    in property <int> event-count: 0;
+    in property <int> risk-count: 0;
+    in property <string> latest-run: "mock-run-0001";
+    in property <string> policy-mode: "mock / read-only";
+    in property <string> event-count-label: "Event count";
+    in property <string> risk-count-label: "Risk count";
+    in property <string> policy-mode-label: "Policy mode";
+    in property <string> boundary-text: "Electron remains default. Python Core is not called. No real runs are loaded. No packaging or release changes.";
+    in property <string> toggle-language-text: "English / 中文";
+
+    callback toggle-language();
+
+    title: root.title-text;
+    width: 640px;
+    height: 430px;
+    background: #101820;
+
+    VerticalBox {
+        padding: 24px;
+        spacing: 16px;
+
+        HorizontalBox {
+            spacing: 12px;
+
+            VerticalBox {
+                spacing: 6px;
+
+                Text {
+                    text: root.title-text;
+                    color: #f4f7fb;
+                    font-size: 30px;
+                    font-weight: 700;
+                }
+
+                Text {
+                    text: root.subtitle-text;
+                    color: #8fb1c9;
+                    font-size: 16px;
+                }
+            }
+
+            Button {
+                text: root.toggle-language-text;
+                width: 112px;
+                height: 36px;
+                clicked => {
+                    root.toggle-language();
+                }
+            }
+        }
+
+        HorizontalBox {
+            spacing: 12px;
+
+            MetricTile {
+                label-text: root.latest-run-label;
+                value-text: root.latest-run;
+            }
+
+            MetricTile {
+                label-text: root.policy-mode-label;
+                value-text: root.policy-mode;
+            }
+        }
+
+        HorizontalBox {
+            spacing: 12px;
+
+            MetricTile {
+                label-text: root.event-count-label;
+                value-text: "\{root.event-count}";
+            }
+
+            MetricTile {
+                label-text: root.risk-count-label;
+                value-text: "\{root.risk-count}";
+            }
+        }
+
+        Rectangle {
+            height: 82px;
+            background: #0f2533;
+            border-width: 1px;
+            border-color: #29475b;
+            border-radius: 8px;
+
+            Text {
+                x: 16px;
+                y: 14px;
+                width: parent.width - 32px;
+                height: parent.height - 28px;
+                text: root.boundary-text;
+                color: #d6e7ef;
+                font-size: 14px;
+                wrap: word-wrap;
+            }
+        }
+    }
+}

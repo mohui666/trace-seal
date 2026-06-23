@@ -1,5 +1,8 @@
 use serde_json::Value;
 
+const UNAVAILABLE: &str = "Unavailable";
+const NO_RISKS: &str = "No risks";
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum BridgeStatusKind {
     MockFallback,
@@ -16,6 +19,12 @@ pub struct DashboardSummary {
     pub event_count: i32,
     pub risk_count: i32,
     pub policy_summary: String,
+    pub started_at: String,
+    pub finished_at: String,
+    pub run_title: String,
+    pub workspace: String,
+    pub run_policy_mode: String,
+    pub risk_summary: String,
     pub bridge_status: BridgeStatusKind,
     pub last_error: String,
 }
@@ -29,6 +38,12 @@ impl DashboardSummary {
             event_count: 12,
             risk_count: 3,
             policy_summary: "mock / read-only".to_string(),
+            started_at: UNAVAILABLE.to_string(),
+            finished_at: UNAVAILABLE.to_string(),
+            run_title: "Mock run".to_string(),
+            workspace: UNAVAILABLE.to_string(),
+            run_policy_mode: "mock / read-only".to_string(),
+            risk_summary: UNAVAILABLE.to_string(),
             bridge_status: BridgeStatusKind::MockFallback,
             last_error: "none".to_string(),
         }
@@ -50,6 +65,12 @@ impl DashboardSummary {
             event_count: 0,
             risk_count: 0,
             policy_summary: "not loaded".to_string(),
+            started_at: UNAVAILABLE.to_string(),
+            finished_at: UNAVAILABLE.to_string(),
+            run_title: UNAVAILABLE.to_string(),
+            workspace: UNAVAILABLE.to_string(),
+            run_policy_mode: UNAVAILABLE.to_string(),
+            risk_summary: UNAVAILABLE.to_string(),
             bridge_status: BridgeStatusKind::NoRunsFound,
             last_error: clean_text(&message.into()),
         }
@@ -93,6 +114,21 @@ pub fn parse_latest_summary(json: &str) -> Result<DashboardSummary, SummaryError
         risk_count: int_field(&payload, &["high_risk_count", "risk_count"]).unwrap_or(0),
         policy_summary: policy_source_summary(payload.get("policy_source"))
             .unwrap_or_else(|| "policy not loaded".to_string()),
+        started_at: string_field(&payload, &["started_at"]).unwrap_or_else(unavailable),
+        finished_at: string_field(&payload, &["finished_at"]).unwrap_or_else(unavailable),
+        run_title: payload
+            .get("summary")
+            .and_then(|summary| string_field(summary, &["title"]))
+            .unwrap_or_else(unavailable),
+        workspace: payload
+            .get("summary")
+            .and_then(|summary| string_field(summary, &["workspace"]))
+            .unwrap_or_else(unavailable),
+        run_policy_mode: payload
+            .get("summary")
+            .and_then(|summary| string_field(summary, &["policy_mode"]))
+            .unwrap_or_else(unavailable),
+        risk_summary: risk_summary(payload.get("risks")),
         bridge_status: BridgeStatusKind::Loaded,
         last_error: "none".to_string(),
     })
@@ -124,6 +160,12 @@ pub fn parse_run_list_summary(json: &str) -> Result<DashboardSummary, SummaryErr
         event_count: int_field(first, &["event_count"]).unwrap_or(0),
         risk_count: int_field(first, &["high_risk_count", "risk_count"]).unwrap_or(0),
         policy_summary: "not loaded".to_string(),
+        started_at: string_field(first, &["started_at"]).unwrap_or_else(unavailable),
+        finished_at: string_field(first, &["finished_at"]).unwrap_or_else(unavailable),
+        run_title: UNAVAILABLE.to_string(),
+        workspace: UNAVAILABLE.to_string(),
+        run_policy_mode: UNAVAILABLE.to_string(),
+        risk_summary: UNAVAILABLE.to_string(),
         bridge_status: BridgeStatusKind::Loaded,
         last_error: "none".to_string(),
     })
@@ -150,6 +192,12 @@ pub fn parse_policy_summary(json: &str) -> Result<DashboardSummary, SummaryError
         event_count: 0,
         risk_count: 0,
         policy_summary: format!("{rule_count} rules / {source}"),
+        started_at: UNAVAILABLE.to_string(),
+        finished_at: UNAVAILABLE.to_string(),
+        run_title: UNAVAILABLE.to_string(),
+        workspace: UNAVAILABLE.to_string(),
+        run_policy_mode: UNAVAILABLE.to_string(),
+        risk_summary: UNAVAILABLE.to_string(),
         bridge_status: BridgeStatusKind::Loaded,
         last_error: "none".to_string(),
     })
@@ -182,6 +230,20 @@ fn policy_source_summary(value: Option<&Value>) -> Option<String> {
     })
 }
 
+fn risk_summary(value: Option<&Value>) -> String {
+    let Some(risks) = value.and_then(Value::as_array) else {
+        return UNAVAILABLE.to_string();
+    };
+    let Some(first) = risks.first() else {
+        return NO_RISKS.to_string();
+    };
+
+    let level = string_field(first, &["level"]).unwrap_or_else(unavailable);
+    let kind = string_field(first, &["kind"]).unwrap_or_else(unavailable);
+    let message = string_field(first, &["message"]).unwrap_or_else(unavailable);
+    format!("{level} / {kind} / {message}")
+}
+
 fn string_field(value: &Value, fields: &[&str]) -> Option<String> {
     fields
         .iter()
@@ -200,6 +262,10 @@ fn int_field(value: &Value, fields: &[&str]) -> Option<i32> {
         .filter_map(|field| value.get(*field))
         .find_map(|value| value.as_i64())
         .map(|number| number.clamp(i32::MIN as i64, i32::MAX as i64) as i32)
+}
+
+fn unavailable() -> String {
+    UNAVAILABLE.to_string()
 }
 
 fn clean_text(text: &str) -> String {
@@ -231,6 +297,12 @@ mod tests {
         assert_eq!(summary.event_count, 7);
         assert_eq!(summary.risk_count, 2);
         assert_eq!(summary.policy_summary, "yaml / policy.yaml");
+        assert_eq!(summary.started_at, "Unavailable");
+        assert_eq!(summary.finished_at, "Unavailable");
+        assert_eq!(summary.run_title, "Unavailable");
+        assert_eq!(summary.workspace, "Unavailable");
+        assert_eq!(summary.run_policy_mode, "Unavailable");
+        assert_eq!(summary.risk_summary, "Unavailable");
         assert_eq!(summary.bridge_status, BridgeStatusKind::Loaded);
     }
 
@@ -243,6 +315,12 @@ mod tests {
         assert_eq!(summary.latest_status, "unknown");
         assert_eq!(summary.event_count, 0);
         assert_eq!(summary.risk_count, 0);
+        assert_eq!(summary.started_at, "Unavailable");
+        assert_eq!(summary.finished_at, "Unavailable");
+        assert_eq!(summary.run_title, "Unavailable");
+        assert_eq!(summary.workspace, "Unavailable");
+        assert_eq!(summary.run_policy_mode, "Unavailable");
+        assert_eq!(summary.risk_summary, "Unavailable");
     }
 
     #[test]

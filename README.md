@@ -81,6 +81,7 @@ TraceSeal 是证据记录与分析原型，不是操作系统级安全产品。
 - [Policy rules / 策略规则](docs/policy-rules.md)
 - [Incident examples / 事故案例](docs/incident-examples.md)
 - [Dashboard design / Dashboard 设计](docs/dashboard-design.md)
+- Dashboard-data contract: [`docs/dashboard-data-contract.md`](docs/dashboard-data-contract.md). / dashboard-data 契约：[`docs/dashboard-data-contract.md`](docs/dashboard-data-contract.md)。
 - [Demo script / Demo 脚本](docs/demo.md)
 - [Windows install and SmartScreen troubleshooting / Windows 安装与 SmartScreen 排查](docs/windows-install-troubleshooting.md)
 - Release verification checklist: [`docs/release-verification-checklist.md`](docs/release-verification-checklist.md). / Release 校验清单：[`docs/release-verification-checklist.md`](docs/release-verification-checklist.md)。

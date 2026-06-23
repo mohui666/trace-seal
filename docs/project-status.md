@@ -18,6 +18,7 @@
 
 - Electron remains the default desktop implementation. / Electron 仍是默认桌面实现。
 - The Electron renderer consumes Python Core `dashboard-data` output. / Electron renderer 读取 Python Core 的 `dashboard-data` 输出。
+- Electron and the experimental Slint desktop path share the Python Core `dashboard-data` contract documented in `docs/dashboard-data-contract.md`. / Electron 和实验性的 Slint 桌面路径共享 `docs/dashboard-data-contract.md` 中记录的 Python Core `dashboard-data` 契约。
 - Python Core remains the source of truth for run, replay, explain, policy, recorder, and dashboard-data behavior. / Python Core 仍是 run、replay、explain、policy、recorder 与 dashboard-data 行为的事实来源。
 
 ## Slint experimental status / Slint 实验状态

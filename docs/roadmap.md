@@ -22,6 +22,7 @@ Slint 仍是实验桌面轨道。已完成 hello dashboard、只读 dashboard-da
 
 - [Slint desktop feasibility RFC](slint-desktop-feasibility-rfc.md) remains an experimental planning document tracked by Issue #51. / Slint desktop feasibility RFC 仍是实验规划文档，由 Issue #51 跟踪。
 - Slint hello dashboard spike remains read-only and experimental. / Slint hello dashboard spike 仍是只读实验原型。
+- The next Slint experimental steps should preserve the shared dashboard-data contract before adding deeper read-only views. / 后续 Slint 实验步骤在添加更深的只读视图前，应继续保持共享 dashboard-data 契约。
 - [Rust Core parity RFC](rust-core-parity-rfc.md) remains a planning track tracked by Issue #52. Python Core remains the current implementation and compatibility baseline. / Rust Core parity RFC 仍是由 Issue #52 跟踪的规划轨道；Python Core 仍是当前实现与兼容基线。
 - Rust Guard follow-up work remains design-first and evidence-first unless a later accepted plan explicitly changes the boundary. / 除非后续方案明确改变边界，Rust Guard 后续仍以设计优先和证据优先为原则。
 

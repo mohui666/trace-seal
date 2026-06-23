@@ -1,0 +1,21 @@
+{
+  "schema_version": 1,
+  "run_id": "fixture-run-001",
+  "status": "completed",
+  "started_at": "2026-01-01T00:00:00Z",
+  "finished_at": "2026-01-01T00:00:05Z",
+  "event_count": 3,
+  "risk_count": 1,
+  "summary": {
+    "title": "Fixture run",
+    "workspace": "<fixture-workspace>",
+    "policy_mode": "dry-run"
+  },
+  "risks": [
+    {
+      "kind": "process.spawn",
+      "level": "medium",
+      "message": "fixture risk"
+    }
+  ]
+}

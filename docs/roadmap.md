@@ -151,7 +151,7 @@
 | M6 | [Dashboard bridge](https://github.com/mohui666/trace-seal/issues/36) | [dashboard-data Guard metadata](dashboard-guard-metadata.md) 已实现；无 UI 改动 |
 | M7 | [Policy dry-run](https://github.com/mohui666/trace-seal/issues/37) | [Guard policy dry-run metadata](guard-policy-dry-run.md) 已实现；不执行目标、不 enforcement |
 | M8 | [Windows smoke validation](https://github.com/mohui666/trace-seal/issues/38) | [Windows smoke script](../scripts/windows-guard-smoke.ps1) / [validation doc](windows-guard-smoke-validation.md) 已补齐；验证 target command 未执行、`enforcement_applied=false`、无 daemon/service |
-| M9 | [Enforcement experiment RFC](https://github.com/mohui666/trace-seal/issues/39) | [Stage 4 Enforcement Experiment RFC](stage4-enforcement-experiment-rfc.md) 已补齐；documentation-only，定义 future opt-in gates / kill switch / audit / rollback / consent，不实现 enforcement |
+| M9 | [Enforcement experiment RFC](https://github.com/mohui666/trace-seal/issues/39) | Issue #39 的 [Stage 4 Enforcement Experiment RFC](stage4-enforcement-experiment-rfc.md) 已补齐；documentation-only，定义 future opt-in gates / kill switch / audit / rollback / consent，不实现 enforcement |
 
 ```text
 阶段 1：Python Agent → Python hooks

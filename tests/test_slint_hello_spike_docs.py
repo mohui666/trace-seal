@@ -22,12 +22,12 @@ class SlintHelloSpikeDocsTest(unittest.TestCase):
         text = SPIKE_README.read_text(encoding="utf-8")
         required_terms = [
             "does not replace Electron",
-            "does not call Python Core",
-            "load real",
+            "fixed read-only `dashboard-data` commands",
+            "mock fallback",
             "does not add a project-wide i18n framework",
             "不替换 Electron",
-            "不调用 Python Core",
-            "不读取真实",
+            "固定只读 `dashboard-data` 命令",
+            "mock",
             "不新增全项目 i18n",
         ]
         for term in required_terms:

@@ -31,24 +31,39 @@ component MetricTile inherits Rectangle {
 }
 
 export component AppWindow inherits Window {
-    in property <string> title-text: "TraceSeal Slint Spike";
-    in property <string> subtitle-text: "Experimental only / 仅实验用途";
+    in property <string> title-text: "TraceSeal Slint Read-only Spike";
+    in property <string> subtitle-text: "Experimental dashboard-data bridge only / 仅实验用途";
+    in property <string> bridge-title-text: "Read-only dashboard-data bridge / 只读 dashboard-data 桥接";
+    in property <string> data-source-label: "Data source";
+    in property <string> data-source: "mock fallback";
+    in property <string> bridge-status-label: "Bridge status";
+    in property <string> bridge-status: "mock fallback";
     in property <string> latest-run-label: "Latest run";
+    in property <string> latest-status-label: "Latest status";
+    in property <string> latest-status: "mock";
     in property <int> event-count: 0;
     in property <int> risk-count: 0;
     in property <string> latest-run: "mock-run-0001";
     in property <string> policy-mode: "mock / read-only";
     in property <string> event-count-label: "Event count";
     in property <string> risk-count-label: "Risk count";
-    in property <string> policy-mode-label: "Policy mode";
-    in property <string> boundary-text: "Electron remains default. Python Core is not called. No real runs are loaded. No packaging or release changes.";
+    in property <string> policy-mode-label: "Policy summary";
+    in property <string> last-error-label: "Last error";
+    in property <string> last-error: "none";
+    in property <string> boundary-text: "Read-only spike: Electron remains default. Uses only fixed Python Core dashboard-data commands. No traceseal run, target commands, workspace writes, policy edits, packaging changes, release changes, or Stage 5 promotion.";
+    in property <string> load-latest-text: "Load latest";
+    in property <string> load-policy-text: "Load policy";
+    in property <string> load-run-list-text: "Load run list summary";
     in property <string> toggle-language-text: "English / 中文";
 
     callback toggle-language();
+    callback load-latest();
+    callback load-policy();
+    callback load-run-list();
 
     title: root.title-text;
-    width: 640px;
-    height: 430px;
+    width: 760px;
+    height: 620px;
     background: #101820;
 
     VerticalBox {
@@ -85,6 +100,85 @@ export component AppWindow inherits Window {
             }
         }
 
+        Rectangle {
+            height: 96px;
+            background: #0f2533;
+            border-width: 1px;
+            border-color: #29475b;
+            border-radius: 8px;
+
+            VerticalBox {
+                padding: 14px;
+                spacing: 6px;
+
+                Text {
+                    text: root.bridge-title-text;
+                    color: #f4f7fb;
+                    font-size: 18px;
+                    font-weight: 700;
+                }
+
+                Text {
+                    text: "dashboard-data latest / dashboard-data list / dashboard-data policy - read-only / 只读";
+                    color: #8fb1c9;
+                    font-size: 13px;
+                    wrap: word-wrap;
+                }
+
+                Text {
+                    text: root.boundary-text;
+                    color: #d6e7ef;
+                    font-size: 13px;
+                    wrap: word-wrap;
+                }
+            }
+        }
+
+        HorizontalBox {
+            spacing: 12px;
+
+            Button {
+                text: root.load-latest-text;
+                width: 148px;
+                height: 36px;
+                clicked => {
+                    root.load-latest();
+                }
+            }
+
+            Button {
+                text: root.load-run-list-text;
+                width: 196px;
+                height: 36px;
+                clicked => {
+                    root.load-run-list();
+                }
+            }
+
+            Button {
+                text: root.load-policy-text;
+                width: 148px;
+                height: 36px;
+                clicked => {
+                    root.load-policy();
+                }
+            }
+        }
+
+        HorizontalBox {
+            spacing: 12px;
+
+            MetricTile {
+                label-text: root.data-source-label;
+                value-text: root.data-source;
+            }
+
+            MetricTile {
+                label-text: root.bridge-status-label;
+                value-text: root.bridge-status;
+            }
+        }
+
         HorizontalBox {
             spacing: 12px;
 
@@ -94,8 +188,8 @@ export component AppWindow inherits Window {
             }
 
             MetricTile {
-                label-text: root.policy-mode-label;
-                value-text: root.policy-mode;
+                label-text: root.latest-status-label;
+                value-text: root.latest-status;
             }
         }
 
@@ -113,22 +207,17 @@ export component AppWindow inherits Window {
             }
         }
 
-        Rectangle {
-            height: 82px;
-            background: #0f2533;
-            border-width: 1px;
-            border-color: #29475b;
-            border-radius: 8px;
+        HorizontalBox {
+            spacing: 12px;
 
-            Text {
-                x: 16px;
-                y: 14px;
-                width: parent.width - 32px;
-                height: parent.height - 28px;
-                text: root.boundary-text;
-                color: #d6e7ef;
-                font-size: 14px;
-                wrap: word-wrap;
+            MetricTile {
+                label-text: root.policy-mode-label;
+                value-text: root.policy-mode;
+            }
+
+            MetricTile {
+                label-text: root.last-error-label;
+                value-text: root.last-error;
             }
         }
     }

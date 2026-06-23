@@ -9,6 +9,7 @@ DOCS_README = ROOT / "docs" / "README.md"
 PROJECT_STATUS = ROOT / "docs" / "project-status.md"
 ROADMAP = ROOT / "docs" / "roadmap.md"
 WINDOWS_INSTALL_TROUBLESHOOTING = ROOT / "docs" / "windows-install-troubleshooting.md"
+RELEASE_VERIFICATION_CHECKLIST = ROOT / "docs" / "release-verification-checklist.md"
 CORE_DOCS = (README, DOCS_README, PROJECT_STATUS, ROADMAP)
 
 FORBIDDEN_ASSERTIONS = (
@@ -113,6 +114,44 @@ class DocsStructureTests(unittest.TestCase):
             "v0.3.1 released",
             "installer is signed",
             "SmartScreen will not appear",
+            "packaging workflow changed",
+        ):
+            with self.subTest(forbidden=forbidden):
+                self.assertNotIn(forbidden, doc_text)
+
+    def test_release_verification_checklist_is_linked_and_bounded(self) -> None:
+        self.assertTrue(
+            RELEASE_VERIFICATION_CHECKLIST.exists(),
+            "missing docs/release-verification-checklist.md",
+        )
+
+        readme_text = self.read_text(README)
+        docs_index_text = self.read_text(DOCS_README)
+        for text, source in (
+            (readme_text, "README.md"),
+            (docs_index_text, "docs/README.md"),
+        ):
+            with self.subTest(source=source):
+                self.assertIn("docs/release-verification-checklist.md", text)
+
+        doc_text = self.read_text(RELEASE_VERIFICATION_CHECKLIST)
+        for expected in (
+            "v0.3.0",
+            "59ae99d6db495276963e2f4b47b137f4de846d35",
+            "SHA256SUMS.txt",
+            "TraceSeal-Setup.exe",
+            "There is no v0.3.1",
+            "不存在 v0.3.1",
+            "does not modify tags",
+            "不修改 tag",
+        ):
+            with self.subTest(expected=expected):
+                self.assertIn(expected, doc_text)
+
+        for forbidden in (
+            "v0.3.1 released",
+            "created v0.3.1",
+            "release assets changed",
             "packaging workflow changed",
         ):
             with self.subTest(forbidden=forbidden):

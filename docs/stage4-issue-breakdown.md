@@ -30,8 +30,8 @@ This document converts the approved Stage 4 RFC structure into reviewable work i
 | M5 | [Import Guard events into Python Core](https://github.com/mohui666/trace-seal/issues/35) | M2; fixtures from M3/M4 | [Optional local import implemented](guard-event-import.md); Python timeline remains separate |
 | M6 | [Expose Guard metadata in `dashboard-data`](https://github.com/mohui666/trace-seal/issues/36) | M2, M5 | [Additive Guard data contract implemented](dashboard-guard-metadata.md); no UI change |
 | M7 | [Integrate policy dry-run decisions for Guard events](https://github.com/mohui666/trace-seal/issues/37) | M2, M5 | [Dry-run sidecar implemented](guard-policy-dry-run.md); no enforcement |
-| M8 | [Windows VM smoke validation for Guard prototype](https://github.com/mohui666/trace-seal/issues/38) | M3–M7 | Blocked by MVP integration |
-| M9 | [Draft enforcement experiment RFC](https://github.com/mohui666/trace-seal/issues/39) | M1, M7, M8 | Blocked until observe/dry-run evidence exists |
+| M8 | [Windows VM smoke validation for Guard prototype](https://github.com/mohui666/trace-seal/issues/38) | M3–M7 | Windows smoke script and validation doc implemented; no enforcement |
+| M9 | [Draft enforcement experiment RFC](https://github.com/mohui666/trace-seal/issues/39) | M1, M7, M8 | Open and not started; separate RFC only |
 
 ## M1 review disposition
 
@@ -427,6 +427,8 @@ Map Guard events into existing policy decision logic in dry-run mode.
 
 ## M8 — Windows VM smoke validation for Guard prototype
 
+**Implementation status:** Windows smoke validation is implemented in [`scripts/windows-guard-smoke.ps1`](../scripts/windows-guard-smoke.ps1) and documented in [`docs/windows-guard-smoke-validation.md`](windows-guard-smoke-validation.md). It validates `guard.health`, `process.spawn` dry-run, Python import, Guard policy dry-run, and dashboard-data Guard metadata on Windows. The script includes a sentinel proving the `process.spawn` target command is not executed and verifies `enforcement_applied=false`. It does not add enforcement, daemon/service behavior, OS-wide process monitoring, file/network/Git monitoring, Electron UI changes, installer/release workflow changes, or any release/tag mutation.
+
 ### Title
 
 Windows VM smoke validation for Guard prototype
@@ -440,7 +442,7 @@ Validate the minimal Guard prototype in a clean Windows VM without requiring adm
 - Use a clean supported Windows environment.
 - Validate local user-mode, dry-run execution.
 - Validate `guard.health` and `process.spawn` dry-run events.
-- Validate the Python import path and optional dashboard-data metadata.
+- Validate the Python import path, Guard policy dry-run sidecar, and optional dashboard-data metadata.
 - Exercise offline startup, shutdown, error, and degraded-capability behavior.
 - Document permissions, performance observations, and known limitations.
 
@@ -450,27 +452,34 @@ Validate the minimal Guard prototype in a clean Windows VM without requiring adm
 - No kernel driver.
 - No service installation.
 - No enforcement.
+- No daemon/service implementation.
+- No OS-wide process monitoring.
+- No file, network, or Git monitoring.
+- No Electron UI or installer/release workflow change.
 - No real network traffic or destructive system actions.
 
 ### Acceptance criteria
 
-- [ ] The prototype runs in a clean Windows VM.
-- [ ] Health and harmless process events are generated and schema-valid.
-- [ ] Events import into Python Core and remain visible in the intended outputs.
-- [ ] MVP does not rely on undocumented administrator-only assumptions, or any blocker is explicitly documented.
-- [ ] Known limitations, capability gaps, event loss, and cleanup steps are documented.
+- [x] The prototype has a reproducible Windows smoke script.
+- [x] Health and harmless process dry-run events are generated and schema-valid.
+- [x] Events import into Python Core and remain visible in dashboard-data.
+- [x] Guard policy dry-run summary remains non-enforcing with `enforcement_applied=false`.
+- [x] The sentinel check proves the `process.spawn` target command is not executed.
+- [x] MVP does not rely on undocumented administrator-only assumptions, or any blocker is explicitly documented.
+- [x] Known limitations, capability gaps, event loss, and cleanup steps are documented.
 
 ### Validation
 
-- Run a documented non-admin smoke script in a resettable Windows VM.
-- Use harmless local child processes only.
+- Run `powershell -ExecutionPolicy Bypass -File scripts/windows-guard-smoke.ps1` in a resettable Windows VM or Windows local machine.
+- If Node/Electron dependencies are intentionally unavailable, run `powershell -ExecutionPolicy Bypass -File scripts/windows-guard-smoke.ps1 -SkipNode -SkipElectron` and record that limitation.
+- Use harmless local command metadata only; the target command must remain unexecuted.
 - Verify no external network, real Git push, system-service install, or system-directory mutation.
-- Capture versions, permissions, expected artifacts, checksums, and cleanup evidence.
+- Capture versions, permissions, expected artifacts, sentinel evidence, `enforcement_applied=false`, and cleanup evidence.
 
 ### Dependencies
 
 - M3 through M7 MVP components and contract tests complete.
-- A disposable Windows VM baseline and reproducible smoke procedure.
+- A disposable Windows VM baseline or Windows local machine and reproducible smoke procedure.
 
 ### Suggested labels
 

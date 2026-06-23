@@ -121,7 +121,7 @@
 
 ## 阶段 4：Rust Guard 产品化 — 原型 / design-first（未发布）
 
-当前阶段明确不做 Rust 重构。Rust Guard 作为远期产品化方向，**不替代**当前 Python MVP，而是做更底层的安全增强。当前包含 `guard.health`、非执行型 `process.spawn` local-only 原型、可选 [Python artifact import](guard-event-import.md)、只读 [dashboard-data Guard metadata](dashboard-guard-metadata.md)、[Guard policy dry-run metadata](guard-policy-dry-run.md) 和 [Windows smoke validation](windows-guard-smoke-validation.md)，仍处于 RFC / design-first 原型阶段，不代表 OS 级监控、Electron UI、enforcement 或正式发布；高层方向见 [`stage4-rust-guard-design.md`](stage4-rust-guard-design.md)，评审拆解见 [`stage4-rust-guard-rfc.md`](stage4-rust-guard-rfc.md)，项目管理拆分见 [`stage4-issue-breakdown.md`](stage4-issue-breakdown.md)。
+当前阶段明确不做 Rust 重构。Rust Guard 作为远期产品化方向，**不替代**当前 Python MVP，而是做更底层的安全增强。当前包含 `guard.health`、非执行型 `process.spawn` local-only 原型、可选 [Python artifact import](guard-event-import.md)、只读 [dashboard-data Guard metadata](dashboard-guard-metadata.md)、[Guard policy dry-run metadata](guard-policy-dry-run.md)、[Windows smoke validation](windows-guard-smoke-validation.md) 和 [Enforcement Experiment RFC](stage4-enforcement-experiment-rfc.md)，仍处于 RFC / design-first 原型阶段，不代表 OS 级监控、Electron UI、enforcement 或正式发布；高层方向见 [`stage4-rust-guard-design.md`](stage4-rust-guard-design.md)，评审拆解见 [`stage4-rust-guard-rfc.md`](stage4-rust-guard-rfc.md)，项目管理拆分见 [`stage4-issue-breakdown.md`](stage4-issue-breakdown.md)。
 
 | 方面 | Python MVP（阶段 1-3） | Rust Guard（阶段 4） |
 |---|---|---|
@@ -151,7 +151,7 @@
 | M6 | [Dashboard bridge](https://github.com/mohui666/trace-seal/issues/36) | [dashboard-data Guard metadata](dashboard-guard-metadata.md) 已实现；无 UI 改动 |
 | M7 | [Policy dry-run](https://github.com/mohui666/trace-seal/issues/37) | [Guard policy dry-run metadata](guard-policy-dry-run.md) 已实现；不执行目标、不 enforcement |
 | M8 | [Windows smoke validation](https://github.com/mohui666/trace-seal/issues/38) | [Windows smoke script](../scripts/windows-guard-smoke.ps1) / [validation doc](windows-guard-smoke-validation.md) 已补齐；验证 target command 未执行、`enforcement_applied=false`、无 daemon/service |
-| M9 | [Enforcement experiment RFC](https://github.com/mohui666/trace-seal/issues/39) | Issue #39 仍 open，尚未开始；后续独立 RFC，不在 MVP 中实现 |
+| M9 | [Enforcement experiment RFC](https://github.com/mohui666/trace-seal/issues/39) | [Stage 4 Enforcement Experiment RFC](stage4-enforcement-experiment-rfc.md) 已补齐；documentation-only，定义 future opt-in gates / kill switch / audit / rollback / consent，不实现 enforcement |
 
 ```text
 阶段 1：Python Agent → Python hooks

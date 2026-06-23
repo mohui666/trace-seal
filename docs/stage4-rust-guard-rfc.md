@@ -23,7 +23,7 @@ These notes record the M1 review outcome tracked by [issue #31](https://github.c
 - The recommended MVP process model is an explicit, user-mode, workspace-scoped sidecar started by the CLI. It is not a kernel driver, system service, or privileged always-on daemon.
 - The first prototype event is `guard.health`; `process.spawn` follows only as a dry-run observation event after the health/lifecycle contract is validated.
 - MVP policy integration records decisions with `enforced: false`. It does not block processes, files, network operations, or Git operations.
-- Enforcement is out of scope until a separate enforcement experiment RFC is reviewed and approved.
+- Enforcement is out of scope until the separate [Stage 4 Enforcement Experiment RFC](stage4-enforcement-experiment-rfc.md) and any later implementation proposal satisfy their review gates.
 - No Rust prototype may start before the versioned Guard event schema contract has been reviewed and approved.
 
 ### Accepted assumptions
@@ -284,7 +284,7 @@ Policy snapshot transfer must define authentication, expiry, rollback, unsupport
 
 The MVP operates in `observe` with policy dry-run metadata. A policy action such as deny may be reported as the decision that *would* apply, but the record must explicitly state that no block was attempted.
 
-Enforcement requires a separate RFC covering platform capability, race conditions, authorization, user recovery, fail-open/fail-closed rules, bypasses, and safe test procedures. No generic claim that all OS behavior can be blocked is acceptable.
+Enforcement requires the separate [Stage 4 Enforcement Experiment RFC](stage4-enforcement-experiment-rfc.md), covering platform capability, race conditions, authorization, user recovery, fail-open/fail-closed rules, bypasses, kill switch, audit, rollback, user consent, and safe test procedures. No generic claim that all OS behavior can be blocked is acceptable.
 
 ## 9. Audit Integrity
 
@@ -400,7 +400,7 @@ Performance tests should measure event loss, end-to-end latency, CPU, memory, an
 | M6: Dashboard bridge | `dashboard-data` exposes optional Guard metadata | Old runs and current Desktop contract remain valid |
 | M7: Policy dry-run | Existing policy produces non-enforced decisions | Dashboard-data shows rule and dry-run status; replay/explain compatibility preserved |
 | M8: Windows VM smoke | Non-admin Windows lifecycle and evidence smoke test | Documented pass/fail with limitations |
-| M9: Enforcement experiment RFC | Separate proposal for limited enforcement | No enforcement code in MVP |
+| M9: Enforcement experiment RFC | [Separate proposal](stage4-enforcement-experiment-rfc.md) for limited future opt-in enforcement experiments | No enforcement code in MVP |
 
 Each milestone is a separate reviewable change. Completion of one milestone does not authorize later milestones automatically.
 

@@ -1,3 +1,6 @@
 [workspace]
-members = ["crates/traceseal-guard"]
+members = [
+    "crates/traceseal-guard",
+    "crates/traceseal-desktop-slint",
+]
 resolver = "2"

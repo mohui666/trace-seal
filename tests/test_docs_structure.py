@@ -8,6 +8,7 @@ README = ROOT / "README.md"
 DOCS_README = ROOT / "docs" / "README.md"
 PROJECT_STATUS = ROOT / "docs" / "project-status.md"
 ROADMAP = ROOT / "docs" / "roadmap.md"
+WINDOWS_INSTALL_TROUBLESHOOTING = ROOT / "docs" / "windows-install-troubleshooting.md"
 CORE_DOCS = (README, DOCS_README, PROJECT_STATUS, ROADMAP)
 
 FORBIDDEN_ASSERTIONS = (
@@ -18,6 +19,9 @@ FORBIDDEN_ASSERTIONS = (
     "v0.3.1 released",
     "Rust Core replaced Python Core",
     "enforcement is implemented",
+    "installer is signed",
+    "SmartScreen will not appear",
+    "packaging workflow changed",
 )
 
 
@@ -76,6 +80,43 @@ class DocsStructureTests(unittest.TestCase):
             for forbidden in FORBIDDEN_ASSERTIONS:
                 with self.subTest(path=path.relative_to(ROOT), forbidden=forbidden):
                     self.assertNotIn(forbidden, text)
+
+    def test_windows_install_troubleshooting_doc_is_linked_and_bounded(self) -> None:
+        self.assertTrue(
+            WINDOWS_INSTALL_TROUBLESHOOTING.exists(),
+            "missing docs/windows-install-troubleshooting.md",
+        )
+
+        readme_text = self.read_text(README)
+        docs_index_text = self.read_text(DOCS_README)
+        for text, source in (
+            (readme_text, "README.md"),
+            (docs_index_text, "docs/README.md"),
+        ):
+            with self.subTest(source=source):
+                self.assertIn("docs/windows-install-troubleshooting.md", text)
+
+        doc_text = self.read_text(WINDOWS_INSTALL_TROUBLESHOOTING)
+        for expected in (
+            "SmartScreen",
+            "SHA256",
+            "unsigned",
+            "v0.3.0",
+            "未签名",
+            "校验 SHA256",
+            "不修改 release assets",
+        ):
+            with self.subTest(expected=expected):
+                self.assertIn(expected, doc_text)
+
+        for forbidden in (
+            "v0.3.1 released",
+            "installer is signed",
+            "SmartScreen will not appear",
+            "packaging workflow changed",
+        ):
+            with self.subTest(forbidden=forbidden):
+                self.assertNotIn(forbidden, doc_text)
 
 
 if __name__ == "__main__":

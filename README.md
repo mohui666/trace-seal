@@ -82,6 +82,7 @@ TraceSeal 是证据记录与分析原型，不是操作系统级安全产品。
 - [Incident examples / 事故案例](docs/incident-examples.md)
 - [Dashboard design / Dashboard 设计](docs/dashboard-design.md)
 - [Demo script / Demo 脚本](docs/demo.md)
+- [Windows install and SmartScreen troubleshooting / Windows 安装与 SmartScreen 排查](docs/windows-install-troubleshooting.md)
 - [Slint Desktop Feasibility RFC / Slint 桌面可行性 RFC](docs/slint-desktop-feasibility-rfc.md)
 - [Rust Core Parity RFC / Rust Core 对齐 RFC](docs/rust-core-parity-rfc.md)
 

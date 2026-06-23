@@ -1,50 +1,52 @@
-# TraceSeal documentation
+# TraceSeal documentation / TraceSeal 文档索引
 
-## Start here
+This page is a navigation index only. / 本页只做导航索引，不重复 README 的长篇说明。
 
-- [Project status](project-status.md)
-- [Roadmap](roadmap.md)
-- [Project specification](spec.md)
-- [Policy rules](policy-rules.md)
-- [Incident examples](incident-examples.md)
-- [Dashboard design](dashboard-design.md)
-- [Demo script](demo.md)
+## Start here / 从这里开始
 
-## Stage and release records
+- [Project status / 项目状态](project-status.md)
+- [Roadmap / 路线图](roadmap.md)
+- [Project specification / 项目规格](spec.md)
+- [Policy rules / 策略规则](policy-rules.md)
+- [Incident examples / 事故案例](incident-examples.md)
+- [Dashboard design / Dashboard 设计](dashboard-design.md)
+- [Demo script / Demo 脚本](demo.md)
 
-- [Stage 4 completion report](../artifacts/stage4-completion-report.md)
-- [v0.3 release report](../artifacts/v0.3-release-report.md)
-- [v0.3 release prep report](../artifacts/v0.3-release-prep-report.md)
-- [v0.2.0 release notes](release-notes-v0.2.0.md)
-- [v0.2.0 release check](release-check-v0.2.0.md)
-- [Release checklist](../RELEASE_CHECKLIST.md)
-- [Changelog](../CHANGELOG.md)
+## Stage and release records / 阶段与发布记录
 
-## Rust Guard documents
+- [Stage 4 completion report / Stage 4 完成报告](../artifacts/stage4-completion-report.md)
+- [v0.3 release report / v0.3 发布报告](../artifacts/v0.3-release-report.md)
+- [v0.3 release prep report / v0.3 发布准备报告](../artifacts/v0.3-release-prep-report.md)
+- [v0.2.0 release notes / v0.2.0 发布说明](release-notes-v0.2.0.md)
+- [v0.2.0 release check / v0.2.0 发布检查](release-check-v0.2.0.md)
+- [Release checklist / 发布清单](../RELEASE_CHECKLIST.md)
+- [Changelog / 变更日志](../CHANGELOG.md)
 
-- [Stage 4 Rust Guard RFC](stage4-rust-guard-rfc.md)
-- [Stage 4 Rust Guard design](stage4-rust-guard-design.md)
-- [Guard event schema contract](guard-event-schema-contract.md)
-- [Guard health prototype](guard-health-prototype.md)
-- [Guard process spawn dry-run](guard-process-spawn-dry-run.md)
-- [Guard event import](guard-event-import.md)
-- [Dashboard Guard metadata](dashboard-guard-metadata.md)
-- [Guard policy dry-run](guard-policy-dry-run.md)
-- [Stage 4 enforcement experiment RFC](stage4-enforcement-experiment-rfc.md)
+## Rust Guard documents / Rust Guard 文档
 
-## Slint experimental documents
+- [Stage 4 Rust Guard RFC / Stage 4 Rust Guard RFC](stage4-rust-guard-rfc.md)
+- [Stage 4 Rust Guard design / Stage 4 Rust Guard 设计](stage4-rust-guard-design.md)
+- [Guard event schema contract / Guard event schema 合约](guard-event-schema-contract.md)
+- [Guard health prototype / Guard health 原型](guard-health-prototype.md)
+- [Guard process spawn dry-run / Guard process.spawn dry-run](guard-process-spawn-dry-run.md)
+- [Guard event import / Guard event 导入](guard-event-import.md)
+- [Dashboard Guard metadata / Dashboard Guard metadata](dashboard-guard-metadata.md)
+- [Guard policy dry-run / Guard policy dry-run](guard-policy-dry-run.md)
+- [Stage 4 enforcement experiment RFC / Stage 4 enforcement 实验 RFC](stage4-enforcement-experiment-rfc.md)
 
-- [Slint desktop feasibility RFC](slint-desktop-feasibility-rfc.md)
-- [Slint desktop spike README](../crates/traceseal-desktop-slint/README.md)
+## Slint experimental documents / Slint 实验文档
 
-## Release and packaging documents
+- [Slint desktop feasibility RFC / Slint 桌面可行性 RFC](slint-desktop-feasibility-rfc.md)
+- [Slint desktop spike README / Slint 桌面 spike README](../crates/traceseal-desktop-slint/README.md)
 
-- [v0.3 release report](../artifacts/v0.3-release-report.md)
-- [v0.3 release prep report](../artifacts/v0.3-release-prep-report.md)
-- [v0.2 clean Windows report](../artifacts/v0.2-clean-windows-report.md)
-- [Release checklist](../RELEASE_CHECKLIST.md)
+## Release and packaging documents / 发布与打包文档
 
-## Validation and test reports
+- [v0.3 release report / v0.3 发布报告](../artifacts/v0.3-release-report.md)
+- [v0.3 release prep report / v0.3 发布准备报告](../artifacts/v0.3-release-prep-report.md)
+- [v0.2 clean Windows report / v0.2 干净 Windows 验证报告](../artifacts/v0.2-clean-windows-report.md)
+- [Release checklist / 发布清单](../RELEASE_CHECKLIST.md)
 
-- [Test report](test-report.md)
-- [Windows Guard smoke validation](windows-guard-smoke-validation.md)
+## Validation and test reports / 验证与测试报告
+
+- [Test report / 测试报告](test-report.md)
+- [Windows Guard smoke validation / Windows Guard smoke 验证](windows-guard-smoke-validation.md)

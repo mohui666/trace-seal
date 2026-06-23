@@ -1,4 +1,5 @@
 from pathlib import Path
+import re
 import unittest
 
 
@@ -34,7 +35,9 @@ class DocsStructureTests(unittest.TestCase):
         for expected in (
             "TraceSeal",
             "Quick start",
+            "快速开始",
             "Documentation",
+            "文档导航",
             "v0.3.0",
             "Electron",
             "Slint",
@@ -46,6 +49,14 @@ class DocsStructureTests(unittest.TestCase):
         self.assertLessEqual(text.count("PR #"), 3)
         self.assertLessEqual(len(text.splitlines()), 180)
 
+    def test_core_docs_are_bilingual(self) -> None:
+        for path in CORE_DOCS:
+            text = self.read_text(path)
+            with self.subTest(path=path.relative_to(ROOT), language="english"):
+                self.assertRegex(text, r"[A-Za-z]")
+            with self.subTest(path=path.relative_to(ROOT), language="chinese"):
+                self.assertRegex(text, r"[\u4e00-\u9fff]")
+
     def test_project_status_records_release_and_desktop_boundaries(self) -> None:
         text = self.read_text(PROJECT_STATUS)
         for expected in (
@@ -54,6 +65,7 @@ class DocsStructureTests(unittest.TestCase):
             "Electron remains the default",
             "Slint remains experimental",
             "There is no v0.3.1",
+            "当前没有 `v0.3.1`",
         ):
             with self.subTest(expected=expected):
                 self.assertIn(expected, text)

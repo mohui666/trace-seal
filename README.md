@@ -84,7 +84,7 @@ trace-seal/
 - [Stage 4 Rust Guard RFC](docs/stage4-rust-guard-rfc.md)（Stage 4 审查边界与里程碑）
 - [Stage 4 Enforcement Experiment RFC](docs/stage4-enforcement-experiment-rfc.md)（future opt-in enforcement 实验边界；未实现 enforcement）
 - [Slint Desktop Feasibility RFC](docs/slint-desktop-feasibility-rfc.md)（future native desktop feasibility；未添加 Slint runtime，未替换 Electron）
-- [Slint desktop spike README](crates/traceseal-desktop-slint/README.md)（Issue #53 实验 Slint hello dashboard；仅静态 mock 和窗口内 English / 中文切换）
+- [Slint desktop spike README](crates/traceseal-desktop-slint/README.md)（Issues #53/#58 实验 Slint hello dashboard；静态 mock 兜底、固定只读 dashboard-data 桥接和窗口内 English / 中文切换）
 - [Rust Core Parity RFC](docs/rust-core-parity-rfc.md)（future Rust Core parity planning；未实现 Rust Core，未替换 Python Core）
 - [Stage 4 completion report](artifacts/stage4-completion-report.md)（Issues #31-#39 完成状态与 Issue #50 audit）
 - [飞书项目文档](docs/feishu_project_doc.md)
@@ -97,9 +97,9 @@ Future work is tracked separately:
 
 - [Slint desktop feasibility RFC](docs/slint-desktop-feasibility-rfc.md): evaluate whether a native Slint desktop path should be introduced after Stage 4. Tracked by [Issue #51](https://github.com/mohui666/trace-seal/issues/51).
 - [Rust Core parity RFC](docs/rust-core-parity-rfc.md): planning-only evaluation of which Python Core responsibilities may later gain Rust parity while preserving behavior compatibility. Tracked by [Issue #52](https://github.com/mohui666/trace-seal/issues/52).
-- [Slint hello dashboard spike](crates/traceseal-desktop-slint/README.md) ([Issue #53](https://github.com/mohui666/trace-seal/issues/53)): experimental Slint hello dashboard spike with static mock dashboard values and a minimal English/Chinese text toggle inside the spike window only.
+- [Slint hello dashboard spike](crates/traceseal-desktop-slint/README.md) ([Issue #53](https://github.com/mohui666/trace-seal/issues/53), [Issue #58](https://github.com/mohui666/trace-seal/issues/58)): experimental Slint hello dashboard spike with static mock fallback values, fixed read-only `dashboard-data latest/list/policy` loading, and a minimal English/Chinese text toggle inside the spike window only.
 
-Electron remains the current desktop implementation. Python Core remains the current run/replay/explain/dashboard-data implementation and source of truth. Rust Core implementation has not started. The Slint spike does not replace Electron, does not call Python Core, does not load real `runs/` data, does not add a project-wide i18n framework, does not change packaging, and is not part of the `v0.3.0` release. These planning and spike items do not modify v0.3.0, do not create v0.3.1, do not change release assets, and do not start formal Stage 5 implementation.
+Electron remains the current desktop implementation. Python Core remains the current run/replay/explain/dashboard-data implementation and source of truth. Rust Core implementation has not started. The Slint spike does not replace Electron, only calls fixed read-only `dashboard-data latest/list/policy` commands, does not call `traceseal run`, does not execute target commands, does not write workspace state, does not edit policy, does not add a project-wide i18n framework, does not change packaging, and is not part of the `v0.3.0` release. These planning and spike items do not modify v0.3.0, do not create v0.3.1, do not change release assets, and do not start formal Stage 5 implementation.
 
 ## 安装
 
@@ -570,6 +570,6 @@ powershell -ExecutionPolicy Bypass -File scripts\build-windows.ps1
 - Stage 4 Guard dry-run / observe-only work 已完成 Issues #31-#39；Issue #50 记录最终 completion audit。
 - Guard 当前仍是 dry-run / observe-only：Enforcement is not implemented，没有 daemon/service，没有 OS-wide process monitoring，没有 file/network/Git monitoring expansion。
 - Post-Stage 4 planning 已拆分为独立 issue：#51 Slint desktop feasibility RFC、#52 Rust Core parity RFC、#53 Slint hello dashboard spike。
-- Slint hello dashboard spike 是并行实验原型：只显示静态 mock 数值，只在实验窗口内提供 English / 中文切换，不替换 Electron，不调用 Python Core，不读取真实 `runs/`，不新增全项目 i18n 框架。
+- Slint hello dashboard spike 是并行实验原型：保留静态 mock 兜底，通过固定只读 `dashboard-data latest/list/policy` 命令加载摘要，只在实验窗口内提供 English / 中文切换，不替换 Electron，不调用 `traceseal run`，不执行目标命令，不写入 workspace，不编辑 policy，不新增全项目 i18n 框架。
 - Rust Core parity 是 future RFC，不是当前迁移；Electron 和 Python Core 仍是当前实现。
 - 不存在 v0.3.1 release；不修改 v0.3.0 release assets。

@@ -37,6 +37,31 @@ component SectionLabel inherits Text {
     letter-spacing: 1px;
 }
 
+component DetailRow inherits Rectangle {
+    in property <string> label-text;
+    in property <string> value-text;
+
+    height: 28px;
+
+    HorizontalBox {
+        spacing: 10px;
+
+        Text {
+            text: root.label-text;
+            color: #8fb1c9;
+            font-size: 13px;
+            width: 120px;
+        }
+
+        Text {
+            text: root.value-text;
+            color: #f4f7fb;
+            font-size: 13px;
+            wrap: word-wrap;
+        }
+    }
+}
+
 export component AppWindow inherits Window {
     in property <string> title-text: "TraceSeal Slint Read-only Spike";
     in property <string> subtitle-text: "Experimental dashboard-data bridge only / 仅实验用途";
@@ -55,6 +80,20 @@ export component AppWindow inherits Window {
     in property <string> event-count-label: "Event count";
     in property <string> risk-count-label: "Risk count";
     in property <string> policy-mode-label: "Policy summary";
+    in property <string> run-detail-title: "Run detail / 运行详情";
+    in property <string> detail-run-id-label: "Run ID";
+    in property <string> started-at-label: "Started";
+    in property <string> finished-at-label: "Finished";
+    in property <string> run-title-label: "Title";
+    in property <string> workspace-label: "Workspace";
+    in property <string> run-policy-mode-label: "Policy mode";
+    in property <string> risk-summary-label: "Risk summary";
+    in property <string> started-at: "Unavailable";
+    in property <string> finished-at: "Unavailable";
+    in property <string> run-title: "Mock run";
+    in property <string> workspace: "Unavailable";
+    in property <string> run-policy-mode: "mock / read-only";
+    in property <string> risk-summary: "Unavailable";
     in property <string> last-error-label: "Last error";
     in property <string> last-error: "none";
     in property <string> boundary-text: "Read-only spike: Electron remains the default desktop. Uses only fixed Python Core dashboard-data commands. No traceseal run, target commands, workspace writes, policy edits, packaging changes, release changes, or Stage 5 promotion.";
@@ -70,7 +109,7 @@ export component AppWindow inherits Window {
 
     title: root.title-text;
     width: 760px;
-    height: 640px;
+    height: 820px;
     background: #101820;
 
     VerticalBox {
@@ -229,6 +268,71 @@ export component AppWindow inherits Window {
             MetricTile {
                 label-text: root.risk-count-label;
                 value-text: "\{root.risk-count}";
+            }
+        }
+
+        // Run Detail Section
+        SectionLabel {
+            text: "RUN DETAIL / 运行详情";
+        }
+
+        Rectangle {
+            height: 260px;
+            background: #121d29;
+            border-width: 1px;
+            border-color: #2a3443;
+            border-radius: 8px;
+
+            VerticalBox {
+                padding: 14px;
+                spacing: 7px;
+
+                Text {
+                    text: root.run-detail-title;
+                    color: #f4f7fb;
+                    font-size: 18px;
+                    font-weight: 700;
+                }
+
+                DetailRow {
+                    label-text: root.detail-run-id-label;
+                    value-text: root.latest-run;
+                }
+
+                DetailRow {
+                    label-text: root.latest-status-label;
+                    value-text: root.latest-status;
+                }
+
+                DetailRow {
+                    label-text: root.started-at-label;
+                    value-text: root.started-at;
+                }
+
+                DetailRow {
+                    label-text: root.finished-at-label;
+                    value-text: root.finished-at;
+                }
+
+                DetailRow {
+                    label-text: root.run-title-label;
+                    value-text: root.run-title;
+                }
+
+                DetailRow {
+                    label-text: root.workspace-label;
+                    value-text: root.workspace;
+                }
+
+                DetailRow {
+                    label-text: root.run-policy-mode-label;
+                    value-text: root.run-policy-mode;
+                }
+
+                DetailRow {
+                    label-text: root.risk-summary-label;
+                    value-text: root.risk-summary;
+                }
             }
         }
 

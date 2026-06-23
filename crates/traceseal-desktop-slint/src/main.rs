@@ -37,6 +37,12 @@ fn apply_summary(ui: &AppWindow, summary: &DashboardSummary, language: Language)
     ui.set_event_count(summary.event_count);
     ui.set_risk_count(summary.risk_count);
     ui.set_policy_mode(summary.policy_summary.clone().into());
+    ui.set_started_at(summary.started_at.clone().into());
+    ui.set_finished_at(summary.finished_at.clone().into());
+    ui.set_run_title(summary.run_title.clone().into());
+    ui.set_workspace(summary.workspace.clone().into());
+    ui.set_run_policy_mode(summary.run_policy_mode.clone().into());
+    ui.set_risk_summary(summary.risk_summary.clone().into());
     ui.set_bridge_status(status_text(language, summary.bridge_status).into());
     ui.set_last_error(summary.last_error.clone().into());
 }
@@ -61,6 +67,14 @@ fn apply_language(ui: &AppWindow, language: Language, status: BridgeStatusKind) 
             ui.set_event_count_label("Event count".into());
             ui.set_risk_count_label("Risk count".into());
             ui.set_policy_mode_label("Policy summary".into());
+            ui.set_run_detail_title("Run detail".into());
+            ui.set_detail_run_id_label("Run ID".into());
+            ui.set_started_at_label("Started".into());
+            ui.set_finished_at_label("Finished".into());
+            ui.set_run_title_label("Title".into());
+            ui.set_workspace_label("Workspace".into());
+            ui.set_run_policy_mode_label("Policy mode".into());
+            ui.set_risk_summary_label("Risk summary".into());
             ui.set_last_error_label("Last error".into());
             ui.set_boundary_text(
                 "Read-only spike: Electron remains default. Uses only fixed Python Core dashboard-data commands. No traceseal run, target commands, workspace writes, policy edits, packaging changes, release changes, or Stage 5 promotion.".into(),
@@ -81,6 +95,14 @@ fn apply_language(ui: &AppWindow, language: Language, status: BridgeStatusKind) 
             ui.set_event_count_label("事件数量".into());
             ui.set_risk_count_label("风险数量".into());
             ui.set_policy_mode_label("策略摘要".into());
+            ui.set_run_detail_title("运行详情".into());
+            ui.set_detail_run_id_label("运行 ID".into());
+            ui.set_started_at_label("开始时间".into());
+            ui.set_finished_at_label("结束时间".into());
+            ui.set_run_title_label("标题".into());
+            ui.set_workspace_label("工作区".into());
+            ui.set_run_policy_mode_label("策略模式".into());
+            ui.set_risk_summary_label("风险摘要".into());
             ui.set_last_error_label("最近错误".into());
             ui.set_boundary_text(
                 "只读实验：Electron 仍是默认桌面实现。仅使用固定 Python Core dashboard-data 命令。不调用 traceseal run、不执行目标命令、不写入 workspace、不编辑 policy、不修改打包或 release、不提升为 Stage 5。".into(),

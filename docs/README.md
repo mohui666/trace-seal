@@ -44,6 +44,7 @@ This page is a navigation index only. / 本页只做导航索引，不重复 REA
 - [v0.3 release report / v0.3 发布报告](../artifacts/v0.3-release-report.md)
 - [v0.3 release prep report / v0.3 发布准备报告](../artifacts/v0.3-release-prep-report.md)
 - [v0.2 clean Windows report / v0.2 干净 Windows 验证报告](../artifacts/v0.2-clean-windows-report.md)
+- [Windows install and SmartScreen troubleshooting / Windows 安装与 SmartScreen 排查](windows-install-troubleshooting.md) (`docs/windows-install-troubleshooting.md`)
 - [Release checklist / 发布清单](../RELEASE_CHECKLIST.md)
 
 ## Validation and test reports / 验证与测试报告

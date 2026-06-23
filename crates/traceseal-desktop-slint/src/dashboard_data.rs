@@ -58,8 +58,12 @@ pub fn command_args(command: DashboardCommand) -> &'static [&'static str] {
     command.args()
 }
 
+pub fn python_executable() -> &'static str {
+    PYTHON_EXECUTABLE
+}
+
 pub fn run_dashboard_command(command: DashboardCommand) -> Result<String, BridgeError> {
-    let output = Command::new(PYTHON_EXECUTABLE)
+    let output = Command::new(python_executable())
         .args(command_args(command))
         .output()
         .map_err(|error| BridgeError::Io(sanitize_diagnostic(&error.to_string())))?;

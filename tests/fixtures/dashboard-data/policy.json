@@ -1,0 +1,18 @@
+{
+  "schema_version": 1,
+  "policy": {
+    "mode": "dry-run",
+    "source": "fixture-policy.yaml",
+    "rule_count": 2
+  },
+  "rules": [
+    {
+      "id": "fixture.process_spawn",
+      "decision": "warn"
+    },
+    {
+      "id": "fixture.git_push",
+      "decision": "allow"
+    }
+  ]
+}

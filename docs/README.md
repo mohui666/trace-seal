@@ -10,6 +10,7 @@ This page is a navigation index only. / 本页只做导航索引，不重复 REA
 - [Policy rules / 策略规则](policy-rules.md)
 - [Incident examples / 事故案例](incident-examples.md)
 - [Dashboard design / Dashboard 设计](dashboard-design.md)
+- Dashboard-data contract: [`docs/dashboard-data-contract.md`](dashboard-data-contract.md). / dashboard-data 契约：[`docs/dashboard-data-contract.md`](dashboard-data-contract.md)。
 - [Demo script / Demo 脚本](demo.md)
 
 ## Stage and release records / 阶段与发布记录

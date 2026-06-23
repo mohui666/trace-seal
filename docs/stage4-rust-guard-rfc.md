@@ -270,7 +270,7 @@ Rust Guard must not redefine TraceSeal policy syntax or maintain an incompatible
 - Git push classification reuses normal, force, force-with-lease, mirror, delete, forced refspec, `--all`, and `--tags` distinctions.
 - Cascade detection remains a Core evidence aggregation over ordered normalized events, not a Guard interception primitive.
 
-MVP policy integration is dry-run only. The Guard or bridge emits `policy.decision` records containing the subject event, policy snapshot/version, matched rule ID, action, reason, mode, and `enforced: false`. These decisions must appear consistently in replay, explain, and `dashboard-data`.
+MVP policy integration is dry-run only. The current bridge stores a sidecar decision artifact containing the subject event, policy source, matched rule ID, action, reason, dry-run state, and `enforcement_applied: false`. `dashboard-data` exposes the sidecar summary; replay and explain must remain compatible and may surface richer Guard policy text only after a later display review.
 
 Policy snapshot transfer must define authentication, expiry, rollback, unsupported rule behavior, and stale-policy behavior before enforcement is considered.
 
@@ -398,7 +398,7 @@ Performance tests should measure event loss, end-to-end latency, CPU, memory, an
 | M4: `process.spawn` dry-run | Prototype emits redacted observation events | No blocking; capability and drop reporting tested |
 | M5: Python Core import | Core imports versioned Guard fixtures/events | Python-only mode remains unchanged |
 | M6: Dashboard bridge | `dashboard-data` exposes optional Guard metadata | Old runs and current Desktop contract remain valid |
-| M7: Policy dry-run | Existing policy produces non-enforced decisions | Replay/explain/dashboard show rule and dry-run status |
+| M7: Policy dry-run | Existing policy produces non-enforced decisions | Dashboard-data shows rule and dry-run status; replay/explain compatibility preserved |
 | M8: Windows VM smoke | Non-admin Windows lifecycle and evidence smoke test | Documented pass/fail with limitations |
 | M9: Enforcement experiment RFC | Separate proposal for limited enforcement | No enforcement code in MVP |
 

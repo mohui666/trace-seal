@@ -17,6 +17,7 @@ from recorder.http_cassette import failed_summary, generate_http_cassette
 from recorder.workspace import snapshot_workspace
 from replay.renderer import replay_run
 from sandbox.workspace import copy_workspace
+from traceseal.guard_policy import GuardPolicyError, apply_guard_policy_dry_run
 
 
 def configure_utf8_stdio() -> None:
@@ -235,6 +236,29 @@ def dashboard_data_command(args: argparse.Namespace) -> int:
     return 0
 
 
+def guard_policy_dry_run_command(args: argparse.Namespace) -> int:
+    try:
+        summary = apply_guard_policy_dry_run(args.run_dir, args.policy)
+    except GuardPolicyError as exc:
+        print(f"guard policy dry-run failed: {exc}", file=sys.stderr)
+        return 2
+    print(
+        json.dumps(
+            {
+                "ok": True,
+                "dry_run": summary.get("dry_run") is True,
+                "evaluated_event_count": summary.get("evaluated_event_count", 0),
+                "decision_counts": summary.get("decision_counts", {}),
+                "enforcement_applied": summary.get("enforcement_applied") is True,
+                "artifact_path": summary.get("artifact_path"),
+            },
+            ensure_ascii=False,
+            indent=2,
+        )
+    )
+    return 0
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="traceseal", description="TraceSeal MVP 命令行工具")
     sub = parser.add_subparsers(dest="cmd", required=True)
@@ -258,6 +282,14 @@ def build_parser() -> argparse.ArgumentParser:
         help="latest | runs/latest | list | policy | run <run_id> | <run_id>",
     )
     p_dashboard.set_defaults(func=dashboard_data_command)
+
+    p_guard_policy = sub.add_parser(
+        "guard-policy-dry-run",
+        help="对已导入 Guard events 运行 policy.yaml dry-run 评估",
+    )
+    p_guard_policy.add_argument("--run", dest="run_dir", required=True, help="运行目录")
+    p_guard_policy.add_argument("--policy", help="可选 policy.yaml 路径")
+    p_guard_policy.set_defaults(func=guard_policy_dry_run_command)
     return parser
 
 

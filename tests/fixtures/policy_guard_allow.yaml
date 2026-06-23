@@ -1,0 +1,21 @@
+version: 1
+mode: warn
+rules:
+  - id: guard-health-allow
+    description: Allow Guard health checks in dry-run metadata
+    match:
+      event_type: guard.health
+    risk_level: low
+    action: allow
+    reason: Guard health is allowed
+    suggested_policy: allow guard.health
+  - id: guard-spawn-safe-allow
+    description: Allow safe process.spawn intent in dry-run metadata
+    match:
+      event_type: process.spawn
+      command:
+        contains: safe_script.py
+    risk_level: low
+    action: allow
+    reason: Safe process spawn intent is allowed
+    suggested_policy: allow process.spawn safe_script.py

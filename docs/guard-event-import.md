@@ -10,7 +10,7 @@
 - **Timeline behavior:** existing Python `events.jsonl` is unchanged
 - **Release status:** prototype integration only; Stage 4 is not released
 
-The importer attaches a validated Guard JSONL artifact to an existing TraceSeal run. It does not start the Rust Guard, execute a recorded `process.spawn` command, merge Guard records into the Python event timeline, or evaluate policy. Issue #36 can now expose a compact read-only summary through `dashboard-data`.
+The importer attaches a validated Guard JSONL artifact to an existing TraceSeal run. It does not start the Rust Guard, execute a recorded `process.spawn` command, merge Guard records into the Python event timeline, or evaluate policy. Issue #36 exposes a compact read-only summary through `dashboard-data`; Issue #37 can optionally run policy dry-run evaluation after import.
 
 ## Python API
 
@@ -76,7 +76,7 @@ Replay and explain continue reading only the existing Python `events.jsonl`. The
 
 Issue #36 adds one optional top-level `guard` object to run-level `dashboard-data` while preserving every existing field and the Python timeline. See [`dashboard-guard-metadata.md`](dashboard-guard-metadata.md). No Electron UI consumes or displays the object in this milestone.
 
-Policy evaluation is not run during import. Guard policy dry-run decisions remain Issue #37.
+Policy evaluation is not run during import. Guard policy dry-run decisions are a separate explicit step documented in [`guard-policy-dry-run.md`](guard-policy-dry-run.md). The sidecar metadata is not enforcement and does not modify imported Guard events.
 
 ## Safety and non-goals
 
@@ -84,5 +84,6 @@ Policy evaluation is not run during import. Guard policy dry-run decisions remai
 - A `process.spawn` record is data; its target command is never executed.
 - No OS-wide process observation or new file/network/Git monitoring.
 - Read-only dashboard-data metadata only; no Electron UI visualization or redesign.
-- No policy dry-run, blocking, enforcement, fail-closed behavior, daemon, or service.
+- No automatic policy dry-run during import.
+- No blocking, enforcement, fail-closed behavior, daemon, or service.
 - No installer, release workflow, tag, or GitHub Release change.

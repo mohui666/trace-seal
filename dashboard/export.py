@@ -20,6 +20,11 @@ from traceseal.guard_import import (
     load_imported_guard_events,
     maybe_find_guard_events,
 )
+from traceseal.guard_policy import (
+    decisions_by_event_id,
+    get_guard_policy_summary,
+    load_guard_policy_decisions,
+)
 
 RUN_ID_RE = re.compile(r"^run_[A-Za-z0-9_.-]+$")
 
@@ -194,7 +199,10 @@ def _safe_guard_arguments(values: list[str]) -> list[str]:
     return safe
 
 
-def _compact_guard_event(event: dict[str, Any]) -> dict[str, Any]:
+def _compact_guard_event(
+    event: dict[str, Any],
+    policy_decisions: dict[str, dict[str, Any]] | None = None,
+) -> dict[str, Any]:
     policy = event.get("policy") if isinstance(event.get("policy"), dict) else {}
     redaction = event.get("redaction") if isinstance(event.get("redaction"), dict) else {}
     metadata = event.get("metadata") if isinstance(event.get("metadata"), dict) else {}
@@ -222,6 +230,9 @@ def _compact_guard_event(event: dict[str, Any]) -> dict[str, Any]:
             "dry_run": metadata.get("dry_run") is True,
             "executed": metadata.get("executed") is True,
         }
+    decision = (policy_decisions or {}).get(str(event.get("event_id")))
+    if decision is not None:
+        compact["policy_decision"] = decision
     return compact
 
 
@@ -240,6 +251,7 @@ def build_guard_dashboard_data(run_dir: str | Path) -> dict[str, Any]:
         "decisions": {},
         "redaction_statuses": {},
         "health_status": None,
+        "policy": get_guard_policy_summary(run_path),
         "events": [],
         "error": None,
     }
@@ -258,7 +270,14 @@ def build_guard_dashboard_data(run_dir: str | Path) -> dict[str, Any]:
         }
         return payload
 
-    compact_events = [_compact_guard_event(event) for event in events]
+    policy_payload: dict[str, Any] | None = None
+    try:
+        loaded_policy_payload = load_guard_policy_decisions(run_path)
+        policy_payload = loaded_policy_payload if loaded_policy_payload.get("available") else None
+    except Exception:
+        policy_payload = None
+    policy_decisions = decisions_by_event_id(policy_payload or {})
+    compact_events = [_compact_guard_event(event, policy_decisions) for event in events]
     health_events = [
         event for event in compact_events if event.get("event_type") == "guard.health"
     ]

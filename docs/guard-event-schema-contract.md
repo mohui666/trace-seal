@@ -8,11 +8,11 @@
 - **Core behavior:** Optional local run import is available; existing Python timeline behavior is unchanged
 - **Compatibility baseline:** TraceSeal v0.3.0
 - **Initial schema version:** `guard.event.v1`
-- **Next integration milestone:** [Issue #36 — optional dashboard-data metadata](https://github.com/mohui666/trace-seal/issues/36), not started here
+- **Current integration milestone:** [Issue #37 — Guard policy dry-run metadata](https://github.com/mohui666/trace-seal/issues/37)
 
 Issue #33 implements the first local-only emitter against this contract; see [`guard-health-prototype.md`](guard-health-prototype.md). Issue #34 adds the next explicitly reviewed event as a non-executing dry-run intent; see [`guard-process-spawn-dry-run.md`](guard-process-spawn-dry-run.md). The contract remains additive and does not authorize OS-wide monitoring or enforcement.
 
-This document defines the producer/consumer contract for Guard prototype events. The separately reviewed prototypes serialize, validate, and optionally attach a narrow subset to a Python run; they do not create dashboard integration, policy decisions, an enforcement path, a productized Guard, or a release artifact.
+This document defines the producer/consumer contract for Guard prototype events. The separately reviewed prototypes serialize, validate, and optionally attach a narrow subset to a Python run. Later milestones add read-only dashboard metadata and dry-run policy decision metadata as sidecars; they do not create an enforcement path, a productized Guard, or a release artifact.
 
 The contract is additive. It does not replace the v0.3.0 `events.jsonl` schema, change existing run artifacts, or require a Guard to read an old run.
 
@@ -199,7 +199,7 @@ The event type registry separates contract reservation from implementation. List
 | `network.connect` | Future | Later design | Connection metadata only; no payload capture |
 | `network.http` | Future | Later design | Redacted HTTP metadata consistent with cassette privacy rules |
 | `git.operation` | Future | Later design | Reuses existing Git operation/push classification semantics |
-| `policy.decision` | Future dry-run | Issue #37 (M7) | Links a non-enforced policy decision to a subject event |
+| `policy.decision` | Future event type | Later display/audit design | Links a non-enforced policy decision event to a subject event if event-stream representation is later approved |
 | `guard.error` | Future MVP-supporting event | Later M3/M4 review | Safe Guard error/degraded metadata without secrets |
 
 Only `guard.health` and the separately reviewed `process.spawn` dry-run intent are supported by the current prototype. `process.spawn` remains observe-only and does not execute or monitor a process. All other types require their own design/implementation review.
@@ -420,11 +420,11 @@ Issue #36 adds an additive `guard` object to run-level `dashboard-data`, includi
 
 Replay may display normalized Guard events in a future milestone. M5 continues to read only `events.jsonl`; a run with or without `guard_events.jsonl` otherwise behaves exactly as before.
 
-Explain may cite a Guard event or dry-run policy decision in a future milestone. M5 emits no Guard-specific explanation and retains v0.3.0 behavior.
+Explain may cite a Guard event or dry-run policy decision in a future display milestone. M7 preserves replay/explain compatibility and does not rewrite explain output.
 
 Unknown optional Guard manifest metadata is ignored safely. Missing artifacts yield `guard.available: false`; malformed or invalid artifacts keep the run payload readable and report `INVALID_GUARD_EVENTS` inside the Guard object.
 
-The data contract is documented in [`dashboard-guard-metadata.md`](dashboard-guard-metadata.md). Replay/explain formats and Electron UI remain unchanged. Policy dry-run remains Issue #37.
+The dashboard data contract is documented in [`dashboard-guard-metadata.md`](dashboard-guard-metadata.md). The Guard policy dry-run sidecar is documented in [`guard-policy-dry-run.md`](guard-policy-dry-run.md). Replay/explain formats and Electron UI remain unchanged.
 
 ## 16. Contract review checklist
 
@@ -432,8 +432,8 @@ The data contract is documented in [`dashboard-guard-metadata.md`](dashboard-gua
 - [ ] `guard.event.v1` versioning and validation outcomes are accepted.
 - [x] `guard.health` is the first supported local prototype event.
 - [x] `process.spawn` is limited to a separately reviewed, non-executing dry-run intent.
-- [ ] Risk, policy decision, and redaction enums preserve existing TraceSeal semantics.
+- [x] Risk, policy decision, and redaction enums preserve existing TraceSeal semantics.
 - [x] Old v0.3.0 runs remain readable without migration.
 - [x] Unknown event types are retained and malformed Guard records fail import before run modification.
 - [x] JSONL artifact absence is a normal Python-only run state.
-- [x] Optional dashboard metadata does not add policy decisions, Electron UI, installer, enforcement, tag, or release behavior.
+- [x] Optional dashboard and policy dry-run metadata do not add Electron UI, installer, enforcement, tag, or release behavior.

@@ -2,10 +2,10 @@
 
 ## Status
 
-- **Status:** Planning / reviewed prototype tracking
+- **Status:** Complete through Issue #39; completion audit tracked by Issue #50
 - **Scope:** Project management plus milestone acceptance status
-- **Implementation:** M3/M4 emitters, optional M5 import, and M6 dashboard metadata; no productized Guard
-- **Stage:** Stage 4 remains design-first
+- **Implementation:** Stage 4 dry-run / observe-only deliverables are complete; no productized Guard
+- **Stage:** Stage 4 complete; future Stage 5 candidates are planning-only
 - **Latest released version:** v0.3.0
 
 This document converts the approved Stage 4 RFC structure into reviewable work items. It does not authorize implementation automatically: each milestone remains subject to its dependencies, acceptance criteria, review, and the design boundaries in [`stage4-rust-guard-rfc.md`](stage4-rust-guard-rfc.md).
@@ -32,6 +32,7 @@ This document converts the approved Stage 4 RFC structure into reviewable work i
 | M7 | [Integrate policy dry-run decisions for Guard events](https://github.com/mohui666/trace-seal/issues/37) | M2, M5 | [Dry-run sidecar implemented](guard-policy-dry-run.md); no enforcement |
 | M8 | [Windows VM smoke validation for Guard prototype](https://github.com/mohui666/trace-seal/issues/38) | M3–M7 | Windows smoke script and validation doc implemented; no enforcement |
 | M9 | [Draft enforcement experiment RFC](https://github.com/mohui666/trace-seal/issues/39) | M1, M7, M8 | [Draft enforcement experiment RFC](stage4-enforcement-experiment-rfc.md) added; documentation only |
+| Audit | [Stage 4 completion audit and roadmap cleanup](https://github.com/mohui666/trace-seal/issues/50) | M1-M9 | [Completion report](../artifacts/stage4-completion-report.md) and Stage 5 planning references added; documentation only |
 
 ## M1 review disposition
 
@@ -552,5 +553,8 @@ Design a separate RFC for future enforcement modes after observe/dry-run mode is
 ## Tracking notes
 
 - Issue #28 remains the post-release umbrella for Stage 4 requirements and release-health follow-up.
-- GitHub issues #31–#39 mirror the nine drafts and carry the implementation/review lifecycle.
+- GitHub issues #31–#39 are complete and mirror the nine Stage 4 review milestones.
+- Issue #50 tracks the final Stage 4 completion audit and roadmap cleanup.
+- Follow-up planning issues are #51 Slint desktop feasibility RFC, #52 Rust Core parity RFC, and #53 Slint hello dashboard spike.
+- See [Stage 4 Completion Report](../artifacts/stage4-completion-report.md) for delivered capabilities, non-outcomes, release/tag integrity, and planning issue links.
 - Milestone state must remain planning/design until the corresponding issue is separately implemented and validated.

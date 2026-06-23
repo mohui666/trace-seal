@@ -195,10 +195,15 @@ Stage 5 has not started. Candidate tracks are tracked as separate planning issue
    - Does not replace Electron.
    - Does not add Slint runtime code, a Slint crate, or `.slint` UI files.
 
-2. [Rust Core parity RFC](https://github.com/mohui666/trace-seal/issues/52)
-   - Evaluate moving selected Python Core responsibilities to Rust.
+2. [Rust Core parity RFC](rust-core-parity-rfc.md) ([Issue #52](https://github.com/mohui666/trace-seal/issues/52))
+   - Evaluate moving selected Python Core responsibilities to Rust through parity-first planning.
    - Python hook shim remains necessary for Python Agent instrumentation.
-   - Documentation-only until accepted.
+   - RFC / planning-only until separately accepted.
+   - Rust Core implementation has not started.
+   - Python Core remains the source of truth for run/replay/explain/dashboard-data.
+   - Electron remains the current desktop implementation.
+   - Slint and Rust Core remain separate planning tracks.
+   - Does not modify v0.3.0, release assets, tags, packaging, or release workflows.
 
 3. [Slint hello dashboard spike](https://github.com/mohui666/trace-seal/issues/53)
    - Experimental prototype only after the Slint RFC is accepted.

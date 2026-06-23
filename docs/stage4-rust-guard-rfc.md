@@ -8,7 +8,7 @@
 - **Compatibility baseline:** TraceSeal v0.3.0
 - **Latest released version:** v0.3.0
 
-Stage 4 does not immediately replace the Python Core. This RFC defines reviewable boundaries and contracts for future work; it does not add a Rust crate, daemon, enforcement path, Electron change, installer change, tag, or release.
+Stage 4 does not immediately replace the Python Core. This RFC defines reviewable boundaries and contracts for future work; it does not add a Rust crate, daemon, enforcement path, Electron change, installer change, tag, or release. Stage 4 dry-run / observe-only work is complete through Issue #39; the final completion audit is tracked by [Issue #50](https://github.com/mohui666/trace-seal/issues/50) and summarized in the [Stage 4 Completion Report](../artifacts/stage4-completion-report.md).
 
 Related planning is tracked in [issue #28](https://github.com/mohui666/trace-seal/issues/28).
 
@@ -401,6 +401,7 @@ Performance tests should measure event loss, end-to-end latency, CPU, memory, an
 | M7: Policy dry-run | Existing policy produces non-enforced decisions | Dashboard-data shows rule and dry-run status; replay/explain compatibility preserved |
 | M8: Windows VM smoke | Non-admin Windows lifecycle and evidence smoke test | Documented pass/fail with limitations |
 | M9: Enforcement experiment RFC | [Separate proposal](stage4-enforcement-experiment-rfc.md) for limited future opt-in enforcement experiments | No enforcement code in MVP |
+| Audit: Completion report | [Stage 4 completion report](../artifacts/stage4-completion-report.md) and [Issue #50](https://github.com/mohui666/trace-seal/issues/50) | Stage 4 complete; no runtime behavior change |
 
 Each milestone is a separate reviewable change. Completion of one milestone does not authorize later milestones automatically.
 

@@ -119,46 +119,92 @@
 
 ---
 
-## 阶段 4：Rust Guard 产品化 — 原型 / design-first（未发布）
+## 阶段 4：Rust Guard dry-run / observe-only — 已完成（未发布为产品化 Guard）
 
-当前阶段明确不做 Rust 重构。Rust Guard 作为远期产品化方向，**不替代**当前 Python MVP，而是做更底层的安全增强。当前包含 `guard.health`、非执行型 `process.spawn` local-only 原型、可选 [Python artifact import](guard-event-import.md)、只读 [dashboard-data Guard metadata](dashboard-guard-metadata.md)、[Guard policy dry-run metadata](guard-policy-dry-run.md)、[Windows smoke validation](windows-guard-smoke-validation.md) 和 [Enforcement Experiment RFC](stage4-enforcement-experiment-rfc.md)，仍处于 RFC / design-first 原型阶段，不代表 OS 级监控、Electron UI、enforcement 或正式发布；高层方向见 [`stage4-rust-guard-design.md`](stage4-rust-guard-design.md)，评审拆解见 [`stage4-rust-guard-rfc.md`](stage4-rust-guard-rfc.md)，项目管理拆分见 [`stage4-issue-breakdown.md`](stage4-issue-breakdown.md)。
+Stage 4 status: Complete through Issue #39. Issue #50 performs the final completion audit and roadmap cleanup.
 
-| 方面 | Python MVP（阶段 1-3） | Rust Guard（阶段 4） |
+Stage 4 明确不做 Rust Core 重构，也不替代当前 Python MVP。它已完成 `guard.event.v1` schema、Rust `guard.health` prototype、非执行型 `process.spawn` dry-run event、可选 Python Core import、只读 `dashboard-data` Guard metadata、Guard policy dry-run decisions、Windows VM smoke validation，以及 [Stage 4 Enforcement Experiment RFC](stage4-enforcement-experiment-rfc.md)。Stage 4 completion report 见 [stage4-completion-report.md](../artifacts/stage4-completion-report.md)。
+
+当前 Guard 仍是 dry-run / observe-only。Enforcement is not implemented. There is no daemon or service. There is no OS-wide process monitoring. There is no new file, network, or Git monitoring expansion. Installer and release workflows are unchanged. No v0.3.1 release exists.
+
+| 方面 | Python MVP（阶段 1-3） | Rust Guard（Stage 4 已完成边界） |
 |---|---|---|
-| 拦截层级 | 进程内 monkey-patch | OS 级进程守卫 |
-| 支持语言 | Python | Python、Node.js、Go、Rust 等 |
-| 安全级别 | 应用层 | 更难被 Agent 绕过 |
-| 日志防篡改 | 暂无 | 签名 + 哈希链 |
-| 典型实现 | `sitecustomize` / hooks | Sidecar / 守护进程 |
+| 当前实现 | Python Core 是当前 run/replay/explain/dashboard-data 实现 | Stage 4 仅提供 dry-run / observe-only 原型与 RFC 文档 |
+| 桌面实现 | Electron + React + TypeScript + TailwindCSS | 没有 Electron UI 改动；Slint 仅为未来可行性 RFC |
+| `process.spawn` | Python shell hooks 仍按现有 MVP 行为 | local-only dry-run event；不执行 target command、不阻断 |
+| 监控范围 | Python-level hooks 与本地 metadata | 不做 OS-wide monitoring；不新增 file/network/Git monitoring |
+| policy | 现有 `policy.yaml` / default policy | Guard policy dry-run 只写 sidecar；不 enforcement |
+| release | v0.3.0 正式 release | 不创建 tag、不发布 v0.3.1、不修改 release assets |
 
-计划方向：
+### Stage 4 completed issues and outcomes
 
-- OS 级进程监控
-- 跨语言 Agent 支持
-- 防篡改审计日志
-- 更强 sandbox / policy enforcement
-- 企业级 Dashboard
-
-### Stage 4 RFC 子项
-
-| Milestone | 子项 | 状态 |
+| Issue | Milestone | Outcome |
 |---|---|---|
-| M1 | [RFC review](https://github.com/mohui666/trace-seal/issues/31) | 已完成并合并；Stage 4 保持 design-first |
-| M2 | [Event schema contract](https://github.com/mohui666/trace-seal/issues/32) | [`guard.event.v1` Draft contract](guard-event-schema-contract.md) 已完成并合并 |
-| M3 | [Rust prototype `guard.health`](https://github.com/mohui666/trace-seal/issues/33) | 最小 local-only prototype 已完成并合并；仅 health event |
-| M4 | [`process.spawn` dry-run](https://github.com/mohui666/trace-seal/issues/34) | [最小 local-only dry-run prototype](guard-process-spawn-dry-run.md) 已实现；不执行目标、不做 OS 监控 |
-| M5 | [Python bridge](https://github.com/mohui666/trace-seal/issues/35) | [可选 Guard artifact import](guard-event-import.md) 已实现；不合并 Python timeline |
-| M6 | [Dashboard bridge](https://github.com/mohui666/trace-seal/issues/36) | [dashboard-data Guard metadata](dashboard-guard-metadata.md) 已实现；无 UI 改动 |
-| M7 | [Policy dry-run](https://github.com/mohui666/trace-seal/issues/37) | [Guard policy dry-run metadata](guard-policy-dry-run.md) 已实现；不执行目标、不 enforcement |
-| M8 | [Windows smoke validation](https://github.com/mohui666/trace-seal/issues/38) | [Windows smoke script](../scripts/windows-guard-smoke.ps1) / [validation doc](windows-guard-smoke-validation.md) 已补齐；验证 target command 未执行、`enforcement_applied=false`、无 daemon/service |
-| M9 | [Enforcement experiment RFC](https://github.com/mohui666/trace-seal/issues/39) | Issue #39 的 [Stage 4 Enforcement Experiment RFC](stage4-enforcement-experiment-rfc.md) 已补齐；documentation-only，定义 future opt-in gates / kill switch / audit / rollback / consent，不实现 enforcement |
+| [#31](https://github.com/mohui666/trace-seal/issues/31) | RFC review | 已完成并合并；Stage 4 保持 design-first / dry-run-first |
+| [#32](https://github.com/mohui666/trace-seal/issues/32) | Guard event schema contract | [`guard.event.v1` Draft contract](guard-event-schema-contract.md) 已完成并合并 |
+| [#33](https://github.com/mohui666/trace-seal/issues/33) | Rust `guard.health` prototype | 最小 local-only prototype 已完成并合并；仅 health event |
+| [#34](https://github.com/mohui666/trace-seal/issues/34) | `process.spawn` dry-run event | [local-only dry-run prototype](guard-process-spawn-dry-run.md) 已完成；不执行目标、不做 OS 监控 |
+| [#35](https://github.com/mohui666/trace-seal/issues/35) | Import Guard events into Python Core | [可选 Guard artifact import](guard-event-import.md) 已完成；不合并 Python timeline |
+| [#36](https://github.com/mohui666/trace-seal/issues/36) | Expose Guard metadata in `dashboard-data` | [dashboard-data Guard metadata](dashboard-guard-metadata.md) 已完成；无 UI 改动 |
+| [#37](https://github.com/mohui666/trace-seal/issues/37) | Guard policy dry-run decisions | [Guard policy dry-run metadata](guard-policy-dry-run.md) 已完成；不执行目标、不 enforcement |
+| [#38](https://github.com/mohui666/trace-seal/issues/38) | Windows VM smoke validation | [Windows smoke validation](windows-guard-smoke-validation.md) 已完成；验证 target command 未执行、`enforcement_applied=false`、无 daemon/service |
+| [#39](https://github.com/mohui666/trace-seal/issues/39) | Enforcement Experiment RFC | [Stage 4 Enforcement Experiment RFC](stage4-enforcement-experiment-rfc.md) 已完成；future opt-in gates / kill switch / audit / rollback / consent，不实现 enforcement |
+| [#50](https://github.com/mohui666/trace-seal/issues/50) | Stage 4 completion audit and roadmap cleanup | 当前 audit PR 关闭；文档、状态一致性、completion report、Stage 5 candidates 与静态检查 |
+
+### Stage 4 non-outcomes
+
+- No enforcement implementation.
+- No daemon/service.
+- No OS-wide process monitoring.
+- No file/network/Git monitoring expansion.
+- No installer/release workflow change.
+- No v0.3.1 release.
+- No Slint implementation.
+- No Rust Core parity implementation.
+- No Electron replacement.
+- No Python Core rewrite.
+
+### Stage 4 outcome summary
+
+- Guard event schema contract.
+- Rust `guard.health` prototype.
+- `process.spawn` dry-run event model.
+- Guard event import path into Python Core.
+- Guard metadata in `dashboard-data`.
+- Guard policy dry-run decisions.
+- Windows VM smoke validation.
+- Enforcement Experiment RFC.
+- Stage 4 completion report and static documentation checks.
 
 ```text
 阶段 1：Python Agent → Python hooks
 阶段 2：Python hooks → dashboard-data → Electron Dashboard
 阶段 3：增强 Python Core
-阶段 4：Any Agent → Rust Guard（OS 级）
+阶段 4：Guard dry-run / observe-only evidence and RFCs（complete）
 ```
+
+---
+
+## Stage 5 candidates
+
+Stage 5 has not started. Candidate tracks are tracked as separate planning issues:
+
+1. [Slint desktop feasibility RFC](https://github.com/mohui666/trace-seal/issues/51)
+   - Evaluate replacing or complementing the Electron dashboard with a native Slint desktop path.
+   - Documentation-only until accepted.
+   - Does not replace Electron.
+
+2. [Rust Core parity RFC](https://github.com/mohui666/trace-seal/issues/52)
+   - Evaluate moving selected Python Core responsibilities to Rust.
+   - Python hook shim remains necessary for Python Agent instrumentation.
+   - Documentation-only until accepted.
+
+3. [Slint hello dashboard spike](https://github.com/mohui666/trace-seal/issues/53)
+   - Experimental prototype only after the Slint RFC is accepted.
+   - Does not become the default desktop path.
+   - Does not modify installer or release workflows.
+
+Stage 5 must not modify v0.3.0 release assets, create v0.3.1, implement enforcement, add Slint, replace Electron, rewrite Python Core, or expand monitoring scope without a dedicated accepted RFC.
 
 ---
 

@@ -4,7 +4,7 @@
 
 Windows x64 installer is available on GitHub Releases.
 
-> **v0.3.0:** Stage 3 Core complete. This release adds Git state tracking, redacted HTTP cassette artifacts, local policy YAML, Git push classification, domain policy, and deterministic cascade analysis. Rust Guard remains future Stage 4 productization work and is not included.
+> **v0.3.0:** Stage 3 Core complete. This release adds Git state tracking, redacted HTTP cassette artifacts, local policy YAML, Git push classification, domain policy, and deterministic cascade analysis. Stage 4 Guard dry-run / observe-only work has completed through Issue #39 after the release: schema, `guard.health`, `process.spawn` dry-run, Python import, dashboard metadata, policy dry-run decisions, Windows smoke validation, and an enforcement experiment RFC. Enforcement is not implemented in v0.3.0. There is no daemon/service, no OS-wide process monitoring, and no file/network/Git monitoring expansion.
 
 TraceSeal 是 AI Agent 的操作黑匣子 + 执行前安全防火墙 + 失败回放系统。
 
@@ -80,8 +80,23 @@ trace-seal/
 - [路线图](docs/roadmap.md)（阶段计划）
 - [v0.3 release report](artifacts/v0.3-release-report.md)（正式发布、工件、校验和与限制）
 - [v0.3 release prep 验证报告](artifacts/v0.3-release-prep-report.md)（Core 回归、隐私扫描与 Windows 打包证据）
-- [Stage 4 Rust Guard design](docs/stage4-rust-guard-design.md)（仅设计，尚未实现）
+- [Stage 4 Rust Guard design](docs/stage4-rust-guard-design.md)（Stage 4 dry-run / observe-only 设计与边界）
+- [Stage 4 Rust Guard RFC](docs/stage4-rust-guard-rfc.md)（Stage 4 审查边界与里程碑）
+- [Stage 4 Enforcement Experiment RFC](docs/stage4-enforcement-experiment-rfc.md)（future opt-in enforcement 实验边界；未实现 enforcement）
+- [Stage 4 completion report](artifacts/stage4-completion-report.md)（Issues #31-#39 完成状态与 Issue #50 audit）
 - [飞书项目文档](docs/feishu_project_doc.md)
+
+## Post-Stage 4 planning
+
+Stage 4 is complete through Issue #39; the final completion audit is tracked by Issue #50. The Guard path remains dry-run / observe-only: Enforcement is not implemented, no daemon/service is installed, and no OS-wide process monitoring is added. There is no new file, network, or Git monitoring expansion, and installer/release workflows are unchanged.
+
+Future work is tracked separately:
+
+- [Slint desktop feasibility RFC](https://github.com/mohui666/trace-seal/issues/51): evaluate whether a native Slint desktop path should be introduced after Stage 4.
+- [Rust Core parity RFC](https://github.com/mohui666/trace-seal/issues/52): evaluate which Python Core responsibilities can move to Rust while preserving behavior compatibility.
+- [Slint hello dashboard spike](https://github.com/mohui666/trace-seal/issues/53): possible future prototype only after the Slint feasibility RFC is accepted.
+
+Electron remains the current desktop implementation. Python Core remains the current run/replay/explain/dashboard-data implementation. These planning items do not modify v0.3.0, do not create v0.3.1, do not change release assets, and do not start Stage 5 implementation.
 
 ## 安装
 
@@ -549,8 +564,8 @@ powershell -ExecutionPolicy Bypass -File scripts\build-windows.ps1
 
 - 阶段 3 Core 增强项已全部完成，包括 deterministic cascade failure 检测与离线事故链 demo。
 - v0.3.0 已正式发布；Windows x64 是当前主要且已验证的桌面安装目标。
-- Stage 4 Rust Guard 仍处于设计阶段，不属于 v0.3.0，也尚未进入实现。
-- 后续可补更多真实项目事故案例，但不纳入本次 v0.3.0 Core 范围。
-- 继续增强 Dashboard：Git/HTTP cassette 可视化、首次错误可视化和 policy 只读/编辑闭环。
-- 升级 sandbox：Docker / overlayfs。
-- 增加签名审计证明 attestation。
+- Stage 4 Guard dry-run / observe-only work 已完成 Issues #31-#39；Issue #50 记录最终 completion audit。
+- Guard 当前仍是 dry-run / observe-only：Enforcement is not implemented，没有 daemon/service，没有 OS-wide process monitoring，没有 file/network/Git monitoring expansion。
+- Post-Stage 4 planning 已拆分为独立 issue：#51 Slint desktop feasibility RFC、#52 Rust Core parity RFC、#53 Slint hello dashboard spike。
+- Slint 是 future feasibility，不是当前实现；Rust Core parity 是 future RFC，不是当前迁移；Electron 和 Python Core 仍是当前实现。
+- 不存在 v0.3.1 release；不修改 v0.3.0 release assets。

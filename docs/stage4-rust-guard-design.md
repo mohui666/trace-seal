@@ -2,15 +2,15 @@
 
 ## Status
 
-Design phase only. Not implemented in v0.3.0. This document is an RFC-level productization sketch, not an implementation commitment.
+Stage 4 dry-run / observe-only work is complete through Issue #39. Not implemented in v0.3.0 as a productized Guard. This document remains an RFC-level productization sketch, not an implementation commitment.
 
-The reviewable breakdown, contracts, milestones, and open decisions are tracked in [`stage4-rust-guard-rfc.md`](stage4-rust-guard-rfc.md).
+The reviewable breakdown, contracts, milestones, and open decisions are tracked in [`stage4-rust-guard-rfc.md`](stage4-rust-guard-rfc.md), [`stage4-issue-breakdown.md`](stage4-issue-breakdown.md), and the [Stage 4 Completion Report](../artifacts/stage4-completion-report.md).
 
-The M1 review disposition is recorded in the RFC's **RFC Review Notes**: schema and dry-run flow come first, while Rust prototypes and enforcement remain blocked by their required reviews.
+Issues #31-#39 completed schema, dry-run flow, local prototypes, import/dashboard metadata, policy dry-run, Windows smoke validation, and the enforcement experiment RFC. Enforcement remains future opt-in experiment work and is not implemented.
 
 ## Background
 
-TraceSeal v0.3.0 completed the Python Core and Desktop evidence pipeline. Stage 4 explores a Rust Guard for lower-level monitoring and stronger enforcement while preserving the existing Python Core contracts.
+TraceSeal v0.3.0 completed the Python Core and Desktop evidence pipeline. Stage 4 completed a dry-run / observe-only Guard path while preserving the existing Python Core contracts. Future lower-level monitoring or stronger enforcement requires separate accepted RFCs and is outside the completion audit.
 
 ## Goals
 
@@ -33,7 +33,7 @@ TraceSeal v0.3.0 completed the Python Core and Desktop evidence pipeline. Stage 
 ## Architecture sketch
 
 1. **Python Core** remains the reference implementation for event normalization, policy semantics, replay, explain, and dashboard-data.
-2. **Rust Guard daemon / sidecar** observes supported OS activity and exposes an explicit, versioned local interface.
+2. **Future Rust Guard sidecar** may observe reviewed local activity and expose an explicit, versioned local interface only after separate approval; Stage 4 added no daemon/service.
 3. **Event collector** normalizes Guard observations into the existing event schema where possible and assigns stable identity, ordering, and timestamps.
 4. **Policy decision interface** evaluates an event before enforcement when the OS and operation permit mediation; otherwise it records a post-observation decision.
 5. **Audit log writer** appends integrity-protected local records with explicit durability and rotation behavior.
@@ -110,13 +110,15 @@ The Guard must expose startup, degraded, dropped-event, policy-stale, log-write,
 
 ## Milestones
 
-1. Stage 4 design RFC.
-2. Rust prototype event emitter.
-3. Python Core bridge.
-4. Local-only process/file monitoring.
-5. Policy decision dry-run.
-6. Enforcement experiment.
-7. Desktop dashboard integration.
-8. Release candidate.
+1. Stage 4 design RFC: complete via Issue #31.
+2. Guard event schema contract: complete via Issue #32.
+3. Rust `guard.health` prototype event emitter: complete via Issue #33.
+4. `process.spawn` dry-run event: complete via Issue #34; no target command execution.
+5. Python Core bridge: complete via Issue #35.
+6. Dashboard metadata bridge: complete via Issue #36; no Electron UI change.
+7. Policy decision dry-run: complete via Issue #37; no enforcement.
+8. Windows smoke validation: complete via Issue #38.
+9. Enforcement experiment RFC: complete via Issue #39; future opt-in only.
+10. Stage 4 completion audit: tracked by Issue #50 and [Stage 4 Completion Report](../artifacts/stage4-completion-report.md).
 
-Each milestone requires separate review and acceptance criteria. This document does not authorize starting Rust implementation.
+Each future milestone requires separate review and acceptance criteria. This document does not authorize implementation, daemon/service behavior, OS-wide process monitoring, file/network/Git monitoring expansion, Slint migration, Rust Core parity implementation, installer/release workflow changes, a new tag, or a v0.3.1 release.

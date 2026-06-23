@@ -83,6 +83,7 @@ trace-seal/
 - [Stage 4 Rust Guard design](docs/stage4-rust-guard-design.md)（Stage 4 dry-run / observe-only 设计与边界）
 - [Stage 4 Rust Guard RFC](docs/stage4-rust-guard-rfc.md)（Stage 4 审查边界与里程碑）
 - [Stage 4 Enforcement Experiment RFC](docs/stage4-enforcement-experiment-rfc.md)（future opt-in enforcement 实验边界；未实现 enforcement）
+- [Slint Desktop Feasibility RFC](docs/slint-desktop-feasibility-rfc.md)（future native desktop feasibility；未添加 Slint runtime，未替换 Electron）
 - [Stage 4 completion report](artifacts/stage4-completion-report.md)（Issues #31-#39 完成状态与 Issue #50 audit）
 - [飞书项目文档](docs/feishu_project_doc.md)
 
@@ -92,7 +93,7 @@ Stage 4 is complete through Issue #39; the final completion audit is tracked by 
 
 Future work is tracked separately:
 
-- [Slint desktop feasibility RFC](https://github.com/mohui666/trace-seal/issues/51): evaluate whether a native Slint desktop path should be introduced after Stage 4.
+- [Slint desktop feasibility RFC](docs/slint-desktop-feasibility-rfc.md): evaluate whether a native Slint desktop path should be introduced after Stage 4. Tracked by [Issue #51](https://github.com/mohui666/trace-seal/issues/51).
 - [Rust Core parity RFC](https://github.com/mohui666/trace-seal/issues/52): evaluate which Python Core responsibilities can move to Rust while preserving behavior compatibility.
 - [Slint hello dashboard spike](https://github.com/mohui666/trace-seal/issues/53): possible future prototype only after the Slint feasibility RFC is accepted.
 

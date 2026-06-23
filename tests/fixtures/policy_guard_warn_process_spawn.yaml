@@ -1,0 +1,13 @@
+version: 1
+mode: warn
+rules:
+  - id: guard-spawn-warn-delete-demo
+    description: Warn on suspicious process.spawn dry-run intent
+    match:
+      event_type: process.spawn
+      command:
+        contains: bad_agent_delete.py
+    risk_level: high
+    action: warn
+    reason: Guard process.spawn would run a delete demo
+    suggested_policy: require_approval process.spawn bad_agent_delete.py

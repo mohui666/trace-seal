@@ -1,0 +1,13 @@
+version: 1
+mode: warn
+rules:
+  - id: guard-spawn-deny-rm-rf
+    description: Deny recursive delete spawn intent in dry-run metadata
+    match:
+      event_type: process.spawn
+      command:
+        contains: rm -rf
+    risk_level: critical
+    action: deny
+    reason: Guard process.spawn would request recursive delete
+    suggested_policy: deny process.spawn "rm -rf"

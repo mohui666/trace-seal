@@ -29,7 +29,7 @@ This document converts the approved Stage 4 RFC structure into reviewable work i
 | M4 | [Emit `process.spawn` dry-run events](https://github.com/mohui666/trace-seal/issues/34) | M2, M3 | [Local-only intent prototype implemented](guard-process-spawn-dry-run.md); no target execution or OS monitoring |
 | M5 | [Import Guard events into Python Core](https://github.com/mohui666/trace-seal/issues/35) | M2; fixtures from M3/M4 | [Optional local import implemented](guard-event-import.md); Python timeline remains separate |
 | M6 | [Expose Guard metadata in `dashboard-data`](https://github.com/mohui666/trace-seal/issues/36) | M2, M5 | [Additive Guard data contract implemented](dashboard-guard-metadata.md); no UI change |
-| M7 | [Integrate policy dry-run decisions for Guard events](https://github.com/mohui666/trace-seal/issues/37) | M2, M5 | Planned; not started |
+| M7 | [Integrate policy dry-run decisions for Guard events](https://github.com/mohui666/trace-seal/issues/37) | M2, M5 | [Dry-run sidecar implemented](guard-policy-dry-run.md); no enforcement |
 | M8 | [Windows VM smoke validation for Guard prototype](https://github.com/mohui666/trace-seal/issues/38) | M3–M7 | Blocked by MVP integration |
 | M9 | [Draft enforcement experiment RFC](https://github.com/mohui666/trace-seal/issues/39) | M1, M7, M8 | Blocked until observe/dry-run evidence exists |
 
@@ -371,6 +371,8 @@ Expose optional Guard metadata in `dashboard-data` while keeping existing dashbo
 
 ## M7 — Integrate policy dry-run decisions for Guard events
 
+**Implementation status:** Guard policy dry-run metadata is implemented for Issue #37. It evaluates imported `guard.health` and `process.spawn` events against the existing policy DSL, writes a non-enforcing sidecar, and exposes a dashboard-data summary. It does not execute target commands, enforce, block, start a daemon/service, or add OS-wide/file/network/Git monitoring.
+
 ### Title
 
 Integrate policy dry-run decisions for Guard events
@@ -383,9 +385,9 @@ Map Guard events into existing policy decision logic in dry-run mode.
 
 - Reuse `policy/default_policy.json`.
 - Reuse the workspace `policy.yaml` DSL where current fields map safely.
-- Map supported process, file, and network fields into existing decision inputs.
-- Emit `policy.decision` metadata with rule, reason, action, mode, and `enforced: false`.
-- Expose dry-run decisions through replay, explain, and `dashboard-data`.
+- Map supported process intent fields into existing decision inputs.
+- Emit Guard policy sidecar metadata with rule, reason, action, dry-run mode, and `enforcement_applied: false`.
+- Expose dry-run decisions through `dashboard-data`; replay and explain remain compatible and do not crash.
 - Preserve current domain policy, Git classification, and cascade semantics.
 
 ### Non-goals
@@ -398,11 +400,11 @@ Map Guard events into existing policy decision logic in dry-run mode.
 
 ### Acceptance criteria
 
-- [ ] Supported Guard events receive deterministic policy decisions.
-- [ ] Dry-run decisions appear in replay, explain, and `dashboard-data`.
-- [ ] Every decision clearly states that it was not enforced.
-- [ ] Existing policy behavior remains unchanged for Python-only events/runs.
-- [ ] Missing or invalid YAML falls back safely to the current JSON behavior.
+- [x] Supported Guard events receive deterministic policy decisions.
+- [x] Dry-run decisions appear in `dashboard-data`; replay and explain compatibility is preserved.
+- [x] Every decision clearly states that it was not enforced.
+- [x] Existing policy behavior remains unchanged for Python-only events/runs.
+- [x] Missing or invalid YAML is reported clearly or follows the existing discovery fallback when no explicit policy is supplied.
 
 ### Validation
 

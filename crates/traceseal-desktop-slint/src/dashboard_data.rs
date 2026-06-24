@@ -1,7 +1,11 @@
-use std::process::Command;
+use std::{fs, path::PathBuf, process::Command};
 
 const PYTHON_EXECUTABLE: &str = "python";
 const MAX_DIAGNOSTIC_LEN: usize = 240;
+const DEMO_FIXTURE_DIR: &str = "../../tests/fixtures/dashboard-data";
+const DEMO_LATEST_FIXTURE: &str = "latest.json";
+const DEMO_LIST_FIXTURE: &str = "list.json";
+const DEMO_POLICY_FIXTURE: &str = "policy.json";
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum DashboardCommand {
@@ -29,6 +33,7 @@ pub enum BridgeError {
         stdout: String,
     },
     InvalidUtf8(String),
+    FixtureRead(String),
 }
 
 impl BridgeError {
@@ -50,8 +55,18 @@ impl BridgeError {
             BridgeError::InvalidUtf8(message) => {
                 format!("dashboard-data command returned invalid UTF-8: {message}")
             }
+            BridgeError::FixtureRead(message) => {
+                format!("demo fixture could not be read: {message}")
+            }
         }
     }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct DemoFixtureBundle {
+    pub latest_json: String,
+    pub list_json: String,
+    pub policy_json: String,
 }
 
 pub fn command_args(command: DashboardCommand) -> &'static [&'static str] {
@@ -78,6 +93,28 @@ pub fn run_dashboard_command(command: DashboardCommand) -> Result<String, Bridge
 
     String::from_utf8(output.stdout)
         .map_err(|error| BridgeError::InvalidUtf8(sanitize_diagnostic(&error.to_string())))
+}
+
+pub fn read_demo_fixture_bundle() -> Result<DemoFixtureBundle, BridgeError> {
+    Ok(DemoFixtureBundle {
+        latest_json: read_demo_fixture(DEMO_LATEST_FIXTURE)?,
+        list_json: read_demo_fixture(DEMO_LIST_FIXTURE)?,
+        policy_json: read_demo_fixture(DEMO_POLICY_FIXTURE)?,
+    })
+}
+
+fn demo_fixture_path(name: &str) -> PathBuf {
+    PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+        .join(DEMO_FIXTURE_DIR)
+        .join(name)
+}
+
+fn read_demo_fixture(name: &str) -> Result<String, BridgeError> {
+    fs::read_to_string(demo_fixture_path(name)).map_err(|error| {
+        BridgeError::FixtureRead(sanitize_diagnostic(&format!(
+            "tests/fixtures/dashboard-data/{name}: {error}"
+        )))
+    })
 }
 
 fn sanitize_diagnostic(message: &str) -> String {

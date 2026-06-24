@@ -22,6 +22,31 @@ pub struct RunHistoryRow {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
+pub struct PolicyRuleRow {
+    pub rule_id: String,
+    pub decision: String,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct PolicyDetail {
+    pub mode: String,
+    pub source: String,
+    pub rule_count: i32,
+    pub rules: Vec<PolicyRuleRow>,
+}
+
+impl PolicyDetail {
+    fn unavailable() -> Self {
+        Self {
+            mode: UNAVAILABLE.to_string(),
+            source: UNAVAILABLE.to_string(),
+            rule_count: 0,
+            rules: Vec::new(),
+        }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct DashboardSummary {
     pub data_source: String,
     pub latest_run_id: String,
@@ -36,6 +61,7 @@ pub struct DashboardSummary {
     pub run_policy_mode: String,
     pub risk_summary: String,
     pub run_history: Vec<RunHistoryRow>,
+    pub policy_detail: PolicyDetail,
     pub bridge_status: BridgeStatusKind,
     pub last_error: String,
 }
@@ -104,6 +130,7 @@ impl DashboardSummary {
             run_policy_mode: "mock / read-only".to_string(),
             risk_summary: UNAVAILABLE.to_string(),
             run_history: Vec::new(),
+            policy_detail: PolicyDetail::unavailable(),
             bridge_status: BridgeStatusKind::MockFallback,
             last_error: "none".to_string(),
         }
@@ -140,6 +167,7 @@ impl DashboardSummary {
             run_policy_mode: UNAVAILABLE.to_string(),
             risk_summary: UNAVAILABLE.to_string(),
             run_history: Vec::new(),
+            policy_detail: PolicyDetail::unavailable(),
             bridge_status: BridgeStatusKind::NoRunsFound,
             last_error: clean_text(&message.into()),
         }
@@ -199,6 +227,7 @@ pub fn parse_latest_summary(json: &str) -> Result<DashboardSummary, SummaryError
             .unwrap_or_else(unavailable),
         risk_summary: risk_summary(payload.get("risks")),
         run_history: Vec::new(),
+        policy_detail: PolicyDetail::unavailable(),
         bridge_status: BridgeStatusKind::Loaded,
         last_error: "none".to_string(),
     })
@@ -241,6 +270,7 @@ pub fn parse_run_list_summary(json: &str) -> Result<DashboardSummary, SummaryErr
         run_policy_mode: UNAVAILABLE.to_string(),
         risk_summary: UNAVAILABLE.to_string(),
         run_history,
+        policy_detail: PolicyDetail::unavailable(),
         bridge_status: BridgeStatusKind::Loaded,
         last_error: "none".to_string(),
     })
@@ -261,13 +291,14 @@ pub fn parse_policy_summary(json: &str) -> Result<DashboardSummary, SummaryError
         return Err(SummaryError { message: error });
     }
 
-    let rule_count = payload
-        .get("rules")
-        .and_then(Value::as_array)
-        .map(|rules| rules.len())
-        .unwrap_or(0);
+    let policy_detail = policy_detail(&payload);
+    let rule_count = policy_detail.rule_count.max(0) as usize;
     let policy_summary = policy_summary(&payload, rule_count);
-    let run_policy_mode = policy_mode(&payload).unwrap_or_else(unavailable);
+    let run_policy_mode = if policy_detail.mode == UNAVAILABLE {
+        unavailable()
+    } else {
+        policy_detail.mode.clone()
+    };
 
     Ok(DashboardSummary {
         data_source: "dashboard-data policy".to_string(),
@@ -283,6 +314,7 @@ pub fn parse_policy_summary(json: &str) -> Result<DashboardSummary, SummaryError
         run_policy_mode,
         risk_summary: UNAVAILABLE.to_string(),
         run_history: Vec::new(),
+        policy_detail,
         bridge_status: BridgeStatusKind::Loaded,
         last_error: "none".to_string(),
     })
@@ -314,6 +346,7 @@ pub fn parse_demo_fixture_summary(
     }
 
     latest.run_history = list.run_history;
+    latest.policy_detail = policy.policy_detail;
     latest.data_source = "demo fixture dashboard-data latest/list/policy".to_string();
     latest.policy_summary = policy.policy_summary;
     latest.bridge_status = BridgeStatusKind::DemoFixture;
@@ -336,6 +369,39 @@ fn run_history_row(value: &Value) -> RunHistoryRow {
         started_at: string_field(value, &["started_at"]).unwrap_or_else(unavailable),
         event_count: int_field(value, &["event_count"]).unwrap_or(0),
         risk_count: int_field(value, &["high_risk_count", "risk_count"]).unwrap_or(0),
+    }
+}
+
+fn policy_detail(payload: &Value) -> PolicyDetail {
+    let rules = policy_rule_rows_from_payload(payload);
+    let rule_count = payload
+        .get("policy")
+        .and_then(|policy| int_field(policy, &["rule_count"]))
+        .or_else(|| int_field(payload, &["rule_count"]))
+        .unwrap_or(rules.len().clamp(0, i32::MAX as usize) as i32);
+
+    PolicyDetail {
+        mode: policy_mode(payload).unwrap_or_else(unavailable),
+        source: policy_source_detail(payload).unwrap_or_else(unavailable),
+        rule_count,
+        rules,
+    }
+}
+
+fn policy_rule_rows_from_payload(payload: &Value) -> Vec<PolicyRuleRow> {
+    let Some(rules) = payload.get("rules").and_then(Value::as_array) else {
+        return Vec::new();
+    };
+
+    rules.iter().map(policy_rule_row).collect()
+}
+
+fn policy_rule_row(value: &Value) -> PolicyRuleRow {
+    PolicyRuleRow {
+        rule_id: string_field(value, &["id", "rule_id"])
+            .unwrap_or_else(|| "unknown rule".to_string()),
+        decision: string_field(value, &["decision", "action"])
+            .unwrap_or_else(|| "unknown".to_string()),
     }
 }
 
@@ -366,11 +432,16 @@ fn policy_source_summary(value: Option<&Value>) -> Option<String> {
     })
 }
 
+fn policy_source_detail(payload: &Value) -> Option<String> {
+    payload
+        .get("policy")
+        .and_then(|policy| string_field(policy, &["source"]))
+        .or_else(|| policy_source_summary(payload.get("policy_source")))
+}
+
 fn policy_summary(payload: &Value, rule_count: usize) -> String {
     if let Some(mode) = policy_mode(payload) {
-        let source = payload
-            .get("policy")
-            .and_then(|policy| string_field(policy, &["source"]));
+        let source = policy_source_detail(payload);
         return match source {
             Some(source) if !source.is_empty() => format!("{mode} / {rule_count} rules / {source}"),
             _ => format!("{mode} / {rule_count} rules"),

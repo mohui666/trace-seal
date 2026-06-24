@@ -15,7 +15,7 @@ use dashboard_data::{
 use summary::{
     parse_demo_fixture_summary, parse_latest_summary, parse_policy_summary, parse_run_history_rows,
     parse_run_list_summary, BridgeStatusKind, DashboardLoadState, DashboardSummary,
-    RunHistoryRow as SummaryRunHistoryRow,
+    PolicyRuleRow as SummaryPolicyRuleRow, RunHistoryRow as SummaryRunHistoryRow,
 };
 
 slint::include_modules!();
@@ -130,6 +130,25 @@ fn run_history_model(rows: &[SummaryRunHistoryRow]) -> slint::ModelRc<RunHistory
     ))
 }
 
+fn policy_rules_model(rows: &[SummaryPolicyRuleRow]) -> slint::ModelRc<PolicyRuleRow> {
+    slint::ModelRc::new(slint::VecModel::from(
+        rows.iter()
+            .map(|row| PolicyRuleRow {
+                rule_id: row.rule_id.clone().into(),
+                decision: row.decision.clone().into(),
+            })
+            .collect::<Vec<_>>(),
+    ))
+}
+
+fn apply_policy_detail(ui: &AppWindow, summary: &DashboardSummary) {
+    ui.set_policy_detail_mode(summary.policy_detail.mode.clone().into());
+    ui.set_policy_detail_source(summary.policy_detail.source.clone().into());
+    ui.set_policy_detail_rule_count(summary.policy_detail.rule_count);
+    ui.set_policy_rules_empty(summary.policy_detail.rules.is_empty());
+    ui.set_policy_rules(policy_rules_model(&summary.policy_detail.rules));
+}
+
 fn apply_summary(ui: &AppWindow, summary: &DashboardSummary, language: Language) {
     ui.set_is_demo_data(summary.bridge_status == BridgeStatusKind::DemoFixture);
     ui.set_data_source(summary.data_source.clone().into());
@@ -146,6 +165,7 @@ fn apply_summary(ui: &AppWindow, summary: &DashboardSummary, language: Language)
     ui.set_risk_summary(summary.risk_summary.clone().into());
     ui.set_run_history_empty(summary.run_history.is_empty());
     ui.set_run_history(run_history_model(&summary.run_history));
+    apply_policy_detail(ui, summary);
     ui.set_bridge_status(status_text(language, summary.bridge_status).into());
     ui.set_last_error(summary.last_error.clone().into());
 }
@@ -156,6 +176,7 @@ fn apply_policy_summary(ui: &AppWindow, summary: &DashboardSummary, language: La
     }
     ui.set_data_source(summary.data_source.clone().into());
     ui.set_policy_mode(summary.policy_summary.clone().into());
+    apply_policy_detail(ui, summary);
     ui.set_bridge_status(status_text(language, summary.bridge_status).into());
     ui.set_last_error(summary.last_error.clone().into());
 }
@@ -227,6 +248,14 @@ fn apply_language(ui: &AppWindow, language: Language, status: BridgeStatusKind) 
             ui.set_run_history_events_label("Events".into());
             ui.set_run_history_risks_label("Risks".into());
             ui.set_run_history_started_label("Started".into());
+            ui.set_policy_detail_title("Policy detail".into());
+            ui.set_policy_detail_mode_label("Policy mode".into());
+            ui.set_policy_detail_source_label("Policy source".into());
+            ui.set_policy_detail_rule_count_label("Rule count".into());
+            ui.set_policy_rules_title("Rules".into());
+            ui.set_policy_rule_id_label("Rules".into());
+            ui.set_policy_rule_decision_label("Decision".into());
+            ui.set_policy_rules_empty_text("No policy rules found".into());
             ui.set_detail_run_id_label("Run ID".into());
             ui.set_started_at_label("Started".into());
             ui.set_finished_at_label("Finished".into());
@@ -264,6 +293,14 @@ fn apply_language(ui: &AppWindow, language: Language, status: BridgeStatusKind) 
             ui.set_run_history_events_label("事件".into());
             ui.set_run_history_risks_label("风险".into());
             ui.set_run_history_started_label("开始时间".into());
+            ui.set_policy_detail_title("策略详情".into());
+            ui.set_policy_detail_mode_label("策略模式".into());
+            ui.set_policy_detail_source_label("策略来源".into());
+            ui.set_policy_detail_rule_count_label("规则数量".into());
+            ui.set_policy_rules_title("规则".into());
+            ui.set_policy_rule_id_label("规则".into());
+            ui.set_policy_rule_decision_label("决策".into());
+            ui.set_policy_rules_empty_text("未找到策略规则".into());
             ui.set_detail_run_id_label("运行 ID".into());
             ui.set_started_at_label("开始时间".into());
             ui.set_finished_at_label("结束时间".into());
@@ -300,7 +337,7 @@ fn latest_summary_from_bridge() -> DashboardSummary {
     if summary.bridge_status == BridgeStatusKind::CommandFailed {
         summary
     } else {
-        attach_run_history_from_bridge(summary)
+        attach_dashboard_supplements_from_bridge(summary)
     }
 }
 
@@ -337,6 +374,43 @@ fn attach_run_history_from_bridge(mut summary: DashboardSummary) -> DashboardSum
             summary.last_error = error;
             summary
         }
+    }
+}
+
+fn policy_detail_from_bridge() -> Result<DashboardSummary, String> {
+    match run_dashboard_command(DashboardCommand::Policy) {
+        Ok(stdout) => parse_policy_summary(&stdout).map_err(|error| error.summary()),
+        Err(BridgeError::Failed { stdout, .. }) if !stdout.is_empty() => {
+            parse_policy_summary(&stdout).map_err(|error| error.summary())
+        }
+        Err(error) => Err(error.summary()),
+    }
+}
+
+fn attach_policy_detail_from_bridge(mut summary: DashboardSummary) -> DashboardSummary {
+    match policy_detail_from_bridge() {
+        Ok(policy) => {
+            summary.policy_summary = policy.policy_summary;
+            summary.policy_detail = policy.policy_detail;
+            if summary.run_policy_mode == "Unavailable" && policy.run_policy_mode != "Unavailable" {
+                summary.run_policy_mode = policy.run_policy_mode;
+            }
+            summary
+        }
+        Err(error) => {
+            summary.bridge_status = BridgeStatusKind::CommandFailed;
+            summary.last_error = error;
+            summary
+        }
+    }
+}
+
+fn attach_dashboard_supplements_from_bridge(summary: DashboardSummary) -> DashboardSummary {
+    let summary = attach_run_history_from_bridge(summary);
+    if summary.bridge_status == BridgeStatusKind::CommandFailed {
+        summary
+    } else {
+        attach_policy_detail_from_bridge(summary)
     }
 }
 

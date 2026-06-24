@@ -8,6 +8,11 @@ export struct RunHistoryRow {
     risk-count: int,
 }
 
+export struct PolicyRuleRow {
+    rule-id: string,
+    decision: string,
+}
+
 component MetricTile inherits Rectangle {
     in property <string> label-text;
     in property <string> value-text;
@@ -156,6 +161,72 @@ component HistoryDataRow inherits Rectangle {
     }
 }
 
+component PolicyRuleHeaderRow inherits Rectangle {
+    in property <string> rule-id-label;
+    in property <string> decision-label;
+
+    height: 30px;
+    background: #16202e;
+    border-width: 1px;
+    border-color: #2a3443;
+    border-radius: 6px;
+
+    HorizontalBox {
+        padding-left: 10px;
+        padding-right: 10px;
+        spacing: 10px;
+
+        Text {
+            text: root.rule-id-label;
+            color: #8fb1c9;
+            font-size: 12px;
+            font-weight: 700;
+            width: 300px;
+        }
+
+        Text {
+            text: root.decision-label;
+            color: #8fb1c9;
+            font-size: 12px;
+            font-weight: 700;
+            width: 160px;
+        }
+    }
+}
+
+component PolicyRuleDataRow inherits Rectangle {
+    in property <string> rule-id;
+    in property <string> decision;
+
+    height: 38px;
+    background: #101b26;
+    border-width: 1px;
+    border-color: #253241;
+    border-radius: 6px;
+
+    HorizontalBox {
+        padding-left: 10px;
+        padding-right: 10px;
+        spacing: 10px;
+
+        Text {
+            text: root.rule-id;
+            color: #f4f7fb;
+            font-size: 13px;
+            width: 300px;
+            overflow: elide;
+        }
+
+        Text {
+            text: root.decision;
+            color: #f4f7fb;
+            font-size: 13px;
+            width: 160px;
+            overflow: elide;
+        }
+    }
+}
+
 component SectionLabel inherits Text {
     color: #8fb1c9;
     font-size: 12px;
@@ -229,6 +300,19 @@ export component AppWindow inherits Window {
     in property <string> workspace: "Unavailable";
     in property <string> run-policy-mode: "mock / read-only";
     in property <string> risk-summary: "Unavailable";
+    in property <string> policy-detail-title: "Policy detail / 策略详情";
+    in property <string> policy-detail-mode-label: "Policy mode";
+    in property <string> policy-detail-source-label: "Policy source";
+    in property <string> policy-detail-rule-count-label: "Rule count";
+    in property <string> policy-detail-mode: "Unavailable";
+    in property <string> policy-detail-source: "Unavailable";
+    in property <int> policy-detail-rule-count: 0;
+    in property <string> policy-rules-title: "Rules";
+    in property <string> policy-rule-id-label: "Rules";
+    in property <string> policy-rule-decision-label: "Decision";
+    in property <string> policy-rules-empty-text: "No policy rules found / 未找到策略规则";
+    in property <[PolicyRuleRow]> policy-rules: [];
+    in property <bool> policy-rules-empty: true;
     in property <string> last-error-label: "Last error";
     in property <string> last-error: "none";
     in property <string> boundary-text: "Read-only spike: Electron remains the default desktop. Uses only fixed Python Core dashboard-data commands. No traceseal run, target commands, workspace writes, policy edits, packaging changes, release changes, or Stage 5 promotion.";
@@ -608,6 +692,81 @@ export component AppWindow inherits Window {
                     MetricTile {
                         label-text: root.last-error-label;
                         value-text: root.last-error;
+                    }
+                }
+
+                // Policy Detail Section
+                SectionLabel {
+                    text: "POLICY DETAIL / 策略详情";
+                }
+
+                Rectangle {
+                    height: 198px + ((root.policy-rules-empty ? 1 : root.policy-rules.length) * 42px);
+                    background: #121d29;
+                    border-width: 1px;
+                    border-color: #2a3443;
+                    border-radius: 8px;
+
+                    VerticalBox {
+                        padding: 14px;
+                        spacing: 8px;
+
+                        Text {
+                            text: root.policy-detail-title;
+                            color: #f4f7fb;
+                            font-size: 18px;
+                            font-weight: 700;
+                        }
+
+                        DetailRow {
+                            label-text: root.policy-detail-mode-label;
+                            value-text: root.policy-detail-mode;
+                        }
+
+                        DetailRow {
+                            label-text: root.policy-detail-source-label;
+                            value-text: root.policy-detail-source;
+                        }
+
+                        DetailRow {
+                            label-text: root.policy-detail-rule-count-label;
+                            value-text: "\{root.policy-detail-rule-count}";
+                        }
+
+                        Text {
+                            text: root.policy-rules-title;
+                            color: #8fb1c9;
+                            font-size: 13px;
+                            font-weight: 700;
+                        }
+
+                        PolicyRuleHeaderRow {
+                            rule-id-label: root.policy-rule-id-label;
+                            decision-label: root.policy-rule-decision-label;
+                        }
+
+                        Rectangle {
+                            visible: root.policy-rules-empty;
+                            height: 38px;
+                            background: #101b26;
+                            border-width: 1px;
+                            border-color: #253241;
+                            border-radius: 6px;
+
+                            Text {
+                                x: 10px;
+                                y: 10px;
+                                text: root.policy-rules-empty-text;
+                                color: #8fb1c9;
+                                font-size: 13px;
+                            }
+                        }
+
+                        for rule in root.policy-rules : PolicyRuleDataRow {
+                            visible: !root.policy-rules-empty;
+                            rule-id: rule.rule-id;
+                            decision: rule.decision;
+                        }
                     }
                 }
             }

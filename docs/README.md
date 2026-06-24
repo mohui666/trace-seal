@@ -37,6 +37,7 @@ This page is a navigation index only. / 本页只做导航索引，不重复 REA
 
 ## Slint experimental documents / Slint 实验文档
 
+- Current status: Slint remains experimental-only and is not packaged as a release exe; Electron remains the default desktop implementation. / 当前状态：Slint 仍是实验用途，尚未作为 release exe 打包；Electron 仍是默认桌面实现。
 - [Slint desktop feasibility RFC / Slint 桌面可行性 RFC](slint-desktop-feasibility-rfc.md)
 - [Slint desktop spike README / Slint 桌面 spike README](../crates/traceseal-desktop-slint/README.md)
 - Slint manual smoke test: [`docs/slint-manual-smoke-test.md`](slint-manual-smoke-test.md). / Slint 手动 smoke test：[`docs/slint-manual-smoke-test.md`](slint-manual-smoke-test.md)。

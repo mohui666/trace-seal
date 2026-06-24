@@ -58,6 +58,8 @@ Slint remains experimental-only. The Slint spike is not packaged or released, an
 
 Slint 仍仅为实验轨道。Slint spike 未打包、未发布，也不替代 Electron。
 
+Current Slint experimental status is documented in [Project status](docs/project-status.md) and the [manual smoke test](docs/slint-manual-smoke-test.md). / 当前 Slint 实验状态见 [项目状态](docs/project-status.md) 与 [手动 smoke test](docs/slint-manual-smoke-test.md)。
+
 ## Safety boundaries / 安全边界
 
 TraceSeal is an evidence and analysis prototype, not an operating-system security product.

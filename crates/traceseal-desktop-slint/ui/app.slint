@@ -101,6 +101,12 @@ export component AppWindow inherits Window {
     in property <string> load-policy-text: "Load policy";
     in property <string> load-run-list-text: "Load run list summary";
     in property <string> toggle-language-text: "English / 中文";
+    in property <bool> is-loading: true;
+    in property <bool> has-error: false;
+    in property <bool> has-data: false;
+    in property <string> loading-message: "Loading dashboard data...";
+    in property <string> error-message: "";
+    in property <string> status-message: "Loading dashboard data...";
 
     callback toggle-language();
     callback load-latest();
@@ -190,6 +196,7 @@ export component AppWindow inherits Window {
                 text: root.load-latest-text;
                 width: 148px;
                 height: 36px;
+                enabled: !root.is-loading;
                 clicked => {
                     root.load-latest();
                 }
@@ -199,6 +206,7 @@ export component AppWindow inherits Window {
                 text: root.load-run-list-text;
                 width: 196px;
                 height: 36px;
+                enabled: !root.is-loading;
                 clicked => {
                     root.load-run-list();
                 }
@@ -208,9 +216,31 @@ export component AppWindow inherits Window {
                 text: root.load-policy-text;
                 width: 148px;
                 height: 36px;
+                enabled: !root.is-loading;
                 clicked => {
                     root.load-policy();
                 }
+            }
+        }
+
+        // Loading / loaded / error status
+        Rectangle {
+            height: 44px;
+            visible: root.is-loading || root.has-error || root.has-data;
+            background: root.has-error ? #3a1f24 : (root.is-loading ? #182b3a : #17311f);
+            border-width: 1px;
+            border-color: root.has-error ? #8d3f4c : (root.is-loading ? #315b78 : #2f7045);
+            border-radius: 8px;
+
+            Text {
+                x: 14px;
+                y: 12px;
+                width: parent.width - 28px;
+                text: root.is-loading ? root.loading-message : (root.has-error ? root.error-message : root.status-message);
+                color: #f4f7fb;
+                font-size: 14px;
+                font-weight: 600;
+                wrap: word-wrap;
             }
         }
 

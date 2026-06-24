@@ -1,4 +1,10 @@
-use std::{cell::Cell, rc::Rc};
+use std::{
+    sync::{
+        atomic::{AtomicU64, AtomicU8, Ordering},
+        Arc,
+    },
+    thread,
+};
 
 mod dashboard_data;
 mod summary;
@@ -6,7 +12,7 @@ mod summary;
 use dashboard_data::{run_dashboard_command, BridgeError, DashboardCommand};
 use summary::{
     parse_latest_summary, parse_policy_summary, parse_run_list_summary, BridgeStatusKind,
-    DashboardSummary,
+    DashboardLoadState, DashboardSummary,
 };
 
 slint::include_modules!();
@@ -15,6 +21,45 @@ slint::include_modules!();
 enum Language {
     English,
     Chinese,
+}
+
+#[derive(Clone, Copy)]
+enum DashboardLoadKind {
+    Latest,
+    RunList,
+    Policy,
+}
+
+fn language_index(language: Language) -> u8 {
+    match language {
+        Language::English => 0,
+        Language::Chinese => 1,
+    }
+}
+
+fn language_from_index(index: u8) -> Language {
+    match index {
+        1 => Language::Chinese,
+        _ => Language::English,
+    }
+}
+
+fn status_index(status: BridgeStatusKind) -> u8 {
+    match status {
+        BridgeStatusKind::MockFallback => 0,
+        BridgeStatusKind::Loaded => 1,
+        BridgeStatusKind::CommandFailed => 2,
+        BridgeStatusKind::NoRunsFound => 3,
+    }
+}
+
+fn status_from_index(index: u8) -> BridgeStatusKind {
+    match index {
+        1 => BridgeStatusKind::Loaded,
+        2 => BridgeStatusKind::CommandFailed,
+        3 => BridgeStatusKind::NoRunsFound,
+        _ => BridgeStatusKind::MockFallback,
+    }
 }
 
 fn status_text(language: Language, status: BridgeStatusKind) -> &'static str {
@@ -27,6 +72,35 @@ fn status_text(language: Language, status: BridgeStatusKind) -> &'static str {
         (Language::Chinese, BridgeStatusKind::Loaded) => "已从 dashboard-data 加载",
         (Language::Chinese, BridgeStatusKind::CommandFailed) => "命令失败",
         (Language::Chinese, BridgeStatusKind::NoRunsFound) => "未找到运行记录",
+    }
+}
+
+fn loading_message(language: Language) -> &'static str {
+    match language {
+        Language::English => "Loading dashboard data...",
+        Language::Chinese => "正在加载 dashboard 数据...",
+    }
+}
+
+fn loaded_message(language: Language) -> &'static str {
+    match language {
+        Language::English => "Dashboard data loaded",
+        Language::Chinese => "dashboard 数据已加载",
+    }
+}
+
+fn failed_message(language: Language) -> &'static str {
+    match language {
+        Language::English => "Failed to load dashboard data",
+        Language::Chinese => "dashboard 数据加载失败",
+    }
+}
+
+fn error_message(language: Language, detail: &str) -> String {
+    if detail.is_empty() || detail == "none" {
+        failed_message(language).to_string()
+    } else {
+        format!("{}: {detail}", failed_message(language))
     }
 }
 
@@ -54,6 +128,52 @@ fn apply_policy_summary(ui: &AppWindow, summary: &DashboardSummary, language: La
     ui.set_last_error(summary.last_error.clone().into());
 }
 
+fn apply_load_state(
+    ui: &AppWindow,
+    state: &DashboardLoadState,
+    language: Language,
+    status: BridgeStatusKind,
+) {
+    ui.set_is_loading(state.is_loading);
+    ui.set_has_error(state.has_error);
+    ui.set_has_data(state.has_data);
+    ui.set_loading_message(state.loading_message.clone().into());
+    ui.set_error_message(state.error_message.clone().into());
+    ui.set_status_message(state.status_message.clone().into());
+
+    if state.is_loading {
+        ui.set_bridge_status(state.status_message.clone().into());
+    } else {
+        ui.set_bridge_status(status_text(language, status).into());
+    }
+}
+
+fn apply_localized_load_state(ui: &AppWindow, language: Language, status: BridgeStatusKind) {
+    if ui.get_is_loading() {
+        apply_load_state(
+            ui,
+            &DashboardLoadState::loading(loading_message(language)),
+            language,
+            status,
+        );
+    } else if ui.get_has_error() {
+        let detail = ui.get_last_error().to_string();
+        apply_load_state(
+            ui,
+            &DashboardLoadState::error(error_message(language, &detail)),
+            language,
+            BridgeStatusKind::CommandFailed,
+        );
+    } else if ui.get_has_data() {
+        apply_load_state(
+            ui,
+            &DashboardLoadState::loaded(loaded_message(language)),
+            language,
+            status,
+        );
+    }
+}
+
 fn apply_language(ui: &AppWindow, language: Language, status: BridgeStatusKind) {
     match language {
         Language::English => {
@@ -79,7 +199,7 @@ fn apply_language(ui: &AppWindow, language: Language, status: BridgeStatusKind) 
             ui.set_boundary_text(
                 "Read-only spike: Electron remains default. Uses only fixed Python Core dashboard-data commands. No traceseal run, target commands, workspace writes, policy edits, packaging changes, release changes, or Stage 5 promotion.".into(),
             );
-            ui.set_load_latest_text("Load latest".into());
+            ui.set_load_latest_text("Refresh".into());
             ui.set_load_policy_text("Load policy".into());
             ui.set_load_run_list_text("Load run list summary".into());
             ui.set_toggle_language_text("中文".into());
@@ -107,7 +227,7 @@ fn apply_language(ui: &AppWindow, language: Language, status: BridgeStatusKind) 
             ui.set_boundary_text(
                 "只读实验：Electron 仍是默认桌面实现。仅使用固定 Python Core dashboard-data 命令。不调用 traceseal run、不执行目标命令、不写入 workspace、不编辑 policy、不修改打包或 release、不提升为 Stage 5。".into(),
             );
-            ui.set_load_latest_text("加载最新运行".into());
+            ui.set_load_latest_text("刷新".into());
             ui.set_load_policy_text("加载策略".into());
             ui.set_load_run_list_text("加载运行列表摘要".into());
             ui.set_toggle_language_text("English".into());
@@ -152,15 +272,94 @@ fn policy_summary_from_bridge() -> DashboardSummary {
     }
 }
 
+fn summary_from_bridge(kind: DashboardLoadKind) -> DashboardSummary {
+    match kind {
+        DashboardLoadKind::Latest => latest_summary_from_bridge(),
+        DashboardLoadKind::RunList => run_list_summary_from_bridge(),
+        DashboardLoadKind::Policy => policy_summary_from_bridge(),
+    }
+}
+
+fn start_dashboard_load(
+    ui_weak: slint::Weak<AppWindow>,
+    kind: DashboardLoadKind,
+    language: Arc<AtomicU8>,
+    bridge_status: Arc<AtomicU8>,
+    load_generation: Arc<AtomicU64>,
+) {
+    let load_id = load_generation.fetch_add(1, Ordering::AcqRel) + 1;
+    let current_language = language_from_index(language.load(Ordering::Acquire));
+    let current_status = status_from_index(bridge_status.load(Ordering::Acquire));
+
+    if let Some(ui) = ui_weak.upgrade() {
+        apply_load_state(
+            &ui,
+            &DashboardLoadState::loading(loading_message(current_language)),
+            current_language,
+            current_status,
+        );
+    }
+
+    thread::spawn(move || {
+        let summary = summary_from_bridge(kind);
+        let _ = slint::invoke_from_event_loop(move || {
+            if load_generation.load(Ordering::Acquire) != load_id {
+                return;
+            }
+
+            let Some(ui) = ui_weak.upgrade() else {
+                return;
+            };
+
+            let current_language = language_from_index(language.load(Ordering::Acquire));
+            let status = summary.bridge_status;
+            bridge_status.store(status_index(status), Ordering::Release);
+
+            match kind {
+                DashboardLoadKind::Policy => apply_policy_summary(&ui, &summary, current_language),
+                DashboardLoadKind::Latest | DashboardLoadKind::RunList => {
+                    apply_summary(&ui, &summary, current_language)
+                }
+            }
+
+            if status == BridgeStatusKind::CommandFailed {
+                apply_load_state(
+                    &ui,
+                    &DashboardLoadState::error(error_message(
+                        current_language,
+                        &summary.last_error,
+                    )),
+                    current_language,
+                    BridgeStatusKind::CommandFailed,
+                );
+            } else {
+                apply_load_state(
+                    &ui,
+                    &DashboardLoadState::loaded(loaded_message(current_language)),
+                    current_language,
+                    status,
+                );
+            }
+        });
+    });
+}
+
 fn main() -> Result<(), slint::PlatformError> {
     let ui = AppWindow::new()?;
 
     let mock_summary = DashboardSummary::mock();
-    let current_language = Rc::new(Cell::new(Language::English));
-    let bridge_status = Rc::new(Cell::new(mock_summary.bridge_status));
+    let current_language = Arc::new(AtomicU8::new(language_index(Language::English)));
+    let bridge_status = Arc::new(AtomicU8::new(status_index(mock_summary.bridge_status)));
+    let load_generation = Arc::new(AtomicU64::new(0));
 
     apply_summary(&ui, &mock_summary, Language::English);
     apply_language(&ui, Language::English, mock_summary.bridge_status);
+    apply_load_state(
+        &ui,
+        &DashboardLoadState::loading(loading_message(Language::English)),
+        Language::English,
+        mock_summary.bridge_status,
+    );
 
     let ui_weak = ui.as_weak();
     let callback_language = current_language.clone();
@@ -168,48 +367,67 @@ fn main() -> Result<(), slint::PlatformError> {
 
     ui.on_toggle_language(move || {
         if let Some(ui) = ui_weak.upgrade() {
-            let next_language = match callback_language.get() {
+            let current_language = language_from_index(callback_language.load(Ordering::Acquire));
+            let next_language = match current_language {
                 Language::English => Language::Chinese,
                 Language::Chinese => Language::English,
             };
-            callback_language.set(next_language);
-            apply_language(&ui, next_language, callback_status.get());
+            callback_language.store(language_index(next_language), Ordering::Release);
+            let status = status_from_index(callback_status.load(Ordering::Acquire));
+            apply_language(&ui, next_language, status);
+            apply_localized_load_state(&ui, next_language, status);
         }
     });
 
     let ui_weak = ui.as_weak();
     let callback_language = current_language.clone();
     let callback_status = bridge_status.clone();
+    let callback_generation = load_generation.clone();
     ui.on_load_latest(move || {
-        if let Some(ui) = ui_weak.upgrade() {
-            // Spike-only synchronous load: enough for fixed read-only commands, easy to make async later.
-            let summary = latest_summary_from_bridge();
-            callback_status.set(summary.bridge_status);
-            apply_summary(&ui, &summary, callback_language.get());
-        }
+        start_dashboard_load(
+            ui_weak.clone(),
+            DashboardLoadKind::Latest,
+            callback_language.clone(),
+            callback_status.clone(),
+            callback_generation.clone(),
+        );
     });
 
     let ui_weak = ui.as_weak();
     let callback_language = current_language.clone();
     let callback_status = bridge_status.clone();
+    let callback_generation = load_generation.clone();
     ui.on_load_run_list(move || {
-        if let Some(ui) = ui_weak.upgrade() {
-            let summary = run_list_summary_from_bridge();
-            callback_status.set(summary.bridge_status);
-            apply_summary(&ui, &summary, callback_language.get());
-        }
+        start_dashboard_load(
+            ui_weak.clone(),
+            DashboardLoadKind::RunList,
+            callback_language.clone(),
+            callback_status.clone(),
+            callback_generation.clone(),
+        );
     });
 
     let ui_weak = ui.as_weak();
     let callback_language = current_language.clone();
     let callback_status = bridge_status.clone();
+    let callback_generation = load_generation.clone();
     ui.on_load_policy(move || {
-        if let Some(ui) = ui_weak.upgrade() {
-            let summary = policy_summary_from_bridge();
-            callback_status.set(summary.bridge_status);
-            apply_policy_summary(&ui, &summary, callback_language.get());
-        }
+        start_dashboard_load(
+            ui_weak.clone(),
+            DashboardLoadKind::Policy,
+            callback_language.clone(),
+            callback_status.clone(),
+            callback_generation.clone(),
+        );
     });
+
+    start_dashboard_load(
+        ui.as_weak(),
+        DashboardLoadKind::Latest,
+        current_language,
+        bridge_status,
+        load_generation,
+    );
 
     ui.run()
 }

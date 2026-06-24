@@ -29,6 +29,54 @@ pub struct DashboardSummary {
     pub last_error: String,
 }
 
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct DashboardLoadState {
+    pub is_loading: bool,
+    pub has_error: bool,
+    pub has_data: bool,
+    pub loading_message: String,
+    pub error_message: String,
+    pub status_message: String,
+}
+
+impl DashboardLoadState {
+    pub fn loading(message: impl Into<String>) -> Self {
+        let message = clean_text(&message.into());
+        Self {
+            is_loading: true,
+            has_error: false,
+            has_data: false,
+            loading_message: message.clone(),
+            error_message: String::new(),
+            status_message: message,
+        }
+    }
+
+    pub fn loaded(message: impl Into<String>) -> Self {
+        let message = clean_text(&message.into());
+        Self {
+            is_loading: false,
+            has_error: false,
+            has_data: true,
+            loading_message: String::new(),
+            error_message: String::new(),
+            status_message: message,
+        }
+    }
+
+    pub fn error(message: impl Into<String>) -> Self {
+        let message = clean_text(&message.into());
+        Self {
+            is_loading: false,
+            has_error: true,
+            has_data: false,
+            loading_message: String::new(),
+            error_message: message.clone(),
+            status_message: message,
+        }
+    }
+}
+
 impl DashboardSummary {
     pub fn mock() -> Self {
         Self {

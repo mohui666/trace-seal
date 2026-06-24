@@ -25,9 +25,12 @@
 
 - Slint remains experimental-only. / Slint 仍仅为实验轨道。
 - Slint remains experimental and separate from the default Electron desktop. / Slint 仍是与默认 Electron 桌面分离的实验方向。
-- Slint has a hello dashboard spike, read-only dashboard-data bridge, parser tests, and UI polish. / Slint 已有 hello dashboard spike、只读 dashboard-data bridge、parser tests 和 UI polish。
-- Slint is not packaged or released. / Slint 未打包、未发布。
-- Slint does not replace Electron. / Slint 不替代 Electron。
+- The experimental Slint UI currently supports read-only dashboard summary, read-only run detail, read-only run history, read-only policy detail, async non-blocking loading, loading / loaded / error states, fixture-backed demo preview, scrollable responsive layout, and a manual smoke test guide. / 当前实验 Slint UI 已支持只读 dashboard 摘要、只读运行详情、只读运行历史、只读策略详情、异步非阻塞加载、loading / loaded / error 状态、基于 fixture 的示例预览、可滚动 / 响应式布局和手动 smoke test 文档。
+- Slint uses the existing Python Core `dashboard-data latest`, `dashboard-data list`, and `dashboard-data policy` read-only surfaces for the experimental preview. / Slint 实验预览使用现有 Python Core 的 `dashboard-data latest`、`dashboard-data list` 和 `dashboard-data policy` 只读数据面。
+- Slint has not replaced Electron. / Slint 尚未替代 Electron。
+- Slint is not the v0.3.0 release installer. / Slint 不是 v0.3.0 发布安装器。
+- TraceSeal-Setup.exe is still the Electron release installer. / TraceSeal-Setup.exe 仍是 Electron 发布安装器。
+- Slint is not packaged as a release exe. / Slint 尚未作为 release exe 打包。
 
 ## Rust Guard status / Rust Guard 状态
 

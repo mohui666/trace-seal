@@ -6,7 +6,13 @@ The Slint desktop path is experimental-only.
 
 Electron remains the default desktop implementation.
 
+Slint remains experimental-only and has not replaced Electron.
+
 This is not the v0.3.0 release installer or `TraceSeal-Setup.exe`.
+
+TraceSeal-Setup.exe is still the Electron release installer.
+
+Slint is not packaged as a release exe.
 
 Use this guide only for local manual smoke testing of the experimental Slint UI. It does not make Slint the default desktop, does not replace Electron, and does not change release assets.
 
@@ -31,9 +37,15 @@ This opens the local experimental window from source. It is not a packaged relea
 
 - The loading state appears at startup.
 - The loaded state appears after dashboard-data loads.
-- The run detail view displays latest run fields such as run ID, status, started time, finished time, title, workspace, policy mode, and risk summary when available.
-- The refresh action does not freeze the UI.
 - The error state is visible when dashboard-data loading fails.
+- The UI uses async non-blocking loading; refresh should not freeze the window.
+- The read-only dashboard summary displays data source, bridge status, latest run, latest status, event count, risk count, and policy summary when available.
+- The run detail view displays latest run fields such as run ID, status, started time, finished time, title, workspace, policy mode, and risk summary when available.
+- The run history view displays run ID, status, started time, event count, and risk count when `dashboard-data list` returns runs.
+- The policy detail view displays policy mode, policy source, rule count, rule IDs, and decisions when `dashboard-data policy` returns policy data.
+- The Load demo data action shows fixture-backed demo preview data without writing demo data into `runs/`.
+- The layout remains scrollable and responsive so the bottom policy detail content is not clipped.
+- This smoke test is a source-run check only; it is not the v0.3.0 release installer or a packaged release executable.
 
 ## What this does not mean
 
@@ -60,7 +72,13 @@ Slint 桌面路径仍是实验用途。
 
 Electron 仍是默认桌面实现。
 
+Slint 仍是实验用途，尚未替代 Electron。
+
 这不是 v0.3.0 发布安装器，也不是 `TraceSeal-Setup.exe`。
+
+TraceSeal-Setup.exe 仍是 Electron 发布安装器。
+
+Slint 尚未作为 release exe 打包。
 
 本指南只用于本地手动 smoke test 实验 Slint UI。它不表示 Slint 成为默认桌面，不表示 Slint 替代 Electron，也不改变 release assets。
 
@@ -85,9 +103,15 @@ cargo run -p traceseal-desktop-slint
 
 - 启动时显示 loading 状态。
 - dashboard-data 加载后显示 loaded 状态。
-- run detail 区块显示 latest run 字段，例如 run ID、状态、开始时间、结束时间、标题、workspace、policy mode 和 risk summary。
-- 刷新时 UI 不应卡死。
 - dashboard-data 加载失败时能看到 error 状态。
+- UI 使用异步非阻塞加载；刷新时 UI 不应卡死。
+- 只读 dashboard 摘要显示 data source、bridge status、latest run、latest status、event count、risk count 和 policy summary（如果可用）。
+- 只读运行详情区块显示 latest run 字段，例如 run ID、状态、开始时间、结束时间、标题、workspace、policy mode 和 risk summary。
+- 只读运行历史区块在 `dashboard-data list` 返回 runs 时显示 run ID、状态、开始时间、事件数量和风险数量。
+- 只读策略详情区块在 `dashboard-data policy` 返回 policy 数据时显示策略模式、策略来源、规则数量、规则 ID 和决策。
+- Load demo data 会显示基于 fixture 的示例预览数据，不会把 demo 数据写入 `runs/`。
+- 布局保持可滚动 / 响应式，底部策略详情内容不应被裁切。
+- 这个 smoke test 只是源码运行检查；不是 v0.3.0 发布安装器，也不是打包后的 release exe。
 
 ## 这不代表什么
 

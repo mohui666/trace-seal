@@ -4,17 +4,20 @@ import re
 import shutil
 from pathlib import Path
 
-IGNORE_NAMES = {
+DEFAULT_WORKSPACE_COPY_EXCLUDES = {
     "runs",
+    "target",
     "__pycache__",
     ".pytest_cache",
     ".mypy_cache",
     ".ruff_cache",
     ".vite",
+    ".git",
     "node_modules",
     "dist",
     "build",
     "out",
+    "coverage",
     ".venv",
     "venv",
 }
@@ -54,6 +57,12 @@ def _sanitize_git_metadata(git_dir: Path) -> None:
         shutil.rmtree(hooks)
 
 
+def should_exclude_workspace_entry(name: str, *, keep_source_git_metadata: bool = False) -> bool:
+    if name == ".git" and keep_source_git_metadata:
+        return False
+    return name in DEFAULT_WORKSPACE_COPY_EXCLUDES
+
+
 def copy_workspace(src: str | Path, dst: str | Path) -> None:
     src_path = Path(src).resolve()
     dst_path = Path(dst).resolve()
@@ -63,11 +72,13 @@ def copy_workspace(src: str | Path, dst: str | Path) -> None:
     source_git = src_path / ".git"
 
     def ignore(current_dir: str, names: list[str]) -> set[str]:
-        ignored = {name for name in names if name in IGNORE_NAMES}
         current_path = Path(current_dir).resolve()
-        if ".git" in names and (current_path != src_path or not source_git.is_dir()):
-            ignored.add(".git")
-        return ignored
+        keep_source_git_metadata = current_path == src_path and source_git.is_dir()
+        return {
+            name
+            for name in names
+            if should_exclude_workspace_entry(name, keep_source_git_metadata=keep_source_git_metadata)
+        }
 
     shutil.copytree(src_path, dst_path, ignore=ignore)
 

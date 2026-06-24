@@ -12,6 +12,9 @@ from dashboard.export import export_dashboard_data
 from minimizer.explain import find_first_harmful_event
 
 
+RUN_AGENT_TIMEOUT_SECONDS = 60
+
+
 class TraceSealMvpTest(unittest.TestCase):
     @classmethod
     def setUpClass(cls) -> None:
@@ -26,15 +29,27 @@ class TraceSealMvpTest(unittest.TestCase):
         env.pop("TRACESEAL_POLICY_MODE", None)
         env.pop("TRACESEAL_OFFLINE_HTTP", None)
         env.update(env_overrides or {})
-        completed = subprocess.run(
-            [sys.executable, "-m", "traceseal", "run", "--", sys.executable, f"examples/{script_name}"],
-            cwd=self.repo,
-            text=True,
-            encoding="utf-8",
-            capture_output=True,
-            env=env,
-            check=False,
-        )
+        command = [sys.executable, "-m", "traceseal", "run", "--", sys.executable, f"examples/{script_name}"]
+        try:
+            completed = subprocess.run(
+                command,
+                cwd=self.repo,
+                text=True,
+                encoding="utf-8",
+                capture_output=True,
+                env=env,
+                check=False,
+                timeout=RUN_AGENT_TIMEOUT_SECONDS,
+            )
+        except subprocess.TimeoutExpired as exc:
+            stdout = exc.stdout or ""
+            stderr = exc.stderr or ""
+            self.fail(
+                f"TraceSeal agent run timed out after {RUN_AGENT_TIMEOUT_SECONDS} seconds\n"
+                f"command: {' '.join(command)}\n"
+                f"stdout:\n{stdout}\n"
+                f"stderr:\n{stderr}"
+            )
         self.assertEqual(
             completed.returncode,
             0,

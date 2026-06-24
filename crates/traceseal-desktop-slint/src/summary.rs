@@ -13,6 +13,15 @@ pub enum BridgeStatusKind {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
+pub struct RunHistoryRow {
+    pub run_id: String,
+    pub status: String,
+    pub started_at: String,
+    pub event_count: i32,
+    pub risk_count: i32,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct DashboardSummary {
     pub data_source: String,
     pub latest_run_id: String,
@@ -26,6 +35,7 @@ pub struct DashboardSummary {
     pub workspace: String,
     pub run_policy_mode: String,
     pub risk_summary: String,
+    pub run_history: Vec<RunHistoryRow>,
     pub bridge_status: BridgeStatusKind,
     pub last_error: String,
 }
@@ -93,6 +103,7 @@ impl DashboardSummary {
             workspace: UNAVAILABLE.to_string(),
             run_policy_mode: "mock / read-only".to_string(),
             risk_summary: UNAVAILABLE.to_string(),
+            run_history: Vec::new(),
             bridge_status: BridgeStatusKind::MockFallback,
             last_error: "none".to_string(),
         }
@@ -128,6 +139,7 @@ impl DashboardSummary {
             workspace: UNAVAILABLE.to_string(),
             run_policy_mode: UNAVAILABLE.to_string(),
             risk_summary: UNAVAILABLE.to_string(),
+            run_history: Vec::new(),
             bridge_status: BridgeStatusKind::NoRunsFound,
             last_error: clean_text(&message.into()),
         }
@@ -186,6 +198,7 @@ pub fn parse_latest_summary(json: &str) -> Result<DashboardSummary, SummaryError
             .and_then(|summary| string_field(summary, &["policy_mode"]))
             .unwrap_or_else(unavailable),
         risk_summary: risk_summary(payload.get("risks")),
+        run_history: Vec::new(),
         bridge_status: BridgeStatusKind::Loaded,
         last_error: "none".to_string(),
     })
@@ -197,35 +210,49 @@ pub fn parse_run_list_summary(json: &str) -> Result<DashboardSummary, SummaryErr
         return Err(SummaryError { message: error });
     }
 
-    let runs = payload.get("runs").and_then(Value::as_array);
-    let Some(runs) = runs else {
+    let run_history = run_history_rows_from_payload(&payload)?;
+    let Some(first) = run_history.first() else {
         return Ok(DashboardSummary::no_runs_found(
-            "dashboard-data list returned no runs array",
+            if payload.get("runs").and_then(Value::as_array).is_some() {
+                "dashboard-data list returned no runs"
+            } else {
+                "dashboard-data list returned no runs array"
+            },
         ));
     };
-    let Some(first) = runs.first() else {
-        return Ok(DashboardSummary::no_runs_found(
-            "dashboard-data list returned no runs",
-        ));
-    };
+    let first_payload = payload
+        .get("runs")
+        .and_then(Value::as_array)
+        .and_then(|runs| runs.first());
 
     Ok(DashboardSummary {
-        data_source: format!("dashboard-data list ({})", runs.len()),
-        latest_run_id: string_field(first, &["run_id"])
-            .unwrap_or_else(|| "unknown run".to_string()),
-        latest_status: string_field(first, &["status"]).unwrap_or_else(|| "unknown".to_string()),
-        event_count: int_field(first, &["event_count"]).unwrap_or(0),
-        risk_count: int_field(first, &["high_risk_count", "risk_count"]).unwrap_or(0),
+        data_source: format!("dashboard-data list ({})", run_history.len()),
+        latest_run_id: first.run_id.clone(),
+        latest_status: first.status.clone(),
+        event_count: first.event_count,
+        risk_count: first.risk_count,
         policy_summary: "not loaded".to_string(),
-        started_at: string_field(first, &["started_at"]).unwrap_or_else(unavailable),
-        finished_at: string_field(first, &["finished_at"]).unwrap_or_else(unavailable),
+        started_at: first.started_at.clone(),
+        finished_at: first_payload
+            .and_then(|run| string_field(run, &["finished_at"]))
+            .unwrap_or_else(unavailable),
         run_title: UNAVAILABLE.to_string(),
         workspace: UNAVAILABLE.to_string(),
         run_policy_mode: UNAVAILABLE.to_string(),
         risk_summary: UNAVAILABLE.to_string(),
+        run_history,
         bridge_status: BridgeStatusKind::Loaded,
         last_error: "none".to_string(),
     })
+}
+
+pub fn parse_run_history_rows(json: &str) -> Result<Vec<RunHistoryRow>, SummaryError> {
+    let payload: Value = serde_json::from_str(json)?;
+    if let Some(error) = dashboard_error(&payload) {
+        return Err(SummaryError { message: error });
+    }
+
+    run_history_rows_from_payload(&payload)
 }
 
 pub fn parse_policy_summary(json: &str) -> Result<DashboardSummary, SummaryError> {
@@ -255,6 +282,7 @@ pub fn parse_policy_summary(json: &str) -> Result<DashboardSummary, SummaryError
         workspace: UNAVAILABLE.to_string(),
         run_policy_mode,
         risk_summary: UNAVAILABLE.to_string(),
+        run_history: Vec::new(),
         bridge_status: BridgeStatusKind::Loaded,
         last_error: "none".to_string(),
     })
@@ -285,11 +313,30 @@ pub fn parse_demo_fixture_summary(
         latest.run_policy_mode = policy.run_policy_mode;
     }
 
+    latest.run_history = list.run_history;
     latest.data_source = "demo fixture dashboard-data latest/list/policy".to_string();
     latest.policy_summary = policy.policy_summary;
     latest.bridge_status = BridgeStatusKind::DemoFixture;
     latest.last_error = "none".to_string();
     Ok(latest)
+}
+
+fn run_history_rows_from_payload(payload: &Value) -> Result<Vec<RunHistoryRow>, SummaryError> {
+    let Some(runs) = payload.get("runs").and_then(Value::as_array) else {
+        return Ok(Vec::new());
+    };
+
+    Ok(runs.iter().map(run_history_row).collect())
+}
+
+fn run_history_row(value: &Value) -> RunHistoryRow {
+    RunHistoryRow {
+        run_id: string_field(value, &["run_id"]).unwrap_or_else(|| "unknown run".to_string()),
+        status: string_field(value, &["status"]).unwrap_or_else(|| "unknown".to_string()),
+        started_at: string_field(value, &["started_at"]).unwrap_or_else(unavailable),
+        event_count: int_field(value, &["event_count"]).unwrap_or(0),
+        risk_count: int_field(value, &["high_risk_count", "risk_count"]).unwrap_or(0),
+    }
 }
 
 fn dashboard_error(payload: &Value) -> Option<String> {

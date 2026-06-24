@@ -13,8 +13,9 @@ use dashboard_data::{
     read_demo_fixture_bundle, run_dashboard_command, BridgeError, DashboardCommand,
 };
 use summary::{
-    parse_demo_fixture_summary, parse_latest_summary, parse_policy_summary, parse_run_list_summary,
-    BridgeStatusKind, DashboardLoadState, DashboardSummary,
+    parse_demo_fixture_summary, parse_latest_summary, parse_policy_summary, parse_run_history_rows,
+    parse_run_list_summary, BridgeStatusKind, DashboardLoadState, DashboardSummary,
+    RunHistoryRow as SummaryRunHistoryRow,
 };
 
 slint::include_modules!();
@@ -115,6 +116,20 @@ fn error_message(language: Language, detail: &str) -> String {
     }
 }
 
+fn run_history_model(rows: &[SummaryRunHistoryRow]) -> slint::ModelRc<RunHistoryRow> {
+    slint::ModelRc::new(slint::VecModel::from(
+        rows.iter()
+            .map(|row| RunHistoryRow {
+                run_id: row.run_id.clone().into(),
+                status: row.status.clone().into(),
+                started_at: row.started_at.clone().into(),
+                event_count: row.event_count,
+                risk_count: row.risk_count,
+            })
+            .collect::<Vec<_>>(),
+    ))
+}
+
 fn apply_summary(ui: &AppWindow, summary: &DashboardSummary, language: Language) {
     ui.set_is_demo_data(summary.bridge_status == BridgeStatusKind::DemoFixture);
     ui.set_data_source(summary.data_source.clone().into());
@@ -129,6 +144,8 @@ fn apply_summary(ui: &AppWindow, summary: &DashboardSummary, language: Language)
     ui.set_workspace(summary.workspace.clone().into());
     ui.set_run_policy_mode(summary.run_policy_mode.clone().into());
     ui.set_risk_summary(summary.risk_summary.clone().into());
+    ui.set_run_history_empty(summary.run_history.is_empty());
+    ui.set_run_history(run_history_model(&summary.run_history));
     ui.set_bridge_status(status_text(language, summary.bridge_status).into());
     ui.set_last_error(summary.last_error.clone().into());
 }
@@ -203,6 +220,13 @@ fn apply_language(ui: &AppWindow, language: Language, status: BridgeStatusKind) 
             ui.set_risk_count_label("Risk count".into());
             ui.set_policy_mode_label("Policy summary".into());
             ui.set_run_detail_title("Run detail".into());
+            ui.set_run_history_title("Run history".into());
+            ui.set_run_history_empty_text("No runs found".into());
+            ui.set_run_history_run_id_label("Run ID".into());
+            ui.set_run_history_status_label("Status".into());
+            ui.set_run_history_events_label("Events".into());
+            ui.set_run_history_risks_label("Risks".into());
+            ui.set_run_history_started_label("Started".into());
             ui.set_detail_run_id_label("Run ID".into());
             ui.set_started_at_label("Started".into());
             ui.set_finished_at_label("Finished".into());
@@ -233,6 +257,13 @@ fn apply_language(ui: &AppWindow, language: Language, status: BridgeStatusKind) 
             ui.set_risk_count_label("风险数量".into());
             ui.set_policy_mode_label("策略摘要".into());
             ui.set_run_detail_title("运行详情".into());
+            ui.set_run_history_title("运行历史".into());
+            ui.set_run_history_empty_text("未找到运行记录".into());
+            ui.set_run_history_run_id_label("运行 ID".into());
+            ui.set_run_history_status_label("状态".into());
+            ui.set_run_history_events_label("事件".into());
+            ui.set_run_history_risks_label("风险".into());
+            ui.set_run_history_started_label("开始时间".into());
             ui.set_detail_run_id_label("运行 ID".into());
             ui.set_started_at_label("开始时间".into());
             ui.set_finished_at_label("结束时间".into());
@@ -256,7 +287,7 @@ fn apply_language(ui: &AppWindow, language: Language, status: BridgeStatusKind) 
 }
 
 fn latest_summary_from_bridge() -> DashboardSummary {
-    match run_dashboard_command(DashboardCommand::Latest) {
+    let summary = match run_dashboard_command(DashboardCommand::Latest) {
         Ok(stdout) => parse_latest_summary(&stdout)
             .unwrap_or_else(|error| DashboardSummary::command_failed(error.summary())),
         Err(BridgeError::Failed { stdout, .. }) if !stdout.is_empty() => {
@@ -264,6 +295,12 @@ fn latest_summary_from_bridge() -> DashboardSummary {
                 .unwrap_or_else(|error| DashboardSummary::command_failed(error.summary()))
         }
         Err(error) => DashboardSummary::command_failed(error.summary()),
+    };
+
+    if summary.bridge_status == BridgeStatusKind::CommandFailed {
+        summary
+    } else {
+        attach_run_history_from_bridge(summary)
     }
 }
 
@@ -276,6 +313,30 @@ fn run_list_summary_from_bridge() -> DashboardSummary {
                 .unwrap_or_else(|error| DashboardSummary::command_failed(error.summary()))
         }
         Err(error) => DashboardSummary::command_failed(error.summary()),
+    }
+}
+
+fn run_history_from_bridge() -> Result<Vec<SummaryRunHistoryRow>, String> {
+    match run_dashboard_command(DashboardCommand::List) {
+        Ok(stdout) => parse_run_history_rows(&stdout).map_err(|error| error.summary()),
+        Err(BridgeError::Failed { stdout, .. }) if !stdout.is_empty() => {
+            parse_run_history_rows(&stdout).map_err(|error| error.summary())
+        }
+        Err(error) => Err(error.summary()),
+    }
+}
+
+fn attach_run_history_from_bridge(mut summary: DashboardSummary) -> DashboardSummary {
+    match run_history_from_bridge() {
+        Ok(run_history) => {
+            summary.run_history = run_history;
+            summary
+        }
+        Err(error) => {
+            summary.bridge_status = BridgeStatusKind::CommandFailed;
+            summary.last_error = error;
+            summary
+        }
     }
 }
 

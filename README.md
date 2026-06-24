@@ -60,6 +60,8 @@ Slint 仍仅为实验轨道。Slint spike 未打包、未发布，也不替代 E
 
 Current Slint experimental status is documented in [Project status](docs/project-status.md) and the [manual smoke test](docs/slint-manual-smoke-test.md). / 当前 Slint 实验状态见 [项目状态](docs/project-status.md) 与 [手动 smoke test](docs/slint-manual-smoke-test.md)。
 
+Slint preview artifact: `docs/slint-preview-artifact.md`. / Slint 预览构建产物：`docs/slint-preview-artifact.md`。
+
 ## Safety boundaries / 安全边界
 
 TraceSeal is an evidence and analysis prototype, not an operating-system security product.
@@ -89,6 +91,7 @@ TraceSeal 是证据记录与分析原型，不是操作系统级安全产品。
 - Release verification checklist: [`docs/release-verification-checklist.md`](docs/release-verification-checklist.md). / Release 校验清单：[`docs/release-verification-checklist.md`](docs/release-verification-checklist.md)。
 - [Slint Desktop Feasibility RFC / Slint 桌面可行性 RFC](docs/slint-desktop-feasibility-rfc.md)
 - Slint manual smoke test: `docs/slint-manual-smoke-test.md`. / Slint 手动 smoke test：`docs/slint-manual-smoke-test.md`。
+- Slint preview artifact: `docs/slint-preview-artifact.md`. / Slint 预览构建产物：`docs/slint-preview-artifact.md`。
 - [Rust Core Parity RFC / Rust Core 对齐 RFC](docs/rust-core-parity-rfc.md)
 
 ## Release status / Release 状态

@@ -31,6 +31,7 @@
 - Slint is not the v0.3.0 release installer. / Slint 不是 v0.3.0 发布安装器。
 - TraceSeal-Setup.exe is still the Electron release installer. / TraceSeal-Setup.exe 仍是 Electron 发布安装器。
 - Slint is not packaged as a release exe. / Slint 尚未作为 release exe 打包。
+- The experimental Slint desktop path may be built as a manual CI preview artifact, but Electron remains the default desktop and `TraceSeal-Setup.exe` remains the v0.3.0 release installer. / 实验性的 Slint 桌面路径可以通过手动 CI workflow 构建为预览 artifact，但 Electron 仍是默认桌面，`TraceSeal-Setup.exe` 仍是 v0.3.0 发布安装器。
 
 ## Rust Guard status / Rust Guard 状态
 

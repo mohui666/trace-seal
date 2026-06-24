@@ -9,10 +9,12 @@ use std::{
 mod dashboard_data;
 mod summary;
 
-use dashboard_data::{run_dashboard_command, BridgeError, DashboardCommand};
+use dashboard_data::{
+    read_demo_fixture_bundle, run_dashboard_command, BridgeError, DashboardCommand,
+};
 use summary::{
-    parse_latest_summary, parse_policy_summary, parse_run_list_summary, BridgeStatusKind,
-    DashboardLoadState, DashboardSummary,
+    parse_demo_fixture_summary, parse_latest_summary, parse_policy_summary, parse_run_list_summary,
+    BridgeStatusKind, DashboardLoadState, DashboardSummary,
 };
 
 slint::include_modules!();
@@ -28,6 +30,7 @@ enum DashboardLoadKind {
     Latest,
     RunList,
     Policy,
+    DemoFixture,
 }
 
 fn language_index(language: Language) -> u8 {
@@ -50,6 +53,7 @@ fn status_index(status: BridgeStatusKind) -> u8 {
         BridgeStatusKind::Loaded => 1,
         BridgeStatusKind::CommandFailed => 2,
         BridgeStatusKind::NoRunsFound => 3,
+        BridgeStatusKind::DemoFixture => 4,
     }
 }
 
@@ -58,6 +62,7 @@ fn status_from_index(index: u8) -> BridgeStatusKind {
         1 => BridgeStatusKind::Loaded,
         2 => BridgeStatusKind::CommandFailed,
         3 => BridgeStatusKind::NoRunsFound,
+        4 => BridgeStatusKind::DemoFixture,
         _ => BridgeStatusKind::MockFallback,
     }
 }
@@ -68,24 +73,30 @@ fn status_text(language: Language, status: BridgeStatusKind) -> &'static str {
         (Language::English, BridgeStatusKind::Loaded) => "loaded from dashboard-data",
         (Language::English, BridgeStatusKind::CommandFailed) => "command failed",
         (Language::English, BridgeStatusKind::NoRunsFound) => "no runs found",
+        (Language::English, BridgeStatusKind::DemoFixture) => "showing demo fixture data",
         (Language::Chinese, BridgeStatusKind::MockFallback) => "mock 兜底",
         (Language::Chinese, BridgeStatusKind::Loaded) => "已从 dashboard-data 加载",
         (Language::Chinese, BridgeStatusKind::CommandFailed) => "命令失败",
         (Language::Chinese, BridgeStatusKind::NoRunsFound) => "未找到运行记录",
+        (Language::Chinese, BridgeStatusKind::DemoFixture) => "当前显示示例数据",
     }
 }
 
-fn loading_message(language: Language) -> &'static str {
-    match language {
-        Language::English => "Loading dashboard data...",
-        Language::Chinese => "正在加载 dashboard 数据...",
+fn loading_message(language: Language, kind: DashboardLoadKind) -> &'static str {
+    match (language, kind) {
+        (Language::English, DashboardLoadKind::DemoFixture) => "Loading demo fixture data...",
+        (Language::English, _) => "Loading dashboard data...",
+        (Language::Chinese, DashboardLoadKind::DemoFixture) => "正在加载示例数据...",
+        (Language::Chinese, _) => "正在加载 dashboard 数据...",
     }
 }
 
-fn loaded_message(language: Language) -> &'static str {
-    match language {
-        Language::English => "Dashboard data loaded",
-        Language::Chinese => "dashboard 数据已加载",
+fn loaded_message(language: Language, status: BridgeStatusKind) -> &'static str {
+    match (language, status) {
+        (Language::English, BridgeStatusKind::DemoFixture) => "Demo fixture data loaded",
+        (Language::English, _) => "Dashboard data loaded",
+        (Language::Chinese, BridgeStatusKind::DemoFixture) => "示例数据已加载",
+        (Language::Chinese, _) => "dashboard 数据已加载",
     }
 }
 
@@ -105,6 +116,7 @@ fn error_message(language: Language, detail: &str) -> String {
 }
 
 fn apply_summary(ui: &AppWindow, summary: &DashboardSummary, language: Language) {
+    ui.set_is_demo_data(summary.bridge_status == BridgeStatusKind::DemoFixture);
     ui.set_data_source(summary.data_source.clone().into());
     ui.set_latest_run(summary.latest_run_id.clone().into());
     ui.set_latest_status(summary.latest_status.clone().into());
@@ -122,6 +134,9 @@ fn apply_summary(ui: &AppWindow, summary: &DashboardSummary, language: Language)
 }
 
 fn apply_policy_summary(ui: &AppWindow, summary: &DashboardSummary, language: Language) {
+    if summary.bridge_status == BridgeStatusKind::DemoFixture {
+        ui.set_is_demo_data(true);
+    }
     ui.set_data_source(summary.data_source.clone().into());
     ui.set_policy_mode(summary.policy_summary.clone().into());
     ui.set_bridge_status(status_text(language, summary.bridge_status).into());
@@ -152,7 +167,7 @@ fn apply_localized_load_state(ui: &AppWindow, language: Language, status: Bridge
     if ui.get_is_loading() {
         apply_load_state(
             ui,
-            &DashboardLoadState::loading(loading_message(language)),
+            &DashboardLoadState::loading(loading_message(language, DashboardLoadKind::Latest)),
             language,
             status,
         );
@@ -167,7 +182,7 @@ fn apply_localized_load_state(ui: &AppWindow, language: Language, status: Bridge
     } else if ui.get_has_data() {
         apply_load_state(
             ui,
-            &DashboardLoadState::loaded(loaded_message(language)),
+            &DashboardLoadState::loaded(loaded_message(language, status)),
             language,
             status,
         );
@@ -202,6 +217,8 @@ fn apply_language(ui: &AppWindow, language: Language, status: BridgeStatusKind) 
             ui.set_load_latest_text("Refresh".into());
             ui.set_load_policy_text("Load policy".into());
             ui.set_load_run_list_text("Load run list summary".into());
+            ui.set_load_demo_text("Load demo data".into());
+            ui.set_demo_source_text("Showing demo fixture data".into());
             ui.set_toggle_language_text("中文".into());
         }
         Language::Chinese => {
@@ -230,6 +247,8 @@ fn apply_language(ui: &AppWindow, language: Language, status: BridgeStatusKind) 
             ui.set_load_latest_text("刷新".into());
             ui.set_load_policy_text("加载策略".into());
             ui.set_load_run_list_text("加载运行列表摘要".into());
+            ui.set_load_demo_text("加载示例数据".into());
+            ui.set_demo_source_text("当前显示示例数据".into());
             ui.set_toggle_language_text("English".into());
         }
     }
@@ -272,11 +291,22 @@ fn policy_summary_from_bridge() -> DashboardSummary {
     }
 }
 
+fn demo_summary_from_fixtures() -> DashboardSummary {
+    match read_demo_fixture_bundle() {
+        Ok(bundle) => {
+            parse_demo_fixture_summary(&bundle.latest_json, &bundle.list_json, &bundle.policy_json)
+                .unwrap_or_else(|error| DashboardSummary::demo_fixture_failed(error.summary()))
+        }
+        Err(error) => DashboardSummary::demo_fixture_failed(error.summary()),
+    }
+}
+
 fn summary_from_bridge(kind: DashboardLoadKind) -> DashboardSummary {
     match kind {
         DashboardLoadKind::Latest => latest_summary_from_bridge(),
         DashboardLoadKind::RunList => run_list_summary_from_bridge(),
         DashboardLoadKind::Policy => policy_summary_from_bridge(),
+        DashboardLoadKind::DemoFixture => demo_summary_from_fixtures(),
     }
 }
 
@@ -294,7 +324,7 @@ fn start_dashboard_load(
     if let Some(ui) = ui_weak.upgrade() {
         apply_load_state(
             &ui,
-            &DashboardLoadState::loading(loading_message(current_language)),
+            &DashboardLoadState::loading(loading_message(current_language, kind)),
             current_language,
             current_status,
         );
@@ -317,9 +347,9 @@ fn start_dashboard_load(
 
             match kind {
                 DashboardLoadKind::Policy => apply_policy_summary(&ui, &summary, current_language),
-                DashboardLoadKind::Latest | DashboardLoadKind::RunList => {
-                    apply_summary(&ui, &summary, current_language)
-                }
+                DashboardLoadKind::Latest
+                | DashboardLoadKind::RunList
+                | DashboardLoadKind::DemoFixture => apply_summary(&ui, &summary, current_language),
             }
 
             if status == BridgeStatusKind::CommandFailed {
@@ -335,7 +365,7 @@ fn start_dashboard_load(
             } else {
                 apply_load_state(
                     &ui,
-                    &DashboardLoadState::loaded(loaded_message(current_language)),
+                    &DashboardLoadState::loaded(loaded_message(current_language, status)),
                     current_language,
                     status,
                 );
@@ -356,7 +386,10 @@ fn main() -> Result<(), slint::PlatformError> {
     apply_language(&ui, Language::English, mock_summary.bridge_status);
     apply_load_state(
         &ui,
-        &DashboardLoadState::loading(loading_message(Language::English)),
+        &DashboardLoadState::loading(loading_message(
+            Language::English,
+            DashboardLoadKind::Latest,
+        )),
         Language::English,
         mock_summary.bridge_status,
     );
@@ -415,6 +448,20 @@ fn main() -> Result<(), slint::PlatformError> {
         start_dashboard_load(
             ui_weak.clone(),
             DashboardLoadKind::Policy,
+            callback_language.clone(),
+            callback_status.clone(),
+            callback_generation.clone(),
+        );
+    });
+
+    let ui_weak = ui.as_weak();
+    let callback_language = current_language.clone();
+    let callback_status = bridge_status.clone();
+    let callback_generation = load_generation.clone();
+    ui.on_load_demo(move || {
+        start_dashboard_load(
+            ui_weak.clone(),
+            DashboardLoadKind::DemoFixture,
             callback_language.clone(),
             callback_status.clone(),
             callback_generation.clone(),

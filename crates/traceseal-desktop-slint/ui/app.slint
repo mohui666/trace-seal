@@ -100,7 +100,10 @@ export component AppWindow inherits Window {
     in property <string> load-latest-text: "Load latest";
     in property <string> load-policy-text: "Load policy";
     in property <string> load-run-list-text: "Load run list summary";
+    in property <string> load-demo-text: "Load demo data";
     in property <string> toggle-language-text: "English / 中文";
+    in property <bool> is-demo-data: false;
+    in property <string> demo-source-text: "Showing demo fixture data";
     in property <bool> is-loading: true;
     in property <bool> has-error: false;
     in property <bool> has-data: false;
@@ -112,10 +115,11 @@ export component AppWindow inherits Window {
     callback load-latest();
     callback load-policy();
     callback load-run-list();
+    callback load-demo();
 
     title: root.title-text;
     width: 760px;
-    height: 820px;
+    height: 860px;
     background: #101820;
 
     VerticalBox {
@@ -155,7 +159,7 @@ export component AppWindow inherits Window {
 
         // Bridge Info Card
         Rectangle {
-            height: 96px;
+            height: 116px;
             background: #0f2533;
             border-width: 1px;
             border-color: #29475b;
@@ -185,6 +189,15 @@ export component AppWindow inherits Window {
                     font-size: 13px;
                     wrap: word-wrap;
                 }
+
+                Text {
+                    visible: root.is-demo-data;
+                    text: root.demo-source-text;
+                    color: #ffd580;
+                    font-size: 13px;
+                    font-weight: 700;
+                    wrap: word-wrap;
+                }
             }
         }
 
@@ -199,6 +212,16 @@ export component AppWindow inherits Window {
                 enabled: !root.is-loading;
                 clicked => {
                     root.load-latest();
+                }
+            }
+
+            Button {
+                text: root.load-demo-text;
+                width: 156px;
+                height: 36px;
+                enabled: !root.is-loading;
+                clicked => {
+                    root.load-demo();
                 }
             }
 

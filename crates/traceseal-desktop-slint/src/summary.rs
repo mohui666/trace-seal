@@ -9,6 +9,7 @@ pub enum BridgeStatusKind {
     Loaded,
     CommandFailed,
     NoRunsFound,
+    DemoFixture,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -100,6 +101,14 @@ impl DashboardSummary {
     pub fn command_failed(message: impl Into<String>) -> Self {
         let mut summary = Self::mock();
         summary.data_source = "dashboard-data".to_string();
+        summary.bridge_status = BridgeStatusKind::CommandFailed;
+        summary.last_error = clean_text(&message.into());
+        summary
+    }
+
+    pub fn demo_fixture_failed(message: impl Into<String>) -> Self {
+        let mut summary = Self::mock();
+        summary.data_source = "demo fixture dashboard-data".to_string();
         summary.bridge_status = BridgeStatusKind::CommandFailed;
         summary.last_error = clean_text(&message.into());
         summary
@@ -230,8 +239,8 @@ pub fn parse_policy_summary(json: &str) -> Result<DashboardSummary, SummaryError
         .and_then(Value::as_array)
         .map(|rules| rules.len())
         .unwrap_or(0);
-    let source = policy_source_summary(payload.get("policy_source"))
-        .unwrap_or_else(|| "policy source unknown".to_string());
+    let policy_summary = policy_summary(&payload, rule_count);
+    let run_policy_mode = policy_mode(&payload).unwrap_or_else(unavailable);
 
     Ok(DashboardSummary {
         data_source: "dashboard-data policy".to_string(),
@@ -239,16 +248,48 @@ pub fn parse_policy_summary(json: &str) -> Result<DashboardSummary, SummaryError
         latest_status: "policy loaded".to_string(),
         event_count: 0,
         risk_count: 0,
-        policy_summary: format!("{rule_count} rules / {source}"),
+        policy_summary,
         started_at: UNAVAILABLE.to_string(),
         finished_at: UNAVAILABLE.to_string(),
         run_title: UNAVAILABLE.to_string(),
         workspace: UNAVAILABLE.to_string(),
-        run_policy_mode: UNAVAILABLE.to_string(),
+        run_policy_mode,
         risk_summary: UNAVAILABLE.to_string(),
         bridge_status: BridgeStatusKind::Loaded,
         last_error: "none".to_string(),
     })
+}
+
+pub fn parse_demo_fixture_summary(
+    latest_json: &str,
+    list_json: &str,
+    policy_json: &str,
+) -> Result<DashboardSummary, SummaryError> {
+    let mut latest = parse_latest_summary(latest_json)?;
+    let list = parse_run_list_summary(list_json)?;
+    let policy = parse_policy_summary(policy_json)?;
+
+    if latest.latest_run_id == "unknown run" && list.latest_run_id != "no runs" {
+        latest.latest_run_id = list.latest_run_id;
+    }
+    if latest.latest_status == "unknown" && list.latest_status != "empty" {
+        latest.latest_status = list.latest_status;
+    }
+    if latest.event_count == 0 && list.event_count > 0 {
+        latest.event_count = list.event_count;
+    }
+    if latest.risk_count == 0 && list.risk_count > 0 {
+        latest.risk_count = list.risk_count;
+    }
+    if latest.run_policy_mode == UNAVAILABLE && policy.run_policy_mode != UNAVAILABLE {
+        latest.run_policy_mode = policy.run_policy_mode;
+    }
+
+    latest.data_source = "demo fixture dashboard-data latest/list/policy".to_string();
+    latest.policy_summary = policy.policy_summary;
+    latest.bridge_status = BridgeStatusKind::DemoFixture;
+    latest.last_error = "none".to_string();
+    Ok(latest)
 }
 
 fn dashboard_error(payload: &Value) -> Option<String> {
@@ -276,6 +317,28 @@ fn policy_source_summary(value: Option<&Value>) -> Option<String> {
         Some(path) if !path.is_empty() => format!("{source_type} / {}", clean_text(&path)),
         _ => source_type,
     })
+}
+
+fn policy_summary(payload: &Value, rule_count: usize) -> String {
+    if let Some(mode) = policy_mode(payload) {
+        let source = payload
+            .get("policy")
+            .and_then(|policy| string_field(policy, &["source"]));
+        return match source {
+            Some(source) if !source.is_empty() => format!("{mode} / {rule_count} rules / {source}"),
+            _ => format!("{mode} / {rule_count} rules"),
+        };
+    }
+
+    let source = policy_source_summary(payload.get("policy_source"))
+        .unwrap_or_else(|| "policy source unknown".to_string());
+    format!("{rule_count} rules / {source}")
+}
+
+fn policy_mode(payload: &Value) -> Option<String> {
+    payload
+        .get("policy")
+        .and_then(|policy| string_field(policy, &["mode"]))
 }
 
 fn risk_summary(value: Option<&Value>) -> String {

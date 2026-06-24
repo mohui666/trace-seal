@@ -1,4 +1,4 @@
-import { Button, HorizontalBox, VerticalBox } from "std-widgets.slint";
+import { Button, HorizontalBox, ScrollView, VerticalBox } from "std-widgets.slint";
 
 component MetricTile inherits Rectangle {
     in property <string> label-text;
@@ -118,8 +118,10 @@ export component AppWindow inherits Window {
     callback load-demo();
 
     title: root.title-text;
-    width: 760px;
-    height: 860px;
+    preferred-width: 760px;
+    preferred-height: 720px;
+    min-width: 720px;
+    min-height: 520px;
     background: #101820;
 
     VerticalBox {
@@ -267,144 +269,153 @@ export component AppWindow inherits Window {
             }
         }
 
-        // Bridge Status Section
-        SectionLabel {
-            text: "BRIDGE / 桥接";
-        }
-
-        HorizontalBox {
-            spacing: 12px;
-
-            MetricTile {
-                label-text: root.data-source-label;
-                value-text: root.data-source;
-            }
-
-            MetricTile {
-                label-text: root.bridge-status-label;
-                value-text: root.bridge-status;
-            }
-        }
-
-        // Latest Run Section
-        SectionLabel {
-            text: "LATEST RUN / 最新运行";
-        }
-
-        HorizontalBox {
-            spacing: 12px;
-
-            MetricTile {
-                label-text: root.latest-run-label;
-                value-text: root.latest-run;
-            }
-
-            MetricTile {
-                label-text: root.latest-status-label;
-                value-text: root.latest-status;
-            }
-        }
-
-        // Metrics Section
-        SectionLabel {
-            text: "METRICS / 指标";
-        }
-
-        HorizontalBox {
-            spacing: 12px;
-
-            MetricTile {
-                label-text: root.event-count-label;
-                value-text: "\{root.event-count}";
-            }
-
-            MetricTile {
-                label-text: root.risk-count-label;
-                value-text: "\{root.risk-count}";
-            }
-        }
-
-        // Run Detail Section
-        SectionLabel {
-            text: "RUN DETAIL / 运行详情";
-        }
-
-        Rectangle {
-            height: 260px;
-            background: #121d29;
-            border-width: 1px;
-            border-color: #2a3443;
-            border-radius: 8px;
+        // Scrollable dashboard content
+        ScrollView {
+            vertical-stretch: 1;
 
             VerticalBox {
-                padding: 14px;
-                spacing: 7px;
+                spacing: 16px;
 
-                Text {
-                    text: root.run-detail-title;
-                    color: #f4f7fb;
-                    font-size: 18px;
-                    font-weight: 700;
+                // Bridge Status Section
+                SectionLabel {
+                    text: "BRIDGE / 桥接";
                 }
 
-                DetailRow {
-                    label-text: root.detail-run-id-label;
-                    value-text: root.latest-run;
+                HorizontalBox {
+                    spacing: 12px;
+
+                    MetricTile {
+                        label-text: root.data-source-label;
+                        value-text: root.data-source;
+                    }
+
+                    MetricTile {
+                        label-text: root.bridge-status-label;
+                        value-text: root.bridge-status;
+                    }
                 }
 
-                DetailRow {
-                    label-text: root.latest-status-label;
-                    value-text: root.latest-status;
+                // Latest Run Section
+                SectionLabel {
+                    text: "LATEST RUN / 最新运行";
                 }
 
-                DetailRow {
-                    label-text: root.started-at-label;
-                    value-text: root.started-at;
+                HorizontalBox {
+                    spacing: 12px;
+
+                    MetricTile {
+                        label-text: root.latest-run-label;
+                        value-text: root.latest-run;
+                    }
+
+                    MetricTile {
+                        label-text: root.latest-status-label;
+                        value-text: root.latest-status;
+                    }
                 }
 
-                DetailRow {
-                    label-text: root.finished-at-label;
-                    value-text: root.finished-at;
+                // Metrics Section
+                SectionLabel {
+                    text: "METRICS / 指标";
                 }
 
-                DetailRow {
-                    label-text: root.run-title-label;
-                    value-text: root.run-title;
+                HorizontalBox {
+                    spacing: 12px;
+
+                    MetricTile {
+                        label-text: root.event-count-label;
+                        value-text: "\{root.event-count}";
+                    }
+
+                    MetricTile {
+                        label-text: root.risk-count-label;
+                        value-text: "\{root.risk-count}";
+                    }
                 }
 
-                DetailRow {
-                    label-text: root.workspace-label;
-                    value-text: root.workspace;
+                // Run Detail Section
+                SectionLabel {
+                    text: "RUN DETAIL / 运行详情";
                 }
 
-                DetailRow {
-                    label-text: root.run-policy-mode-label;
-                    value-text: root.run-policy-mode;
+                Rectangle {
+                    height: 260px;
+                    background: #121d29;
+                    border-width: 1px;
+                    border-color: #2a3443;
+                    border-radius: 8px;
+
+                    VerticalBox {
+                        padding: 14px;
+                        spacing: 7px;
+
+                        Text {
+                            text: root.run-detail-title;
+                            color: #f4f7fb;
+                            font-size: 18px;
+                            font-weight: 700;
+                        }
+
+                        DetailRow {
+                            label-text: root.detail-run-id-label;
+                            value-text: root.latest-run;
+                        }
+
+                        DetailRow {
+                            label-text: root.latest-status-label;
+                            value-text: root.latest-status;
+                        }
+
+                        DetailRow {
+                            label-text: root.started-at-label;
+                            value-text: root.started-at;
+                        }
+
+                        DetailRow {
+                            label-text: root.finished-at-label;
+                            value-text: root.finished-at;
+                        }
+
+                        DetailRow {
+                            label-text: root.run-title-label;
+                            value-text: root.run-title;
+                        }
+
+                        DetailRow {
+                            label-text: root.workspace-label;
+                            value-text: root.workspace;
+                        }
+
+                        DetailRow {
+                            label-text: root.run-policy-mode-label;
+                            value-text: root.run-policy-mode;
+                        }
+
+                        DetailRow {
+                            label-text: root.risk-summary-label;
+                            value-text: root.risk-summary;
+                        }
+                    }
                 }
 
-                DetailRow {
-                    label-text: root.risk-summary-label;
-                    value-text: root.risk-summary;
+                // Policy Section
+                SectionLabel {
+                    text: "POLICY / 策略";
                 }
-            }
-        }
 
-        // Policy Section
-        SectionLabel {
-            text: "POLICY / 策略";
-        }
+                HorizontalBox {
+                    spacing: 12px;
 
-        HorizontalBox {
-            spacing: 12px;
+                    MetricTile {
+                        label-text: root.policy-mode-label;
+                        value-text: root.policy-mode;
+                    }
 
-            MetricTile {
-                label-text: root.policy-mode-label;
-                value-text: root.policy-mode;
-            }
-
-            MetricTile {
-                label-text: root.last-error-label;
-                value-text: root.last-error;
+                    MetricTile {
+                        label-text: root.last-error-label;
+                        value-text: root.last-error;
+                    }
+                }
             }
         }
     }

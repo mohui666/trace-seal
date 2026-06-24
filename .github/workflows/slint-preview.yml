@@ -1,0 +1,54 @@
+name: Slint Preview
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  slint-preview-windows:
+    name: Build Slint preview on Windows
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Show Rust versions
+        run: |
+          rustc --version
+          cargo --version
+
+      - name: Check Slint crate
+        run: cargo check -p traceseal-desktop-slint
+
+      - name: Test Slint crate
+        run: cargo test -p traceseal-desktop-slint
+
+      - name: Build Slint preview binary
+        run: cargo build --release -p traceseal-desktop-slint
+
+      - name: Prepare artifact
+        shell: pwsh
+        run: |
+          $source = "target/release/traceseal-desktop-slint.exe"
+          if (-not (Test-Path -LiteralPath $source)) {
+            throw "Expected Slint preview binary was not found at $source"
+          }
+
+          New-Item -ItemType Directory -Force -Path artifacts/slint-preview | Out-Null
+          Copy-Item -LiteralPath $source -Destination artifacts/slint-preview/TraceSeal-Slint-Preview.exe
+          Get-FileHash artifacts/slint-preview/TraceSeal-Slint-Preview.exe -Algorithm SHA256 |
+            ForEach-Object { "$($_.Hash.ToLower())  TraceSeal-Slint-Preview.exe" } |
+            Set-Content artifacts/slint-preview/SHA256SUMS.txt
+
+      - name: Upload Slint preview artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: traceseal-slint-preview-windows-experimental
+          path: artifacts/slint-preview/
+          if-no-files-found: error

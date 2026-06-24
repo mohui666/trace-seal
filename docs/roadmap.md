@@ -25,6 +25,7 @@ Slint 仍是实验用途桌面轨道。当前实验 Slint UI 覆盖只读 dashbo
 - Slint remains experimental-only and has not replaced Electron. / Slint 仍是实验用途，尚未替代 Electron。
 - Slint is not the v0.3.0 release installer; `TraceSeal-Setup.exe` is still the Electron release installer. / Slint 不是 v0.3.0 发布安装器；`TraceSeal-Setup.exe` 仍是 Electron 发布安装器。
 - Slint is not packaged as a release exe. / Slint 尚未作为 release exe 打包。
+- A Slint preview artifact workflow is experimental-only and does not change the release path. / Slint 预览 artifact workflow 仅用于实验，不改变正式 release 路径。
 - [Rust Core parity RFC](rust-core-parity-rfc.md) remains a planning track tracked by Issue #52. Python Core remains the current implementation and compatibility baseline. / Rust Core parity RFC 仍是由 Issue #52 跟踪的规划轨道；Python Core 仍是当前实现与兼容基线。
 - Rust Guard follow-up work remains design-first and evidence-first unless a later accepted plan explicitly changes the boundary. / 除非后续方案明确改变边界，Rust Guard 后续仍以设计优先和证据优先为原则。
 

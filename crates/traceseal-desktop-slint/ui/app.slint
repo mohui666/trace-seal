@@ -1,5 +1,13 @@
 import { Button, HorizontalBox, ScrollView, VerticalBox } from "std-widgets.slint";
 
+export struct RunHistoryRow {
+    run-id: string,
+    status: string,
+    started-at: string,
+    event-count: int,
+    risk-count: int,
+}
+
 component MetricTile inherits Rectangle {
     in property <string> label-text;
     in property <string> value-text;
@@ -26,6 +34,124 @@ component MetricTile inherits Rectangle {
             color: #f4f7fb;
             font-size: 24px;
             font-weight: 700;
+        }
+    }
+}
+
+component HistoryHeaderRow inherits Rectangle {
+    in property <string> run-id-label;
+    in property <string> status-label;
+    in property <string> events-label;
+    in property <string> risks-label;
+    in property <string> started-label;
+
+    height: 30px;
+    background: #16202e;
+    border-width: 1px;
+    border-color: #2a3443;
+    border-radius: 6px;
+
+    HorizontalBox {
+        padding-left: 10px;
+        padding-right: 10px;
+        spacing: 10px;
+
+        Text {
+            text: root.run-id-label;
+            color: #8fb1c9;
+            font-size: 12px;
+            font-weight: 700;
+            width: 190px;
+        }
+
+        Text {
+            text: root.status-label;
+            color: #8fb1c9;
+            font-size: 12px;
+            font-weight: 700;
+            width: 88px;
+        }
+
+        Text {
+            text: root.events-label;
+            color: #8fb1c9;
+            font-size: 12px;
+            font-weight: 700;
+            width: 58px;
+        }
+
+        Text {
+            text: root.risks-label;
+            color: #8fb1c9;
+            font-size: 12px;
+            font-weight: 700;
+            width: 58px;
+        }
+
+        Text {
+            text: root.started-label;
+            color: #8fb1c9;
+            font-size: 12px;
+            font-weight: 700;
+            width: 180px;
+        }
+    }
+}
+
+component HistoryDataRow inherits Rectangle {
+    in property <string> run-id;
+    in property <string> status;
+    in property <string> started-at;
+    in property <int> event-count;
+    in property <int> risk-count;
+
+    height: 38px;
+    background: #101b26;
+    border-width: 1px;
+    border-color: #253241;
+    border-radius: 6px;
+
+    HorizontalBox {
+        padding-left: 10px;
+        padding-right: 10px;
+        spacing: 10px;
+
+        Text {
+            text: root.run-id;
+            color: #f4f7fb;
+            font-size: 13px;
+            width: 190px;
+            overflow: elide;
+        }
+
+        Text {
+            text: root.status;
+            color: #f4f7fb;
+            font-size: 13px;
+            width: 88px;
+            overflow: elide;
+        }
+
+        Text {
+            text: "\{root.event-count}";
+            color: #f4f7fb;
+            font-size: 13px;
+            width: 58px;
+        }
+
+        Text {
+            text: "\{root.risk-count}";
+            color: #f4f7fb;
+            font-size: 13px;
+            width: 58px;
+        }
+
+        Text {
+            text: root.started-at;
+            color: #f4f7fb;
+            font-size: 13px;
+            width: 180px;
+            overflow: elide;
         }
     }
 }
@@ -81,6 +207,15 @@ export component AppWindow inherits Window {
     in property <string> risk-count-label: "Risk count";
     in property <string> policy-mode-label: "Policy summary";
     in property <string> run-detail-title: "Run detail / 运行详情";
+    in property <string> run-history-title: "Run history / 运行历史";
+    in property <string> run-history-empty-text: "No runs found / 未找到运行记录";
+    in property <string> run-history-run-id-label: "Run ID";
+    in property <string> run-history-status-label: "Status";
+    in property <string> run-history-events-label: "Events";
+    in property <string> run-history-risks-label: "Risks";
+    in property <string> run-history-started-label: "Started";
+    in property <[RunHistoryRow]> run-history: [];
+    in property <bool> run-history-empty: true;
     in property <string> detail-run-id-label: "Run ID";
     in property <string> started-at-label: "Started";
     in property <string> finished-at-label: "Finished";
@@ -330,6 +465,65 @@ export component AppWindow inherits Window {
                     MetricTile {
                         label-text: root.risk-count-label;
                         value-text: "\{root.risk-count}";
+                    }
+                }
+
+                // Run History Section
+                SectionLabel {
+                    text: "RUN HISTORY / 运行历史";
+                }
+
+                Rectangle {
+                    height: 112px + ((root.run-history-empty ? 1 : root.run-history.length) * 42px);
+                    background: #121d29;
+                    border-width: 1px;
+                    border-color: #2a3443;
+                    border-radius: 8px;
+
+                    VerticalBox {
+                        padding: 14px;
+                        spacing: 8px;
+
+                        Text {
+                            text: root.run-history-title;
+                            color: #f4f7fb;
+                            font-size: 18px;
+                            font-weight: 700;
+                        }
+
+                        HistoryHeaderRow {
+                            run-id-label: root.run-history-run-id-label;
+                            status-label: root.run-history-status-label;
+                            events-label: root.run-history-events-label;
+                            risks-label: root.run-history-risks-label;
+                            started-label: root.run-history-started-label;
+                        }
+
+                        Rectangle {
+                            visible: root.run-history-empty;
+                            height: 38px;
+                            background: #101b26;
+                            border-width: 1px;
+                            border-color: #253241;
+                            border-radius: 6px;
+
+                            Text {
+                                x: 10px;
+                                y: 10px;
+                                text: root.run-history-empty-text;
+                                color: #8fb1c9;
+                                font-size: 13px;
+                            }
+                        }
+
+                        for run in root.run-history : HistoryDataRow {
+                            visible: !root.run-history-empty;
+                            run-id: run.run-id;
+                            status: run.status;
+                            event-count: run.event-count;
+                            risk-count: run.risk-count;
+                            started-at: run.started-at;
+                        }
                     }
                 }
 

@@ -6,9 +6,9 @@ import json
 import re
 from pathlib import Path
 from typing import Any, Iterable
-from urllib.parse import parse_qsl, quote, urlencode, urlsplit, urlunsplit
 
 from policy.domain import DOMAIN_DECISIONS, HOST_CLASSES, classify_host, normalize_host
+from recorder.http_redaction import SENSITIVE_QUERY_NAMES, redact_url_details
 
 
 HTTP_EVENT_TYPES = {"http", "network.http"}
@@ -24,25 +24,6 @@ SENSITIVE_HEADER_NAMES = {
     "proxy-authorization",
 }
 SENSITIVE_HEADER_PARTS = {"token", "secret", "key", "password", "credential", "session"}
-SENSITIVE_QUERY_NAMES = {
-    "token",
-    "access_token",
-    "refresh_token",
-    "api_key",
-    "apikey",
-    "key",
-    "secret",
-    "password",
-    "passwd",
-    "signature",
-    "sig",
-    "session",
-    "auth",
-    "credential",
-    "client_secret",
-    "authorization",
-    "cookie",
-}
 RISK_ORDER = {"low": 0, "medium": 1, "high": 2, "critical": 3}
 SHA256_RE = re.compile(r"^[0-9a-fA-F]{64}$")
 SAFE_ERROR_RE = re.compile(r"^[A-Za-z][A-Za-z0-9_.:-]{0,127}$")
@@ -149,22 +130,13 @@ def redact_headers(headers: Any) -> dict[str, str]:
 def redact_url(url: Any) -> dict[str, str]:
     value = str(url or "")
     try:
-        split = urlsplit(value)
-        pairs = [
-            (name, REDACTED if name.lower() in SENSITIVE_QUERY_NAMES else item)
-            for name, item in parse_qsl(split.query, keep_blank_values=True)
-        ]
-        query = urlencode(pairs, doseq=True, quote_via=quote, safe="<>")
-        host = split.hostname or ""
-        display_host = f"[{host}]" if ":" in host and not host.startswith("[") else host
-        if split.port is not None:
-            display_host = f"{display_host}:{split.port}"
+        details = redact_url_details(value)
         return {
-            "url_redacted": urlunsplit((split.scheme, display_host, split.path, query, "")),
-            "scheme": split.scheme,
-            "host": host,
-            "path": split.path or "/",
-            "query_redacted": query,
+            "url_redacted": details["url"],
+            "scheme": details["scheme"],
+            "host": details["host"],
+            "path": details["path"],
+            "query_redacted": details["query_redacted"],
         }
     except Exception:
         return {

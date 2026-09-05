@@ -5,11 +5,11 @@ import functools
 import json
 import time
 from typing import Any, Callable
-from urllib.parse import parse_qsl, quote, urlencode, urlsplit, urlunsplit
 
 from policy.rules import evaluate_httpx_request
 from recorder.core import record_event
 from recorder.http_cassette import is_sensitive_header, redact_headers, summarize_body
+from recorder.http_redaction import SENSITIVE_QUERY_NAMES as SENSITIVE_QUERY, redact_url_details
 
 try:
     import httpx  # type: ignore
@@ -25,26 +25,6 @@ SENSITIVE_HEADERS = {
     "x-api-key",
     "x-auth-token",
     "x-csrf-token",
-}
-
-SENSITIVE_QUERY = {
-    "token",
-    "access_token",
-    "refresh_token",
-    "api_key",
-    "apikey",
-    "key",
-    "secret",
-    "client_secret",
-    "password",
-    "passwd",
-    "auth",
-    "authorization",
-    "signature",
-    "sig",
-    "session",
-    "cookie",
-    "credential",
 }
 
 _SOURCE: contextvars.ContextVar[str | None] = contextvars.ContextVar("traceseal_httpx_source", default=None)
@@ -76,33 +56,10 @@ def _resolved_url(client: Any, url: Any, params: Any = None) -> Any:
 
 
 def _redact_url(value: Any) -> dict[str, Any]:
-    split = urlsplit(str(value))
-    sensitive_query = False
-    redacted_pairs: list[tuple[str, str]] = []
-    for name, item in parse_qsl(split.query, keep_blank_values=True):
-        if name.lower() in SENSITIVE_QUERY:
-            sensitive_query = True
-            redacted_pairs.append((name, "<redacted>"))
-        else:
-            redacted_pairs.append((name, item))
-
-    host = split.hostname or ""
-    if ":" in host and not host.startswith("["):
-        display_host = f"[{host}]"
-    else:
-        display_host = host
-    if split.port is not None:
-        display_host = f"{display_host}:{split.port}"
-    query = urlencode(redacted_pairs, doseq=True, quote_via=quote, safe="<>")
-    safe_url = urlunsplit((split.scheme, display_host, split.path, query, ""))
-    return {
-        "url": safe_url,
-        "host": host,
-        "scheme": split.scheme,
-        "path": split.path or "/",
-        "sensitive_query": sensitive_query,
-        "has_userinfo": split.username is not None or split.password is not None,
-    }
+    details = redact_url_details(value)
+    return {key: details[key] for key in (
+        "url", "host", "scheme", "path", "sensitive_query", "has_userinfo"
+    )}
 
 
 def _redact_headers(client: Any, request_headers: Any, cookies: Any, auth: Any) -> tuple[dict[str, str], bool]:
